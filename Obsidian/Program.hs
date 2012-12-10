@@ -1,7 +1,7 @@
 {- Joel Svensson 2012 -}
 
 {-# LANGUAGE GADTs  #-} 
-module Obsidian.GCDObsidian.Program  where 
+module Obsidian.Program  where 
    --    ( Program(..)
    --    , (*>*)
    --    , runPrg
@@ -11,10 +11,10 @@ module Obsidian.GCDObsidian.Program  where
 import Data.Word
 import Data.Monoid
 
-import Obsidian.GCDObsidian.Exp
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Atomic
+import Obsidian.Exp
+import Obsidian.Types
+import Obsidian.Globs
+import Obsidian.Atomic
 
 -- Package value-supply
 import Data.Supply

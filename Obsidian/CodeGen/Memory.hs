@@ -1,4 +1,6 @@
-module Obsidian.GCDObsidian.CodeGen.Memory 
+
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.Memory 
        (MemMap,
         Memory,
         allocate,
@@ -15,12 +17,12 @@ import qualified Data.List as List
 import qualified Data.Set  as Set
 import Data.Word
 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
+import Obsidian.Types
+import Obsidian.Globs
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.CodeGen.Program
-import Obsidian.GCDObsidian.CodeGen.Liveness
+import Obsidian.Exp 
+import Obsidian.CodeGen.Program
+import Obsidian.CodeGen.Liveness
 
 import qualified Data.Map as Map 
 

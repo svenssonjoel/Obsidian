@@ -1,4 +1,6 @@
-module Obsidian.GCDObsidian.CodeGen.PP where 
+
+{- Joel Svensson 2012 -}
+module Obsidian.CodeGen.PP where 
 
 
 import Control.Monad.State

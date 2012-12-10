@@ -1,7 +1,7 @@
 {- Joel Svensson 2012 -}
 
 {-# LANGUAGE GADTs #-} 
-module Obsidian.GCDObsidian.CodeGen.CUDA 
+module Obsidian.CodeGen.CUDA 
        (genKernel
        ,genKernel_
        ,getNThreads ) where  
@@ -11,25 +11,25 @@ import Data.Word
 import Data.Monoid
 import qualified Data.Map as Map
 
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Exp 
+import Obsidian.Array
+import Obsidian.Exp 
 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Atomic 
+import Obsidian.Types
+import Obsidian.Globs
+import Obsidian.Atomic 
 
-import Obsidian.GCDObsidian.CodeGen.PP
-import Obsidian.GCDObsidian.CodeGen.Common
-import Obsidian.GCDObsidian.CodeGen.InOut 
-import Obsidian.GCDObsidian.CodeGen.SyncAnalysis
-import Obsidian.GCDObsidian.CodeGen.Memory
-import Obsidian.GCDObsidian.CodeGen.Liveness
+import Obsidian.CodeGen.PP
+import Obsidian.CodeGen.Common
+import Obsidian.CodeGen.InOut 
+import Obsidian.CodeGen.SyncAnalysis
+import Obsidian.CodeGen.Memory
+import Obsidian.CodeGen.Liveness
 
 -- New imports
-import Obsidian.GCDObsidian.CodeGen.Program 
-import qualified Obsidian.GCDObsidian.Program as P 
+import Obsidian.CodeGen.Program 
+import qualified Obsidian.Program as P 
 
-import Obsidian.GCDObsidian.CodeGen.SPMDC
+import Obsidian.CodeGen.SPMDC
 
 {- 
    TODO: 

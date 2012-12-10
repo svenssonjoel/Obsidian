@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Obsidian.GCDObsidian.Helpers where 
+{- Joel Svensson 2012 -} 
+module Obsidian.Helpers where 
 
 
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Program
-import Obsidian.GCDObsidian.Sync
+import Obsidian.Array
+import Obsidian.Exp 
+import Obsidian.Program
+import Obsidian.Sync
 
 import Data.Bits
 import Data.Word

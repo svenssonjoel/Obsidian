@@ -1,4 +1,4 @@
-module Obsidian.GCDObsidian.Types where 
+module Obsidian.Types where 
 
 
 ---------------------------------------------------------------------------

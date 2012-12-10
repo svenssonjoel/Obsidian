@@ -1,5 +1,6 @@
 
-module Obsidian.GCDObsidian.CodeGen.SyncAnalysis where
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.SyncAnalysis where
 
 -- The contents of this module is broken! 
 {- 

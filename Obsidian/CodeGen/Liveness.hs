@@ -1,13 +1,15 @@
 
-module Obsidian.GCDObsidian.CodeGen.Liveness where
+
+{- Joel Svensson 2012-} 
+module Obsidian.CodeGen.Liveness where
 
 import qualified Data.Set as Set
 
-import Obsidian.GCDObsidian.Exp
--- import Obsidian.GCDObsidian.Array
---import Obsidian.GCDObsidian.Memory
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.CodeGen.Program
+import Obsidian.Exp
+-- import Obsidian.Array
+--import Obsidian.Memory
+import Obsidian.Globs
+import Obsidian.CodeGen.Program
 
 ------------------------------------------------------------------------------
 -- LIVENESS on Programs

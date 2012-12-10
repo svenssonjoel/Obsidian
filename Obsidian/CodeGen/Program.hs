@@ -6,17 +6,19 @@
    To get somewhere at pace I will transform the new Program datatype
    (monad) into a backend-program type that is more or less identical
    to the old one (the one that all the code generation expects)
+
+   Joel Svensson 2012
 -} 
 
 
-module Obsidian.GCDObsidian.CodeGen.Program where
+module Obsidian.CodeGen.Program where
 
-import Obsidian.GCDObsidian.Exp
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Atomic
+import Obsidian.Exp
+import Obsidian.Globs
+import Obsidian.Types
+import Obsidian.Atomic
 
-import qualified Obsidian.GCDObsidian.Program as P 
+import qualified Obsidian.Program as P 
 
 import Data.Word
 import Data.Supply

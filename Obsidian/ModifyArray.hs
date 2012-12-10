@@ -1,11 +1,15 @@
-module Obsidian.GCDObsidian.ModifyArray where
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Program
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Atomic
+{- Joel Svensson,
+   Josef Svenningsson
+   2012 -}
+module Obsidian.ModifyArray where
+
+import Obsidian.Exp 
+import Obsidian.Types
+import Obsidian.Globs
+import Obsidian.Program
+import Obsidian.Array
+import Obsidian.Atomic
 
 import Data.Word
 

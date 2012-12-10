@@ -1,10 +1,12 @@
-module Obsidian.GCDObsidian.CodeGen.SPMDC where
+
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.SPMDC where
 
 
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.DimSpec
+import Obsidian.Globs
+import Obsidian.DimSpec
 
-import Obsidian.GCDObsidian.CodeGen.PP
+import Obsidian.CodeGen.PP
 
 
 import Data.Word

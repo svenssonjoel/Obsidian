@@ -5,9 +5,11 @@
              FlexibleInstances, 
              UndecidableInstances #-} 
 
-module Obsidian.GCDObsidian.Exp 
-       (module Obsidian.GCDObsidian.Exp,
-        module Obsidian.GCDObsidian.DimSpec) where 
+{- Joel Svensson 2012 -} 
+
+module Obsidian.Exp 
+       (module Obsidian.Exp,
+        module Obsidian.DimSpec) where 
 
 
 
@@ -18,14 +20,14 @@ import Data.Bits
 
 import qualified Foreign.Storable as Storable
 
-import Obsidian.GCDObsidian.DimSpec
+import Obsidian.DimSpec
 
 ---------------------------------------------------------------------------
 -- Obsidian imports
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
+import Obsidian.Types
+import Obsidian.Globs
 
-import Obsidian.GCDObsidian.CodeGen.SPMDC
+import Obsidian.CodeGen.SPMDC
 
 ---------------------------------------------------------------------------
 -- some synonyms

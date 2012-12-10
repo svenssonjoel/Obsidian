@@ -1,4 +1,7 @@
-module Obsidian.GCDObsidian.Globs where
+
+{- Joel Svensson 2012 -} 
+
+module Obsidian.Globs where
 
 
 import Data.Word

@@ -3,11 +3,11 @@
 
 {-# LANGUAGE FlexibleInstances #-}
 
-module Obsidian.GCDObsidian.Library where 
+module Obsidian.Library where 
 
-import Obsidian.GCDObsidian.Array 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Program
+import Obsidian.Array 
+import Obsidian.Exp 
+import Obsidian.Program
 
 import Data.Bits 
 import Data.Word

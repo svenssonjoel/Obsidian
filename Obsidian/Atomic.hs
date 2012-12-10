@@ -1,8 +1,11 @@
 {-# LANGUAGE GADTs #-}
 
-module Obsidian.GCDObsidian.Atomic where
+{- Joel Svensson,
+   Josef Svenningsson
+   2012 -} 
+module Obsidian.Atomic where
 
-import Obsidian.GCDObsidian.Exp
+import Obsidian.Exp
 
        
 

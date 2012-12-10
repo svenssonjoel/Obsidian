@@ -1,8 +1,9 @@
 
 
-module Obsidian.GCDObsidian.CodeGen.CUDA.Compile where
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.CUDA.Compile where
 
-import Obsidian.GCDObsidian.CodeGen.CUDA 
+import Obsidian.CodeGen.CUDA 
 
 -- This module should interact with the nvcc compiler
 -- via the shell

@@ -5,16 +5,17 @@
              TypeFamilies ,
              CPP #-}
 
-module Obsidian.GCDObsidian.CodeGen.InOut where 
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.InOut where 
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Array
+import Obsidian.Exp 
+import Obsidian.Array
 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs 
-import Obsidian.GCDObsidian.Program
-import Obsidian.GCDObsidian.ModifyArray
-import qualified Obsidian.GCDObsidian.CodeGen.Program as CG 
+import Obsidian.Types
+import Obsidian.Globs 
+import Obsidian.Program
+import Obsidian.ModifyArray
+import qualified Obsidian.CodeGen.Program as CG 
 
 import Data.Word
 import Data.Int

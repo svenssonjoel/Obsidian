@@ -1,12 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses,  
              FlexibleInstances  #-} 
 
-module Obsidian.GCDObsidian.Array  where
+{- Joel Svensson 2012 -}
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Program
+module Obsidian.Array  where
+
+import Obsidian.Exp 
+import Obsidian.Types
+import Obsidian.Globs
+import Obsidian.Program
 
 
 import Data.List

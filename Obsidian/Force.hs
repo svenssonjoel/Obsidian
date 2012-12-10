@@ -1,16 +1,18 @@
-{- Joel Svensson 2012 -}
+
 {-# LANGUAGE MultiParamTypeClasses,
              FlexibleInstances,
              ScopedTypeVariables,
              TypeFamilies #-} 
 
-module Obsidian.GCDObsidian.Force where
+{- Joel Svensson 2012 -}
+
+module Obsidian.Force where
 
 
-import Obsidian.GCDObsidian.Program
-import Obsidian.GCDObsidian.Exp
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Types
+import Obsidian.Program
+import Obsidian.Exp
+import Obsidian.Array
+import Obsidian.Types
 
 {- 
 ---------------------------------------------------------------------------

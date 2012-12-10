@@ -1,18 +1,19 @@
 {-# LANGUAGE RankNTypes, GADTs  #-}
 
-module Obsidian.GCDObsidian.CodeGen.Common where 
+{- Joel Svensson 2012 -} 
+module Obsidian.CodeGen.Common where 
 
 import Data.List
 import Data.Word
 import qualified Data.Map as Map 
 
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
+import Obsidian.Exp 
+import Obsidian.Types
+import Obsidian.Globs
 
-import Obsidian.GCDObsidian.CodeGen.PP
-import Obsidian.GCDObsidian.CodeGen.Memory
+import Obsidian.CodeGen.PP
+import Obsidian.CodeGen.Memory
 
 ---------------------------------------------------------------------------
 data GenConfig = GenConfig { global :: String,

@@ -5,20 +5,20 @@
 module Examples where 
 
 
-import qualified Obsidian.GCDObsidian.CodeGen.CUDA as CUDA
-import Obsidian.GCDObsidian.CodeGen.CUDA.WithCUDA
-import Obsidian.GCDObsidian.CodeGen.CUDA.Compile
+import qualified Obsidian.CodeGen.CUDA as CUDA
+import Obsidian.CodeGen.CUDA.WithCUDA
+import Obsidian.CodeGen.CUDA.Compile
 import qualified Foreign.CUDA.Driver as CUDA
 
-import qualified Obsidian.GCDObsidian.CodeGen.Program as CGP
-import           Obsidian.GCDObsidian.CodeGen.InOut
+import qualified Obsidian.CodeGen.Program as CGP
+import           Obsidian.CodeGen.InOut
 
-import Obsidian.GCDObsidian.Program
-import Obsidian.GCDObsidian.Exp
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Library
-import Obsidian.GCDObsidian.Force
+import Obsidian.Program
+import Obsidian.Exp
+import Obsidian.Types
+import Obsidian.Array
+import Obsidian.Library
+import Obsidian.Force
 
 
 import Data.Word

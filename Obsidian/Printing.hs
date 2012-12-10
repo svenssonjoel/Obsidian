@@ -1,11 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module Obsidian.GCDObsidian.Printing  where 
+{- Joel Svensson 2012 -} 
+module Obsidian.Printing  where 
 
-import Obsidian.GCDObsidian.Exp 
-import Obsidian.GCDObsidian.Kernel 
-import Obsidian.GCDObsidian.Array
-import Obsidian.GCDObsidian.Program  
+import Obsidian.Exp 
+import Obsidian.Kernel 
+import Obsidian.Array
+import Obsidian.Program  
 
 
 ---------------------------------------------------------------------------

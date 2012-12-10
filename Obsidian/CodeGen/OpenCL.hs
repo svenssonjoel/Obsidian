@@ -2,26 +2,28 @@
    CodeGen.OpenCL
 
    OpenCL code generation.
+
+   Joel Svensson 2012 
 -} 
 
-module Obsidian.GCDObsidian.CodeGen.OpenCL (genKernel) where 
+module Obsidian.CodeGen.OpenCL (genKernel) where 
 
 import Data.List
 import Data.Word 
 import qualified Data.Map as Map
 
 
-import Obsidian.GCDObsidian.Array 
-import Obsidian.GCDObsidian.Exp  
-import Obsidian.GCDObsidian.Types
-import Obsidian.GCDObsidian.Globs
-import Obsidian.GCDObsidian.Program
+import Obsidian.Array 
+import Obsidian.Exp  
+import Obsidian.Types
+import Obsidian.Globs
+import Obsidian.Program
 
-import Obsidian.GCDObsidian.CodeGen.PP
-import Obsidian.GCDObsidian.CodeGen.Common
-import Obsidian.GCDObsidian.CodeGen.InOut
-import Obsidian.GCDObsidian.CodeGen.Liveness
-import Obsidian.GCDObsidian.CodeGen.Memory
+import Obsidian.CodeGen.PP
+import Obsidian.CodeGen.Common
+import Obsidian.CodeGen.InOut
+import Obsidian.CodeGen.Liveness
+import Obsidian.CodeGen.Memory
 
 
 ----------------------------------------------------------------------------

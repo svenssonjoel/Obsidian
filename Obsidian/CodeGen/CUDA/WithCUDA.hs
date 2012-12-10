@@ -1,17 +1,19 @@
 {-# LANGUAGE TypeOperators,
              GADTs #-} 
-module Obsidian.GCDObsidian.CodeGen.CUDA.WithCUDA where
+
+{- Joel Svensson 2012 -}
+module Obsidian.CodeGen.CUDA.WithCUDA where
 
 import qualified Foreign.CUDA.Driver as CUDA
 import qualified Foreign.CUDA.Driver.Device as CUDA
 import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream 
 
-import Obsidian.GCDObsidian.CodeGen.CUDA
-import Obsidian.GCDObsidian.CodeGen.CUDA.Compile
-import Obsidian.GCDObsidian.CodeGen.InOut
-import Obsidian.GCDObsidian.CodeGen.Common (genType,GenConfig(..))
-import Obsidian.GCDObsidian.Types -- experimental 
+import Obsidian.CodeGen.CUDA
+import Obsidian.CodeGen.CUDA.Compile
+import Obsidian.CodeGen.InOut
+import Obsidian.CodeGen.Common (genType,GenConfig(..))
+import Obsidian.Types -- experimental 
 
 import Control.Monad.State
 
