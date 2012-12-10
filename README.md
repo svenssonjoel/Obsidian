@@ -2,5 +2,5 @@
 
 ## Next version of Obsidian
 * Currently just some files from old Obsidian.
-    * Module "paths" will be renamed. 
+    * Module hierarchy will be reshaped. 
     * Code will be massively cleaned.   
