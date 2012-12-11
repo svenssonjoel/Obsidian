@@ -48,20 +48,11 @@ input1 = namedArray "apa" 32
 input2 :: Distrib (Pull EInt)
 input2 = namedGlobal "apa" 256 32
 
-sync :: forall a. Scalar a
-        => Pull (Exp a) -> BProgram (Pull (Exp a))
-sync (Pull n ixf) =
-  do
-    name <- BAllocate (n*fromIntegral (sizeOf (undefined :: Exp a)))
-                      (Pointer (typeOf (undefined :: Exp a)))
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
 
-    p (targetArr name) 
-    BSync
-    return $ Pull n (\i -> index name i) 
-      
-    where
-      p = \k -> BForAll n $ (\ix -> k (ixf ix) ix)  
-      targetArr name e i = TAssign name i e
+sync = force 
 
 prg0 = putStrLn$ printPrg$ toProg $ mapFusion input1
 
