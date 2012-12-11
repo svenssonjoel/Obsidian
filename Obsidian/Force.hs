@@ -4,7 +4,13 @@
              ScopedTypeVariables,
              TypeFamilies #-} 
 
-{- Joel Svensson 2012 -}
+{- Joel Svensson 2012
+
+   Notes:
+
+   2012-12-10: Edited 
+
+-}
 
 module Obsidian.Force where
 
@@ -13,46 +19,6 @@ import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Types
-
-{- 
----------------------------------------------------------------------------
--- Class of Forceables
---------------------------------------------------------------------------- 
-
-class Forceable a p e where
-  force :: a p e -> Program (a Pull e) 
-
-
----------------------------------------------------------------------------
--- Base cases
----------------------------------------------------------------------------
-instance Scalar a => Forceable Array Pull (Exp a) where
-  force arr =
-    do 
-    name <- Allocate n $ Pointer (typeOf (undefined :: (Exp a)))
-    p (targetArr name)
-    Sync
-    return $ Array n $ Pull (\i -> index name i)
-    where
-      (Array n (Push p)) = push arr 
-      targetArr name (i,e) = Assign name i e
-
-instance Scalar a => Forceable Array Push (Exp a) where
-  force (Array n (Push p)) =
-    do 
-    name <- Allocate n $ Pointer (typeOf (undefined :: (Exp a)))
-    p (targetArr name)
-    Sync
-    return $ Array n $ Pull (\i -> index name i)
-    where
-      targetArr name (i,e) = Assign name i e
-
--} 
-
----------------------------------------------------------------------------
--- Also deal with pairs etc.. (future work)
----------------------------------------------------------------------------
-
 
 ---------------------------------------------------------------------------
 -- New Approach to Forceable. 
@@ -65,23 +31,23 @@ class Forceable a where
 ---------------------------------------------------------------------------
 -- Force local
 ---------------------------------------------------------------------------
-instance Scalar a => Forceable (Array Pull (Exp a)) where
-  type Forced (Array Pull (Exp a)) = Program (Array Pull (Exp a))
+instance Scalar a => Forceable (Pull (Exp a)) where
+  type Forced (Pull (Exp a)) = BProgram (Pull (Exp a))
   force arr = force (push arr) 
 
-instance Scalar a => Forceable (Array Push (Exp a)) where
-  type Forced (Array Push (Exp a)) = Program (Array Pull (Exp a)) 
-  force (Array n (Push p)) =
+instance Scalar a => Forceable (Push (Exp a)) where
+  type Forced (Push (Exp a)) = BProgram (Pull (Exp a)) 
+  force (Push n p) =
     do
       -- Allocate is a bit strange since
       -- it wants the n in bytes! But also knows the type. 
-    name <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+    name <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
                      (Pointer (typeOf (undefined :: (Exp a))))
     p (targetArr name)
-    Sync
-    return $ Array n $ Pull (\i -> index name i)
+    BSync
+    return $ Pull n (\i -> index name i)
     where
-      targetArr name (i,e) = Assign name i e
+      targetArr name e i = TAssign name i e
 
 instance (Forceable a, Forceable b) => Forceable (a,b) where
   type Forced (a,b) = (Forced a, Forced b)

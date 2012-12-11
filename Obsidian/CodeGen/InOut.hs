@@ -5,7 +5,15 @@
              TypeFamilies ,
              CPP #-}
 
-{- Joel Svensson 2012 -} 
+{- Joel Svensson 2012
+
+  Notes:
+
+  2012-12-10: Edited
+
+-} 
+
+
 module Obsidian.CodeGen.InOut where 
 
 import Obsidian.Exp 
@@ -42,7 +50,7 @@ class ToProgram a b where
   toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.Program ())
 
 #define toprgBase(t) \
-instance ToProgram (Distrib (Array Pull (Exp t))) (Program a) where { \
+instance ToProgram (Distrib (Pull (Exp t))) (Program a) where { \
   toProgram i f (Distrib n blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (f input)) \
      where {nom = "input" ++ show i; \
@@ -50,7 +58,7 @@ instance ToProgram (Distrib (Array Pull (Exp t))) (Program a) where { \
             n   = len (blkf (variable "X")); \
             input = namedGlobal  nom (variable var) n;}}  \
 ;\
-instance ToProgram (Distrib (Array Pull (Exp t))) (Final (Program a)) where { \
+instance ToProgram (Distrib (Pull (Exp t))) (Final (Program a)) where { \
   toProgram i f (Distrib n blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
      where  {nom = "input" ++ show i; \
@@ -75,7 +83,7 @@ toprgBase(Float)
 toprgBase(Double) 
 
 #define toprgRec(t) \
-instance ToProgram b c => ToProgram (Distrib (Array Pull (Exp t))) (b -> c) where{\
+instance ToProgram b c => ToProgram (Distrib (Pull (Exp t))) (b -> c) where{\
   toProgram i f ((Distrib n blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
     where {\
       (ins,prg) = toProgram (i+1) (f input) rest;\
@@ -117,7 +125,7 @@ type family Ips' a
 
 
 #define ipsBase(t) \
-type instance Ips' (Distrib (Array Pull (Exp t))) = Distrib (Array Pull (Exp t));
+type instance Ips' (Distrib (Pull (Exp t))) = Distrib (Pull (Exp t));
 
 -- type instance Ips' (GlobArray (Exp t)) = GlobArray (Exp t);
 
