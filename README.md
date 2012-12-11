@@ -7,6 +7,6 @@
 
 
 ## TODO: 
-*Cleaner interface to Programs. 
+* Cleaner interface to Programs. 
     * write "sync" not "BSync" 
     * etc
