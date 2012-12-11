@@ -7,9 +7,6 @@ import Obsidian.CodeGen.CUDA.WithCUDA
 import Obsidian.CodeGen.CUDA.WithCUDA.Text
 import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
 
-
-
-
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Types
@@ -155,6 +152,10 @@ test = putStrLn $ getCUDA $
          do
            kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
 
-           cudaExecute kernel 1 32 [] [2] 
-           
+           i1 <- cudaUseVector (V.fromList [0..31 :: Int32]) Int32
+           o1 <- cudaAlloca 32 Int32
+         
+           cudaTime "Timing execution of kernel" $ 
+             cudaExecute kernel 1 32 [i1] [o1] 
+             
            return () 

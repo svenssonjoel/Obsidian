@@ -38,6 +38,8 @@ data CUDAProgram a where
                       -> Type 
                       -> CUDAProgram ()
 
+  CUDAFree :: Id -> CUDAProgram () 
+
   CUDAExecute :: Id 
                  -> Word32 -- Number of blocks
                  -> Word32 -- Amount of Shared mem (get from an analysis) 
@@ -63,11 +65,7 @@ instance Monad CUDAProgram where
 -- Operations
 ---------------------------------------------------------------------------
 cudaCapture :: ToProgram a b => (a -> b) -> Ips a b -> CUDAProgram Id
-cudaCapture f inputs =
-  do
-    id <- CUDANewId
-    CUDAKernel f inputs
-    return id 
+cudaCapture f inputs = CUDAKernel f inputs
     {- 
     let kn      = "gen" ++ show id
         prgstr  = genKernel kn f inputs
