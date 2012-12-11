@@ -161,7 +161,9 @@ printPrg' i Sync = ((),"Sync;\n",i)
 ---------------------------------------------------------------------------
 
 -- The Kind of program that can be executed by a single
--- thread on the GPU 
+-- thread on the GPU
+-- TODO: Add Sequential loop. 
+-- TODO: Add Conditional codeblock.
 data TProgram a where
   TAssign :: Scalar a
             => Name

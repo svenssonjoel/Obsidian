@@ -10,3 +10,4 @@
 * Cleaner interface to Programs. 
     * write "sync" not "BSync" 
     * etc
+* Add sequential loop and conditional blocks to ThreadPrograms.
