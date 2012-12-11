@@ -54,8 +54,8 @@ data Push a = Push Word32
 data Pull a = Pull {pullLen :: Word32, 
                     pullFun :: Exp Word32 -> a}
 
-type PushArray a = Push a 
-type PullArray a = Pull a 
+type PushArray a = Push a
+type PullArray a = Pull a
 
 mkPushArray :: Word32 -> ((a -> Exp Word32 -> TProgram ())
                          -> BProgram ()) -> PushArray a

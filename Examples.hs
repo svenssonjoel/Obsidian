@@ -1,17 +1,13 @@
-{-# LANGUAGE FlexibleInstances,
-             FlexibleContexts, 
-             ScopedTypeVariables,
-             RankNTypes  #-} 
+{-# LANGUAGE ScopedTypeVariables #-} 
+             
 module Examples where 
-
 
 import qualified Obsidian.CodeGen.CUDA as CUDA
 import Obsidian.CodeGen.CUDA.WithCUDA
-import Obsidian.CodeGen.CUDA.Compile
-import qualified Foreign.CUDA.Driver as CUDA
+import Obsidian.CodeGen.CUDA.WithCUDA.Text
+-- import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
 
-import qualified Obsidian.CodeGen.Program as CGP
-import           Obsidian.CodeGen.InOut
+
 
 import Obsidian.Program
 import Obsidian.Exp
@@ -19,7 +15,6 @@ import Obsidian.Types
 import Obsidian.Array
 import Obsidian.Library
 import Obsidian.Force
-
 
 import Data.Word
 import Data.Int
@@ -146,3 +141,9 @@ mapD :: (LocalArrays a, LocalArrays b) =>
         (Distrib a -> Distrib (BProgram b))
 mapD f inp@(Distrib nb bixf) =
   Distrib nb $ \bid -> f (bixf bid)
+
+
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
