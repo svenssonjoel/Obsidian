@@ -5,7 +5,8 @@ module Examples where
 import qualified Obsidian.CodeGen.CUDA as CUDA
 import Obsidian.CodeGen.CUDA.WithCUDA
 import Obsidian.CodeGen.CUDA.WithCUDA.Text
--- import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
+import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
+
 
 
 
@@ -145,5 +146,15 @@ mapD f inp@(Distrib nb bixf) =
 
 
 ---------------------------------------------------------------------------
--- 
+-- Playing with CUDA launch code generation.
+-- Much work needed here.
 ---------------------------------------------------------------------------
+
+
+test = putStrLn $ getCUDA $
+         do
+           kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
+
+           cudaExecute kernel 1 32 [] [2] 
+           
+           return () 

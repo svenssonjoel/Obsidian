@@ -50,17 +50,17 @@ class ToProgram a b where
   toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.Program ())
 
 #define toprgBase(t) \
-instance ToProgram (Distrib (Pull (Exp t))) (Program a) where { \
+instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
   toProgram i f (Distrib n blkf)  =      \
-    ([(nom,Pointer t)],CG.runPrg (f input)) \
+    ([(nom,Pointer t)],CG.runPrg (toProg (f input))) \
      where {nom = "input" ++ show i; \
             var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \
             input = namedGlobal  nom (variable var) n;}}  \
 ;\
-instance ToProgram (Distrib (Pull (Exp t))) (Final (Program a)) where { \
+instance ToProgram (Distrib (Pull (Exp t))) (Final (GProgram a)) where { \
   toProgram i f (Distrib n blkf)  =      \
-    ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
+    ([(nom,Pointer t)],CG.runPrg (toProg (cheat (f input)))) \
      where  {nom = "input" ++ show i; \
             var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \
@@ -146,8 +146,8 @@ ipsBase(Bool)
 
 -- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
 
-type instance Ips a (Final (Program b)) = Ips' a 
-type instance Ips a (Program b) = Ips' a
+type instance Ips a (Final (GProgram b)) = Ips' a 
+type instance Ips a (GProgram b) = Ips' a
 type instance Ips a (b -> c) =  Ips' a :-> Ips b c
 
 {- TODO:

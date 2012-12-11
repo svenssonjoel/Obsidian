@@ -1,13 +1,11 @@
 
 
 {- Joel Svensson 2012 -} 
-module Obsidian.CodeGen.CUDA.Compile where
+module Obsidian.CodeGen.CUDA.WithCUDA.Compile where
 
-import Obsidian.CodeGen.CUDA 
 
--- This module should interact with the nvcc compiler
+-- This module interacts with the nvcc compiler
 -- via the shell
-
 
 import System.Process
 
