@@ -19,6 +19,11 @@ import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate)
 
+
+-- TODO: Array Pull/Push a
+--       do I have any Library functions that are Push/Pull agnostic? 
+--       (There is concP that concatenates any 2 Pushable arrays) 
+
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ import qualified Data.Map as M
 import Control.Monad.State
 
 import Data.Word
+import Data.Maybe
 
 import System.IO.Unsafe
 ---------------------------------------------------------------------------
@@ -74,7 +75,7 @@ getCUDA' sid (CUDAKernel f inputs)   =
     let kn = "gen" ++ show id
         prgstr = genKernel kn f inputs
         threads = getNThreads f inputs
-        m' = M.insert id (Kernel prgstr threads 0) m
+        m' = M.insert id (Kernel kn{-prgstr-} threads 0) m
     put m'
     return (id,[prgstr],"") -- undefined -- ((),[kern], "")
 
@@ -95,11 +96,18 @@ getCUDA' sid (CUDAAllocaVector i s t) = return ((),[],str)
     str = allocDeviceVector i s t 
   
 getCUDA' sid (CUDAExecute kernid blocks sm ins outs) =
-  return ((),[],str)
+  do
+    m <- get
+    
+    let k = fromJust $ M.lookup kernid m
+        name = kString k
+        threads = kThreads k
+        sm = kShared k
+        str = name++"<<<"++show blocks++","++ show threads ++ ","
+               ++ show sm ++ ">>>" ++ args 
+        
+    return ((),[],str)
   where
-    gah = " <<<LOOKUP KERNEL INFO IN SOME MAP>>> "
-    str = gah++"<<<"++show blocks++","++ gah {-show threads-} ++ "," ++ show sm ++ ">>>" ++
-          args -- "(" ++ devIds ins ++ ", " ++ devIds outs ++");\n"
     devIds ids = concat $ intersperse "," $ map (("d"++) . show) ids
     args =
       case (ins,outs) of
@@ -114,6 +122,8 @@ getCUDA' sid (CUDATime str prg) =
                  "//Stop  timing \n"
     
     return ((),kerns,newstr)
+
+getCUDA' sid (CUDAFree id) = return  ((),[],"cudaFree(d"++ show id ++ ");\n")
 
 getCUDA' sid (CUDAReturn a) = return (a,[],"")
 getCUDA' sid (CUDABind cp f) =

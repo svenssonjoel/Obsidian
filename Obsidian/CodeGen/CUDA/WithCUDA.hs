@@ -82,6 +82,9 @@ cudaAlloca size typ =
     CUDAAllocaVector id (size * typeSize typ)  typ
     return id
 
+cudaFree :: Id -> CUDAProgram ()
+cudaFree id = CUDAFree id 
+
 cudaUseVector :: (Show a, V.Storable a) => V.Vector a -> Type -> CUDAProgram Id
 cudaUseVector v typ =
   do

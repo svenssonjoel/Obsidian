@@ -156,6 +156,9 @@ test = putStrLn $ getCUDA $
          
            cudaTime "Timing execution of kernel" $ 
              cudaExecute kernel 1 32 [i1] [o1] 
+
+           cudaFree i1
+           cudaFree o1 
              
            return ()
 

@@ -43,7 +43,6 @@ instance Scalar a => Forceable (Pull (Exp a)) where
   write_ arr = write_ (push arr) 
   force arr = force (push arr)
   
-{- 
 instance Scalar a => Forceable (Push (Exp a)) where
   type Forced (Push (Exp a)) = Pull (Exp a)
   write_ (Push n p) =
@@ -63,7 +62,34 @@ instance Scalar a => Forceable (Push (Exp a)) where
       rval <- write_ p
       BSync
       return rval
--}       
+
+-- Is it possible to avoid being this repetitive ? 
+instance (Scalar a,Scalar b) => Forceable (Push (Exp a,Exp b)) where
+  type Forced (Push (Exp a,Exp b)) = Pull (Exp a, Exp b)
+  write_ (Push n p) =
+    do
+      -- Allocate is a bit strange since
+      -- it wants the n in bytes! But also knows the type. 
+      name1 <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+                         (Pointer (typeOf (undefined :: (Exp a))))
+      name2 <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
+                         (Pointer (typeOf (undefined :: (Exp b))))
+      p (targetArr (name1,name2))
+      -- BSync
+      return $  Pull n (\i -> (index name1 i,
+                               index name2 i))
+                     
+    where
+      targetArr (name1,name2) (e1,e2) i = TAssign name1 i e1 >>
+                                          TAssign name2 i e2
+
+  force p =
+    do
+      rval <- write_ p
+      BSync
+      return rval
+
+
 instance (Forceable a, Forceable b) => Forceable (a,b) where
   type Forced (a,b) = (Forced a, Forced b)
   write_ (a,b) =
@@ -76,11 +102,3 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
       rval <- force p
       BSync
       return rval
-
-  {- 
-instance (Forceable a, Forceable b, Forceable c) => Forceable (a,b,c) where
-  type Forced (a,b,c) = (Forced a, Forced b, Forced c)
-  force (a,b,c) = (force a, force b, force c) 
--}
-
-
