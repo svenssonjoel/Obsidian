@@ -117,12 +117,11 @@ permuteGlobal' perm distr@(Distrib nb bixf) =
              arr <- bixf bix
              BForAll bs $ 
                \tix ->
-                 let (bix',tix') = perm bix tix 
+                 let (bix',tix') = perm bix tix
                  in wf (arr ! tix) bix' tix'
   where
     -- Gah. (Does this even work? (for real?)) 
     bs = len $ fst $ runPrg 0 $ toProg  $ bixf 0
-
 
 ---------------------------------------------------------------------------
 -- mapD experiments

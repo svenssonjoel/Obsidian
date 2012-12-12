@@ -106,15 +106,3 @@ cudaExecute kern blocks sm ins outs =
 cudaTime :: String -> CUDAProgram () -> CUDAProgram ()
 cudaTime str prg = CUDATime str prg  
 
-
-typeSize Int8 = 1
-typeSize Int16 = 2
-typeSize Int32 = 4
-typeSize Int64 = 8
-typeSize Word8 = 1
-typeSize Word16 = 2
-typeSize Word32 = 4
-typeSize Word64 = 8
-typeSize Bool = 4
-typeSize Float = 4
-typeSize Double = 8 
