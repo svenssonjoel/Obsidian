@@ -157,4 +157,16 @@ test = putStrLn $ getCUDA $
            cudaTime "Timing execution of kernel" $ 
              cudaExecute kernel 1 32 [i1] [o1] 
              
-           return () 
+           return ()
+
+
+
+
+---------------------------------------------------------------------------
+-- Strange push array 
+---------------------------------------------------------------------------
+
+
+push1 = push $ zipp (input1,input1)
+
+testApa =  printPrg $ toProg $ write_ push1
