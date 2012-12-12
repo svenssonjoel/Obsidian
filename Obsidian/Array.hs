@@ -62,7 +62,6 @@ mkPushArray :: Word32 -> ((a -> Exp Word32 -> TProgram ())
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 
-
 class Resizeable a where
   resize :: Word32 -> a e -> a e 
 
