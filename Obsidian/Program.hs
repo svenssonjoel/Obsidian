@@ -1,6 +1,7 @@
 {- Joel Svensson 2012 -}
 
-{-# LANGUAGE GADTs  #-} 
+{-# LANGUAGE GADTs,
+             FlexibleInstances #-} 
 module Obsidian.Program  where 
    --    ( Program(..)
    --    , (*>*)
@@ -21,28 +22,32 @@ import Data.Supply
 import System.IO.Unsafe
 
 ---------------------------------------------------------------------------
--- 
-data Program a where 
+--
+data Thread
+data Block
+data Grid 
+
+data Program t a where 
   Assign :: Scalar a
             => Name
             -> (Exp Word32)
             -> (Exp a)
-            -> Program ()
+            -> Program Thread ()
            
             
   AtomicOp :: Scalar a
               => Name 
               -> Exp Word32
               -> Atomic a
-              -> Program (Exp a)
+              -> Program Thread (Exp a)
 
   -- Shouldnt a ForAll have a different result type.
   -- Someting that represents an "array"
   -- Am I mixing up the concepts here ?  (And what are those concepts
   -- that I might be mixing up?) 
   ForAll :: Word32
-            -> (Exp Word32 -> Program ())
-            -> Program ()
+            -> (Exp Word32 -> Program Thread ())
+            -> Program Block () 
 
 
   {-
@@ -55,11 +60,11 @@ data Program a where
      should be split into two kernels. 
   -} 
   ForAllBlocks :: (Exp Word32)
-                  -> (Exp Word32 -> Program ()) 
-                  -> Program () 
+                  -> (Exp Word32 -> Program Block ()) 
+                  -> Program Grid () 
 
   
-  Allocate :: Word32 -> Type -> Program Name
+  Allocate :: Word32 -> Type -> Program Block Name
 
 
   {- About Output (Creates a named output array). 
@@ -69,25 +74,41 @@ data Program a where
      Since we cannot synchronize writes to a global array inside of an
      kernel, global arrays will only be written as outputs of the kernel
   -} 
-  Output   :: Type -> Program Name
+  Output   :: Type -> Program Grid Name
   
   
-  Sync     :: Program ()
+  Sync     :: Program Block ()
 
-  Return :: a -> Program a
-  Bind   :: Program a -> (a -> Program b) -> Program b
+  Return :: a -> Program t a
+  Bind   :: Program t a -> (a -> Program t b) -> Program t b
 
 ---------------------------------------------------------------------------
 -- Monad
----------------------------------------------------------------------------
-instance Monad Program where
+--------------------------------------------------------------------------
+instance Monad (Program Thread) where
   return = Return
   (>>=) = Bind
+
+instance Monad (Program Block) where
+  return = Return
+  (>>=) = Bind
+
+instance Monad (Program Grid) where
+  return = Return
+  (>>=) = Bind
+
+
+---------------------------------------------------------------------------
+-- Aliases 
+---------------------------------------------------------------------------
+type TProgram = Program Thread
+type BProgram = Program Block
+type GProgram = Program Grid 
 
 ---------------------------------------------------------------------------
 -- runPrg 
 ---------------------------------------------------------------------------
-runPrg :: Int -> Program a -> (a,Int) 
+runPrg :: Int -> Program t a -> (a,Int) 
 runPrg i (Return a) = (a,i)
 runPrg i (Bind m f) =
   let (a,i') = runPrg i m
@@ -103,19 +124,19 @@ runPrg i (AtomicOp _ _ _) = (variable ("new"++show i),i+1)
 ---------------------------------------------------------------------------
 -- Sequence programs
 ---------------------------------------------------------------------------
-infixr 5 *>* 
+--infixr 5 *>* 
 
-(*>*) :: Program a 
-         -> Program b
-         -> Program b   
-(*>*) p1 p2 = p1 >> p2  
+--(*>*) :: Program a 
+--         -> Program b
+--         -> Program b   
+--(*>*) p1 p2 = p1 >> p2  
      
 ---------------------------------------------------------------------------
 -- printPrg
 ---------------------------------------------------------------------------
 printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 
-printPrg' :: Int -> Program a -> (a,String,Int)  
+printPrg' :: Int -> Program t a -> (a,String,Int)  
 -- printPrg' i Skip = ((),";\n", i)
 printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 
@@ -155,7 +176,7 @@ printPrg' i Sync = ((),"Sync;\n",i)
 
 
 
-
+{- 
 ---------------------------------------------------------------------------
 -- Rethink program type
 ---------------------------------------------------------------------------
@@ -262,3 +283,7 @@ instance ToProg TProgram where
 
 instance ToProg BProgram where
   toProg = bToPrg
+
+
+
+-} 

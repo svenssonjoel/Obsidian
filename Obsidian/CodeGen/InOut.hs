@@ -52,7 +52,7 @@ class ToProgram a b where
 #define toprgBase(t) \
 instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
   toProgram i f (Distrib n blkf)  =      \
-    ([(nom,Pointer t)],CG.runPrg (toProg (f input))) \
+    ([(nom,Pointer t)],CG.runPrg (f input)) \
      where {nom = "input" ++ show i; \
             var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \
@@ -60,7 +60,7 @@ instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
 ;\
 instance ToProgram (Distrib (Pull (Exp t))) (Final (GProgram a)) where { \
   toProgram i f (Distrib n blkf)  =      \
-    ([(nom,Pointer t)],CG.runPrg (toProg (cheat (f input)))) \
+    ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
      where  {nom = "input" ++ show i; \
             var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \

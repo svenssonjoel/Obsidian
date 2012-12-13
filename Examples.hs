@@ -47,7 +47,7 @@ input2 = namedGlobal "apa" 256 32
 
 sync = force 
 
-prg0 = putStrLn$ printPrg$ toProg $ mapFusion input1
+prg0 = putStrLn$ printPrg$  mapFusion input1
 
 mapFusion' :: Distrib (Pull EInt)
               -> Distrib (BProgram (Pull EInt))
@@ -58,30 +58,30 @@ toGlobArray :: forall a. Scalar a
                -> GlobArray (Exp a)
 toGlobArray inp@(Distrib nb bixf) =
   GlobArray nb bs $
-    \wf -> GForAll nb $
+    \wf -> ForAllBlocks nb $
            \bix ->
            do -- BProgram do block 
              arr <- bixf bix 
-             BForAll bs $ \ix -> wf (arr ! ix) bix ix 
+             ForAll bs $ \ix -> wf (arr ! ix) bix ix 
   where
-    bs = len $ fst $ runPrg 0 $ toProg (bixf 0) 
+    bs = len $ fst $ runPrg 0 $ bixf 0
   
 
 forceBT :: forall a. Scalar a => GlobArray (Exp a)
            -> Final (GProgram (Distrib (Pull (Exp a))))
 forceBT (GlobArray nb bs pbt) = Final $ 
   do
-      global <- GOutput $ Pointer (typeOf (undefined :: Exp a))
+      global <- Output $ Pointer (typeOf (undefined :: Exp a))
       
       pbt (assignTo global bs)
         
       return $ Distrib nb  $ 
         \bix -> (Pull bs (\ix -> index global ((bix * (fromIntegral bs)) + ix)))
     where 
-      assignTo name s e b i = TAssign name ((b*(fromIntegral s))+i) e
+      assignTo name s e b i = Assign name ((b*(fromIntegral s))+i) e
 
 
-prg1 = putStrLn$ printPrg$ toProg $ cheat $ (forceBT . toGlobArray . mapFusion') input2
+prg1 = putStrLn$ printPrg$ cheat $ (forceBT . toGlobArray . mapFusion') input2
 
 
 ---------------------------------------------------------------------------
@@ -95,8 +95,8 @@ permuteGlobal perm distr@(Distrib nb bixf) =
   GlobArray nb bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
-         GForAll nb $
-           \bix -> BForAll bs $
+         ForAllBlocks nb $
+           \bix -> ForAll bs $
                    \tix ->
                    let (bix',tix') = perm bix tix 
                    in wf ((bixf bix) ! tix) bix' tix'
@@ -111,17 +111,17 @@ permuteGlobal' perm distr@(Distrib nb bixf) =
   GlobArray nb bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
-         GForAll nb $
+         ForAllBlocks nb $
            \bix ->
            do -- BProgram do block
              arr <- bixf bix
-             BForAll bs $ 
+             ForAll bs $ 
                \tix ->
                  let (bix',tix') = perm bix tix
                  in wf (arr ! tix) bix' tix'
   where
     -- Gah. (Does this even work? (for real?)) 
-    bs = len $ fst $ runPrg 0 $ toProg  $ bixf 0
+    bs = len $ fst $ runPrg 0 $ bixf 0
 
 ---------------------------------------------------------------------------
 -- mapD experiments
@@ -172,4 +172,4 @@ test = putStrLn $ getCUDA $
 
 push1 = push $ zipp (input1,input1)
 
-testApa =  printPrg $ toProg $ write_ push1
+testApa =  printPrg $ write_ push1

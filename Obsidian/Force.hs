@@ -49,18 +49,18 @@ instance Scalar a => Forceable (Push (Exp a)) where
     do
       -- Allocate is a bit strange since
       -- it wants the n in bytes! But also knows the type. 
-      name <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+      name <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
                         (Pointer (typeOf (undefined :: (Exp a))))
       p (targetArr name)
       -- BSync
       return $ Pull n (\i -> index name i)
     where
-      targetArr name e i = TAssign name i e
+      targetArr name e i = Assign name i e
 
   force p =
     do
       rval <- write_ p
-      BSync
+      Sync
       return rval
 
 -- Is it possible to avoid being this repetitive ? 
@@ -70,23 +70,23 @@ instance (Scalar a,Scalar b) => Forceable (Push (Exp a,Exp b)) where
     do
       -- Allocate is a bit strange since
       -- it wants the n in bytes! But also knows the type. 
-      name1 <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+      name1 <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
                          (Pointer (typeOf (undefined :: (Exp a))))
-      name2 <- BAllocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
+      name2 <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
                          (Pointer (typeOf (undefined :: (Exp b))))
       p (targetArr (name1,name2))
-      -- BSync
+      -- Sync
       return $  Pull n (\i -> (index name1 i,
                                index name2 i))
                      
     where
-      targetArr (name1,name2) (e1,e2) i = TAssign name1 i e1 >>
-                                          TAssign name2 i e2
+      targetArr (name1,name2) (e1,e2) i = Assign name1 i e1 >>
+                                          Assign name2 i e2
 
   force p =
     do
       rval <- write_ p
-      BSync
+      Sync
       return rval
 
 
@@ -100,5 +100,5 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
   force p =
     do
       rval <- force p
-      BSync
+      Sync
       return rval

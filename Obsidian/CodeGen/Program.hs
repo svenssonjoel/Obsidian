@@ -55,7 +55,7 @@ convPrg = runPrg
 runPrg p = snd$ runPrg' ns p 
   where ns = unsafePerformIO$ newEnumSupply
 
-runPrg' :: Supply Int -> P.Program a -> (a,Program ())
+runPrg' :: Supply Int -> P.Program t a -> (a,Program ())
 runPrg' i (P.Assign name ix e) = ((),Assign name ix e)
 runPrg' i (P.AtomicOp name ix at) =
   let nom = "a" ++ show (supplyValue i)

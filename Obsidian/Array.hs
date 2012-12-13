@@ -82,7 +82,7 @@ instance Pushable Push where
   
 instance Pushable Pull  where   
   push (Pull n ixf) =
-    Push n $ \wf -> BForAll n $ \i -> wf (ixf i) i
+    Push n $ \wf -> ForAll n $ \i -> wf (ixf i) i
 
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
