@@ -18,33 +18,31 @@ import Data.Word
 ---------------------------------------------------------------------------
 type Id = Integer
 
-data CUDADir = HostToDevice | DeviceToHost | DeviceToDevice
+--data CUDADir = HostToDevice | DeviceToHost | DeviceToDevice
 
 data CUDAProgram a where
-  CUDANewId     :: CUDAProgram Id 
+--   CUDANewId     :: CUDAProgram Id 
   CUDAKernel    ::  ToProgram a b
                     => (a -> b)
                     -> Ips a b
-                    -> CUDAProgram Id
+                    -> CUDAProgram Kernel 
+ 
   CUDAUseVector :: (Show a, V.Storable a)
-                   => Id 
-                   -> V.Vector a
+                   => V.Vector a
                    -> Type 
-                   -> CUDAProgram ()
+                   -> (CUDAVector a -> CUDAProgram b)
+                   -> CUDAProgram b 
 
-  CUDACopyVector :: Id -> Id -> Int -> CUDADir -> CUDAProgram ()
-  CUDAAllocaVector :: Id 
-                      -> Int
+  CUDAAllocaVector :: Int
                       -> Type 
-                      -> CUDAProgram ()
+                      -> (CUDAVector a -> CUDAProgram b)
+                      -> CUDAProgram b
 
-  CUDAFree :: Id -> CUDAProgram () 
-
-  CUDAExecute :: Id 
+  CUDAExecute :: (ParamList a, ParamList b) => Kernel 
                  -> Word32 -- Number of blocks
-                 -> Word32 -- Amount of Shared mem (get from an analysis) 
-                 -> [Id] -- identify inputs.
-                 -> [Id] -- identfy outputs. 
+                 -> Word32
+                 -> a -- inputs
+                 -> b -- outputs 
                  -> CUDAProgram ()
 
  
@@ -53,7 +51,27 @@ data CUDAProgram a where
               -> (a -> CUDAProgram b)
               -> CUDAProgram b
   CUDAReturn :: a -> CUDAProgram a
-  
+
+---------------------------------------------------------------------------
+-- ParamList
+---------------------------------------------------------------------------
+
+data CUDAVector a = CUDAVector Id
+
+data Kernel = Kernel Id 
+
+data FunParam where
+   VArg :: forall a .a -> FunParam 
+
+class ParamList a where
+  toParamList :: a -> [FunParam]
+
+instance ParamList (CUDAVector a) where
+  toParamList a = [VArg a]
+
+instance (ParamList a, ParamList b) => ParamList (a :-> b) where
+  toParamList (a :-> b) = toParamList a ++ toParamList b 
+
 ---------------------------------------------------------------------------
 -- Monad Instance
 ---------------------------------------------------------------------------
@@ -64,43 +82,22 @@ instance Monad CUDAProgram where
 ---------------------------------------------------------------------------
 -- Operations
 ---------------------------------------------------------------------------
-cudaCapture :: ToProgram a b => (a -> b) -> Ips a b -> CUDAProgram Id
+cudaCapture :: ToProgram a b => (a -> b) -> Ips a b -> CUDAProgram Kernel 
 cudaCapture f inputs = CUDAKernel f inputs
-    {- 
-    let kn      = "gen" ++ show id
-        prgstr  = genKernel kn f inputs
-        threads = getNThreads f inputs 
-        header  = "#include <stdint.h>\n" -- more includes ? 
-         
-    CUDAKernel (header ++ prgstr)        
-    return (kn,threads)
-    -} 
-cudaAlloca :: Int -> Type -> CUDAProgram Id
-cudaAlloca size typ =
-  do 
-    id <- CUDANewId
-    CUDAAllocaVector id (size * typeSize typ)  typ
-    return id
 
-cudaFree :: Id -> CUDAProgram ()
-cudaFree id = CUDAFree id 
+cudaAlloca :: Int -> Type -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
+cudaAlloca size typ f =
+    CUDAAllocaVector (size * typeSize typ) typ  f
+    
+cudaUseVector :: (Show a, V.Storable a) => V.Vector a -> Type
+                 -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
+cudaUseVector v t f = CUDAUseVector v t f 
 
-cudaUseVector :: (Show a, V.Storable a) => V.Vector a -> Type -> CUDAProgram Id
-cudaUseVector v typ =
-  do
-    hostid <- CUDANewId
-    devid  <- CUDANewId
-    CUDAUseVector hostid v typ
-    CUDAAllocaVector devid (V.length v) typ
-    CUDACopyVector devid hostid (V.length v * typeSize typ) HostToDevice
-    return devid
-
-
-cudaExecute :: Id {- (String, Word32) -}
+cudaExecute :: (ParamList a, ParamList b) => Kernel  
                -> Word32
                -> Word32
-               -> [Id]
-               -> [Id]
+               -> a
+               -> b
                -> CUDAProgram ()
 cudaExecute kern blocks sm ins outs =
   CUDAExecute kern blocks sm ins outs

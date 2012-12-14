@@ -4,7 +4,7 @@ module Examples where
 
 import qualified Obsidian.CodeGen.CUDA as CUDA
 import Obsidian.CodeGen.CUDA.WithCUDA
-import Obsidian.CodeGen.CUDA.WithCUDA.Text
+-- import Obsidian.CodeGen.CUDA.WithCUDA.Text
 import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
 
 import Obsidian.Program
@@ -146,7 +146,7 @@ mapD f inp@(Distrib nb bixf) =
 -- Much work needed here.
 ---------------------------------------------------------------------------
 
-
+{-
 test = putStrLn $ getCUDA $
          do
            kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
@@ -161,15 +161,26 @@ test = putStrLn $ getCUDA $
            cudaFree o1 
              
            return ()
+-} 
 
+test1 = runCUDA $
+         do
+           kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
 
+           cudaUseVector (V.fromList [0..31 :: Int32]) Int32 $ \ i1 ->
+              cudaAlloca 32 Int32 $ \(o1 :: CUDAVector Int32) -> 
+                  cudaTime "Timing execution of kernel" $ 
+                    cudaExecute kernel 1 32 [i1] [o1] 
+              
+             
+           return ()
 
 
 ---------------------------------------------------------------------------
 -- Strange push array 
 ---------------------------------------------------------------------------
 
-
 push1 = push $ zipp (input1,input1)
 
 testApa =  printPrg $ write_ push1
+

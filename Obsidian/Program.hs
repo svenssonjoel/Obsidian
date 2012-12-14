@@ -3,12 +3,7 @@
 {-# LANGUAGE GADTs,
              FlexibleInstances #-} 
 module Obsidian.Program  where 
-   --    ( Program(..)
-   --    , (*>*)
-   --    , runPrg
-   --    , printPrg
-   --    )where 
-
+ 
 import Data.Word
 import Data.Monoid
 
@@ -22,11 +17,15 @@ import Data.Supply
 import System.IO.Unsafe
 
 ---------------------------------------------------------------------------
---
+-- Thread/Block/Grid 
+---------------------------------------------------------------------------
 data Thread
 data Block
 data Grid 
 
+---------------------------------------------------------------------------
+-- Program datatype
+---------------------------------------------------------------------------
 data Program t a where 
   Assign :: Scalar a
             => Name

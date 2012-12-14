@@ -21,30 +21,7 @@ import Data.Word
 import Data.Maybe
 
 import System.IO.Unsafe
----------------------------------------------------------------------------
--- Collect Kernels from a CUDAProgram
----------------------------------------------------------------------------
-{- 
-getKerns :: CUDAProgram a -> [String]
-getKerns cp = collectKernels (unsafePerformIO newEnumSupply) cp 
 
-collectKernels :: Supply Id -> CUDAProgram a -> [String]
-collectKernels id cp = snd $ collectKernels' id cp 
-
-collectKernels' :: Supply Id -> CUDAProgram a -> (a,[String])
-collectKernels' id CUDANewId = (supplyValue id, []) 
-collectKernels' id (CUDAKernel f input) = (supplyValue id,["ADD KERNEL TO ENV"])  
-collectKernels' id (CUDABind cp f) =
-  let (id1,id2) = split2 id 
-      (a,kerns) = collectKernels' id1 cp
-      (b,moreKerns) = collectKernels' id2 (f a)
-  in  (b,kerns ++ moreKerns)
-collectKernels' id (CUDAReturn a) = (a,[])
-collectKernels' id (CUDAUseVector i v t) = ((),[])
-collectKernels' id (CUDAAllocaVector i s t) = ((),[])
-collectKernels' id (CUDAExecute _ _ _ _ _) = ((),[])
-collectKernels' id (CUDATime _ p) = collectKernels' id p
--} 
 ---------------------------------------------------------------------------
 -- Output a string with the kernel launch code.
 --
@@ -79,21 +56,21 @@ getCUDA' sid (CUDAKernel f inputs)   =
     put m'
     return (id,[prgstr],"") -- undefined -- ((),[kern], "")
 
-getCUDA' sid (CUDAUseVector i v t) = return ((),[],str)
-  where
+--getCUDA' sid (CUDAUseVector i v ) = return ((),[],str)
+--  where
     -- Should also copy array to device.
     -- Will only work for small arrays right now. 
-    str = genType (GenConfig "" "")  t ++
-          "v" ++ show i ++ "[" ++ size ++ "] = {"
-          ++ dat ++ "};\n"
-    size = show $ V.length v
-    dat  = concat $ intersperse "," $ map show $ V.toList v
+--    str = genType (GenConfig "" "")  t ++
+--          "v" ++ show i ++ "[" ++ size ++ "] = {"
+--          ++ dat ++ "};\n"
+--    size = show $ V.length v
+--    dat  = concat $ intersperse "," $ map show $ V.toList v
 getCUDA' sid (CUDACopyVector o i s d) = return ((),[],str)
   where
     str = copy o i s d  
-getCUDA' sid (CUDAAllocaVector i s t) = return ((),[],str)
-  where
-    str = allocDeviceVector i s t 
+--getCUDA' sid (CUDAAllocaVector s t f) = return ((),[],str)
+--  where
+--    str = allocDeviceVector i s t 
   
 getCUDA' sid (CUDAExecute kernid blocks sm ins outs) =
   do

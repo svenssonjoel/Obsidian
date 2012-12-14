@@ -1,4 +1,6 @@
-{-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE TypeOperators,
+             GADTs #-}
+
 {- Joel Svensson 2012 -}
 
 module Obsidian.CodeGen.CUDA.WithCUDA.Exec where
@@ -10,6 +12,7 @@ import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream 
 
 import Obsidian.CodeGen.CUDA.WithCUDA.Compile
+import Obsidian.CodeGen.CUDA.WithCUDA
 
 import Obsidian.CodeGen.CUDA
 import Obsidian.CodeGen.InOut
@@ -26,7 +29,9 @@ import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
 
 import Data.Word
 import Data.Supply
-import Data.List 
+import Data.List
+import qualified Data.Map as M
+import Data.Maybe
 
 import System.IO.Unsafe
 
@@ -63,22 +68,26 @@ propsSummary props = unlines
 --  # Needs to keep track of generated and loaded functions etc. 
 ---------------------------------------------------------------------------
 
-data CUDAState = CUDAState { csIdent :: Int,
-                             csCtx   :: CUDA.Context,
-                             csProps :: CUDA.DeviceProperties}
+data CUDAState = CUDAState { csIdent   :: Integer,
+                             csCtx     :: CUDA.Context,
+                             csProps   :: CUDA.DeviceProperties,
+                             csKernels :: M.Map Integer KernelI,
+                             csDptrs   :: M.Map Integer
+                                                (CUDA.DevicePtr Word32)}
 
 type CUDA a =  StateT CUDAState IO a
 
-data Kernel = Kernel {kFun :: CUDA.Fun,
-                      kThreadsPerBlock :: Word32 } 
+data KernelI  = KernelI {kFun :: CUDA.Fun,
+                         kThreadsPerBlock :: Word32 } 
 
-newIdent :: CUDA Int
+newIdent :: CUDA Integer
 newIdent =
   do
     i <- return . csIdent =<< get
     modify (\s -> s {csIdent = i+1 }) 
     return i
-  
+
+withCUDA :: CUDA a -> IO a 
 withCUDA p =
   do
     CUDA.initialise []
@@ -88,14 +97,14 @@ withCUDA p =
       (x:xs) ->
         do 
           ctx <- CUDA.create (fst x) [CUDA.SchedAuto] 
-          runStateT p (CUDAState 0 ctx (snd x)) 
+          a <- runStateT p (CUDAState 0 ctx (snd x) M.empty M.empty) 
           CUDA.destroy ctx
-
+          return (fst a)
 
 ---------------------------------------------------------------------------
 -- Capture and compile a Obsidian function into a CUDA Function
 ---------------------------------------------------------------------------
-capture :: ToProgram a b => (a -> b) -> Ips a b -> CUDA Kernel 
+capture :: ToProgram a b => (a -> b) -> Ips a b -> CUDA Kernel
 capture f inputs =
   do
     i <- newIdent
@@ -116,8 +125,11 @@ capture f inputs =
 
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
+
+    m <- return . csKernels =<< get
+    modify (\s -> s {csKernels = M.insert i (KernelI fun prgThreads) m})
            
-    return $ Kernel fun prgThreads
+    return $ Kernel i
 
 archStr :: CUDA.DeviceProperties -> String
 archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
@@ -141,7 +153,10 @@ useVector v f =
     dptr <- lift $ CUDA.mallocArray n
     let hptr = unsafeForeignPtrToPtr hfptr
     lift $ CUDA.pokeArray n hptr dptr
-    b <- f dptr     
+    -- ptrs <- return . csDptrs =<< get
+    -- i <- newIdent
+    -- modify (\s -> s {csDptrs = M.insert i (CUDA.castDevPtr dptr) ptrs})
+    b <- f  dptr     
     lift $ CUDA.free dptr
     return b
 
@@ -161,31 +176,69 @@ allocaVector n f =
 ---------------------------------------------------------------------------
 -- execute Kernels on the GPU 
 ---------------------------------------------------------------------------
-execute :: (ParamList a, ParamList b) => Kernel
+execute :: (ExecParamList a, ExecParamList b) => Kernel
            -> Word32 -- Number of blocks 
            -> Word32 -- Amount of Shared mem (get from an analysis) 
          --  -> Maybe CUDAStream.Stream
            -> a -> b
            -> CUDA ()
-execute k nb sm {- stream -} a b = lift $ 
+execute (Kernel i)  nb sm {- stream -} a b =
+  do
+    m <- return . csKernels =<< get
+    let k = fromJust$ M.lookup i m
+    lift $ CUDA.launchKernel (kFun k)
+                             (fromIntegral nb,1,1)
+                             (fromIntegral (kThreadsPerBlock k), 1, 1)
+                             (fromIntegral sm)
+                             Nothing -- stream
+                             (toExecParamList a ++ toExecParamList b) -- params
+
+{- 
+execute2 :: Kernel
+           -> Word32 -- Number of blocks 
+           -> Word32 -- Amount of Shared mem (get from an analysis) 
+         --  -> Maybe CUDAStream.Stream
+           -> [CUDA.VArg]
+           -> CUDA ()
+execute2 k nb sm params = lift $ 
   CUDA.launchKernel (kFun k)
                     (fromIntegral nb,1,1)
                     (fromIntegral (kThreadsPerBlock k), 1, 1)
                     (fromIntegral sm)
                     Nothing -- stream
-                    (toParamList a ++ toParamList b) -- params
+                    params
+-} 
+
+class ExecParamList a where
+  toExecParamList :: a -> [CUDA.FunParam]
+
+instance ExecParamList (CUDA.DevicePtr a) where
+  toExecParamList a = [CUDA.VArg a]
+
+instance (ExecParamList a, ExecParamList b) => ExecParamList (a :-> b) where
+  toExecParamList (a :-> b) = toExecParamList a ++ toExecParamList b 
+
 
 ---------------------------------------------------------------------------
--- ParamList
+-- runCUDA
 ---------------------------------------------------------------------------
 
-class ParamList a where
-  toParamList :: a -> [CUDA.FunParam]
 
-instance ParamList (CUDA.DevicePtr a) where
-  toParamList a = [CUDA.VArg a]
+runCUDA :: CUDAProgram a -> IO a
+runCUDA prg =
+  withCUDA $
+     runCUDA' prg
+ 
+runCUDA' :: CUDAProgram a -> CUDA a
+-- runCUDA' CUDANewId = newIdent
+runCUDA' (CUDAKernel f inputs) = capture f inputs 
+runCUDA' (CUDAUseVector v t f) = useVector v (runCUDAf f)
+                                 --(\i -> runCUDA' (f i))
+runCUDA' (CUDATime str prg) = runCUDA' prg
+runCUDA' (CUDAExecute i bs sm ins outs) = undefined 
+runCUDA' s = error "Not implemented"
 
 
-instance (ParamList a, ParamList b) => ParamList (a :-> b) where
-  toParamList (a :-> b) = toParamList a ++ toParamList b 
-
+runCUDAf :: (CUDAVector a -> CUDAProgram b) ->
+            CUDA.DevicePtr a -> CUDA b
+runCUDAf = undefined 
