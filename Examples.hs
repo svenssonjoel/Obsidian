@@ -170,7 +170,7 @@ test1 = runCUDA $
            cudaUseVector (V.fromList [0..31 :: Int32]) Int32 $ \ i1 ->
               cudaAlloca 32 Int32 $ \(o1 :: CUDAVector Int32) -> 
                   cudaTime "Timing execution of kernel" $ 
-                    cudaExecute kernel 1 32 [i1] [o1] 
+                    cudaExecute kernel 1 32 i1 o1 
               
              
            return ()

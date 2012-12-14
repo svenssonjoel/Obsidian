@@ -20,6 +20,7 @@ type Id = Integer
 
 --data CUDADir = HostToDevice | DeviceToHost | DeviceToDevice
 
+-- Making this first order.. 
 data CUDAProgram a where
 --   CUDANewId     :: CUDAProgram Id 
   CUDAKernel    ::  ToProgram a b
@@ -29,14 +30,10 @@ data CUDAProgram a where
  
   CUDAUseVector :: (Show a, V.Storable a)
                    => V.Vector a
-                   -> Type 
-                   -> (CUDAVector a -> CUDAProgram b)
-                   -> CUDAProgram b 
+                   -> CUDAProgram (CUDAVector a)  
 
   CUDAAllocaVector :: Int
-                      -> Type 
-                      -> (CUDAVector a -> CUDAProgram b)
-                      -> CUDAProgram b
+                      -> CUDAProgram (CUDAVector a) 
 
   CUDAExecute :: (ParamList a, ParamList b) => Kernel 
                  -> Word32 -- Number of blocks
@@ -45,6 +42,7 @@ data CUDAProgram a where
                  -> b -- outputs 
                  -> CUDAProgram ()
 
+  CUDAFree :: CUDAVector a -> CUDAProgram () 
  
   CUDATime :: String -> CUDAProgram () -> CUDAProgram () -- TimeVal  
   CUDABind :: CUDAProgram a
@@ -61,7 +59,7 @@ data CUDAVector a = CUDAVector Id
 data Kernel = Kernel Id 
 
 data FunParam where
-   VArg :: forall a .a -> FunParam 
+   VArg :: a -> FunParam 
 
 class ParamList a where
   toParamList :: a -> [FunParam]
