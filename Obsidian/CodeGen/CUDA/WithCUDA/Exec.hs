@@ -232,13 +232,15 @@ runCUDA prg =
 runCUDA' :: CUDAProgram a -> CUDA a
 -- runCUDA' CUDANewId = newIdent
 runCUDA' (CUDAKernel f inputs) = capture f inputs 
-runCUDA' (CUDAUseVector v t f) = useVector v (runCUDAf f)
+runCUDA' (CUDAUseVector v t f) = useVector v (runCUDAf f v)
                                  --(\i -> runCUDA' (f i))
 runCUDA' (CUDATime str prg) = runCUDA' prg
 runCUDA' (CUDAExecute i bs sm ins outs) = undefined 
 runCUDA' s = error "Not implemented"
 
 
-runCUDAf :: (CUDAVector a -> CUDAProgram b) ->
-            CUDA.DevicePtr a -> CUDA b
-runCUDAf = undefined 
+--runCUDAf :: (CUDAVector a -> CUDAProgram b) ->
+--            CUDAVector a -> CUDA.DevicePtr a -> CUDA b
+--runCUDAf f (CUDAVector i) dptr =
+--  do
+--     let 
