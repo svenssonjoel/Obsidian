@@ -13,29 +13,38 @@ import Obsidian.CodeGen.InOut
 import Data.Word
 
 
+
+
 ---------------------------------------------------------------------------
 -- A CUDA Ast for Printing or running.. 
 ---------------------------------------------------------------------------
 type Id = Integer
 
---data CUDADir = HostToDevice | DeviceToHost | DeviceToDevice
+data Mem = Host | Device 
 
 -- Making this first order.. 
 data CUDAProgram a where
---   CUDANewId     :: CUDAProgram Id 
   CUDAKernel    ::  ToProgram a b
                     => (a -> b)
                     -> Ips a b
                     -> CUDAProgram Kernel 
- 
+
+  -- This is one of those awkward cases where
+  -- the data is carried in the AST. (But what is the alternative)
+  -- This represents (COPY-IN from Haskell world) 
   CUDAUseVector :: (Show a, V.Storable a)
                    => V.Vector a
                    -> CUDAProgram (CUDAVector a)  
 
-  CUDAAllocaVector :: Int
-                      -> CUDAProgram (CUDAVector a) 
+  CUDAAllocaVector :: Mem
+                      -> Int
+                      -> CUDAProgram (CUDAVector a)
+  CUDACopy :: (IsVector v1, IsVector v2)
+              => v1 a -> v2 a
+              -> CUDAProgram () 
 
-  CUDAExecute :: (ParamList a, ParamList b) => Kernel 
+  CUDAExecute :: (ParamList a, ParamList b)
+                 => Kernel 
                  -> Word32 -- Number of blocks
                  -> Word32
                  -> a -- inputs
@@ -51,12 +60,31 @@ data CUDAProgram a where
   CUDAReturn :: a -> CUDAProgram a
 
 ---------------------------------------------------------------------------
--- ParamList
+-- Some types 
 ---------------------------------------------------------------------------
 
 data CUDAVector a = CUDAVector Id
 
+data HOSTVector a = HOSTVector Id 
+
+class IsVector v where
+  isHostVector :: v a -> Bool
+  getVectorId  :: v a -> Id
+
+instance IsVector CUDAVector where
+  isHostVector _ = False
+  getVectorId  (CUDAVector i) = i 
+
+instance IsVector HOSTVector where
+  isHostVector _ = True
+  getVectorId (HOSTVector i) = i 
+
 data Kernel = Kernel Id 
+
+
+---------------------------------------------------------------------------
+-- ParamList
+---------------------------------------------------------------------------
 
 data FunParam where
    VArg :: a -> FunParam 
@@ -85,11 +113,20 @@ cudaCapture f inputs = CUDAKernel f inputs
 
 cudaAlloca :: Int -> Type -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
 cudaAlloca size typ f =
-    CUDAAllocaVector (size * typeSize typ) typ  f
+  do
+    v <- CUDAAllocaVector Device (size * typeSize typ)
+    r <- f v
+    CUDAFree v
+    return r 
     
 cudaUseVector :: (Show a, V.Storable a) => V.Vector a -> Type
                  -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
-cudaUseVector v t f = CUDAUseVector v t f 
+cudaUseVector v t f =
+  do 
+    dv <- CUDAUseVector v
+    r <- f dv
+    CUDAFree dv
+    return r 
 
 cudaExecute :: (ParamList a, ParamList b) => Kernel  
                -> Word32

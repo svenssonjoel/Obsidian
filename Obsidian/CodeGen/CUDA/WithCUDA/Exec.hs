@@ -160,6 +160,21 @@ useVector v f =
     lift $ CUDA.free dptr
     return b
 
+copyIn :: V.Storable a =>
+          V.Vector a -> CUDA (CUDAVector a)
+copyIn v =
+  do
+    let (hfptr,n) = V.unsafeToForeignPtr0 v
+        hptr = unsafeForeignPtrToPtr hfptr
+        
+    dptr <- lift $ CUDA.mallocArray n
+    
+    lift $ CUDA.pokeArray n hptr dptr
+    ptrs <- return . csDptrs =<< get
+    i <- newIdent
+    modify (\s -> s {csDptrs = M.insert i (CUDA.castDevPtr dptr) ptrs})
+    return $ CUDAVector i 
+
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
@@ -232,15 +247,9 @@ runCUDA prg =
 runCUDA' :: CUDAProgram a -> CUDA a
 -- runCUDA' CUDANewId = newIdent
 runCUDA' (CUDAKernel f inputs) = capture f inputs 
-runCUDA' (CUDAUseVector v t f) = useVector v (runCUDAf f v)
-                                 --(\i -> runCUDA' (f i))
+runCUDA' (CUDAUseVector v) = copyIn v 
+  
 runCUDA' (CUDATime str prg) = runCUDA' prg
 runCUDA' (CUDAExecute i bs sm ins outs) = undefined 
 runCUDA' s = error "Not implemented"
 
-
---runCUDAf :: (CUDAVector a -> CUDAProgram b) ->
---            CUDAVector a -> CUDA.DevicePtr a -> CUDA b
---runCUDAf f (CUDAVector i) dptr =
---  do
---     let 

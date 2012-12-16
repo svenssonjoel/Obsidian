@@ -184,3 +184,56 @@ push1 = push $ zipp (input1,input1)
 
 testApa =  printPrg $ write_ push1
 
+
+
+
+---------------------------------------------------------------------------
+--
+-- Countingsort start
+--
+---------------------------------------------------------------------------
+
+gatherGlobal :: Distrib (Pull (Exp Word32))
+                -> Exp Word32 -- expected output size number of blocks
+                -> Word32     -- expected output size block-size
+                -> Distrib (Pull a)
+                -> GlobArray a
+gatherGlobal indices@(Distrib nbs inf)
+             nb bs
+             elems@(Distrib ebs enf) =
+  GlobArray nb bs $
+   \wf ->
+     ForAllBlocks nb $ \ bid ->
+     do
+       ForAll bs $ \ tid -> 
+         let  inArr = inf bid
+              inix  = inArr ! tid
+
+              bid'  = (inix `div` (fromIntegral bs))
+              tid'  = (inix `mod` (fromIntegral bs))  
+              e     = (enf bid) ! tid 
+         in wf e bid tid
+        
+distribute :: Exp Word32 -> Word32 -> a -> Distrib (Pull a)
+distribute nb bs e = Distrib nb $ \bid -> replicate bs e           
+
+histogram :: Num a
+             => Exp Word32
+             -> Word32
+             -> Distrib (Pull (Exp Word32))
+             -> GlobArray a
+histogram nb bs elems = gatherGlobal elems nb bs (distribute nb bs 1)
+
+reconstruct inp@(Distrib nb bixf) pos@(Distrib _ posf) =
+  permuteGlobal perm inp 
+  where
+    perm bix tix =
+      let bs  = len (bixf bix) 
+          gix = (bixf bix) ! tix
+          bix' = gix `div` (fromIntegral bs)
+          tix' = gix `mod` (fromIntegral bs)
+
+          pgix = (posf bix') ! tix'
+          pbix = pgix `div` (fromIntegral bs)
+          ptix = pgix `mod` (fromIntegral bs) 
+      in (pbix,ptix)
