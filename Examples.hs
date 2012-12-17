@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE ScopedTypeVariables,
+             FlexibleContexts #-} 
              
 module Examples where 
 
@@ -41,10 +42,14 @@ input1 = namedArray "apa" 32
 input2 :: Distrib (Pull EInt)
 input2 = namedGlobal "apa" 256 32
 
+input3 :: Distrib (Pull (Exp Int32))
+input3 = namedGlobal "apa" 256 32
+ 
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
 
+sync :: Forceable a => a -> BProgram (Forced a)
 sync = force 
 
 prg0 = putStrLn$ printPrg$  mapFusion input1
@@ -237,3 +242,37 @@ reconstruct inp@(Distrib nb bixf) pos@(Distrib _ posf) =
           pbix = pgix `div` (fromIntegral bs)
           ptix = pgix `mod` (fromIntegral bs) 
       in (pbix,ptix)
+
+
+---------------------------------------------------------------------------
+-- Scan  (TODO: Rewrite as a exclusive scan (0 as first elem in result) 
+---------------------------------------------------------------------------
+sklanskyLocal
+  :: (Num (Exp a), Scalar a) =>
+     Int
+     -> (Exp a -> Exp a -> Exp a)
+     -> Pull (Exp a)
+     -> BProgram (Pull (Exp a))
+sklanskyLocal 0 op arr = return (shiftRight 1 0 arr)
+sklanskyLocal n op arr =
+  do 
+    let arr1 = twoK (n-1) (fan op) arr
+    arr2 <- force arr1
+    sklanskyLocal (n-1) op arr2
+                     
+
+fan op arr =  a1 `conc`  fmap (op c) a2 
+    where 
+      (a1,a2) = halve arr
+      c = a1 ! (fromIntegral (len a1 - 1))
+
+
+sklanskyAllBlocks :: Int
+                     -> Distrib (Pull (Exp Int32))
+                     -> Distrib (BProgram (Pull (Exp Int32)))
+sklanskyAllBlocks logbsize arr =
+  mapD (sklanskyLocal logbsize (+)) arr
+
+
+
+printSklansky = putStrLn $ printPrg $ cheat $ (forceBT . toGlobArray . sklanskyAllBlocks 3  ) input3
