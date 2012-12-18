@@ -1,5 +1,9 @@
 {-# LANGUAGE TypeOperators,
-             GADTs #-}
+             GADTs,
+             ScopedTypeVariables,
+             FlexibleContexts,
+             FlexibleInstances,
+             MultiParamTypeClasses #-}
 
 {- Joel Svensson 2012 -}
 
@@ -178,20 +182,30 @@ copyIn v =
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
-allocaVector :: V.Storable a => 
-                Int -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
-allocaVector n f =
+--allocaVector :: V.Storable a => 
+--                Int -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
+--allocaVector n f =
+--  do
+--    dptr <- lift $ CUDA.mallocArray n
+--    b <- f dptr
+--    lift $ CUDA.free dptr
+--    return b
+
+allocaVector :: forall a. V.Storable a => Int -> CUDA (CUDAVector a)
+allocaVector n  =
   do
-    dptr <- lift $ CUDA.mallocArray n
-    b <- f dptr
-    lift $ CUDA.free dptr
-    return b 
+    (dptr :: CUDA.DevicePtr a) <- lift $ CUDA.mallocArray n
+    i <- newIdent
+    ptrs <- return . csDptrs =<< get
+    modify (\s -> s {csDptrs = M.insert i (CUDA.castDevPtr dptr) ptrs})
+    return $ CUDAVector i 
+    
 
 
 ---------------------------------------------------------------------------
 -- execute Kernels on the GPU 
 ---------------------------------------------------------------------------
-execute :: (ExecParamList a, ExecParamList b) => Kernel
+execute :: (ParamList a, ParamList b) => Kernel
            -> Word32 -- Number of blocks 
            -> Word32 -- Amount of Shared mem (get from an analysis) 
          --  -> Maybe CUDAStream.Stream
@@ -199,6 +213,11 @@ execute :: (ExecParamList a, ExecParamList b) => Kernel
            -> CUDA ()
 execute (Kernel i)  nb sm {- stream -} a b =
   do
+    let inl = toParamList a
+        outl = toParamList b 
+
+        inl' = undefined
+        outl' = undefined 
     m <- return . csKernels =<< get
     let k = fromJust$ M.lookup i m
     lift $ CUDA.launchKernel (kFun k)
@@ -206,7 +225,7 @@ execute (Kernel i)  nb sm {- stream -} a b =
                              (fromIntegral (kThreadsPerBlock k), 1, 1)
                              (fromIntegral sm)
                              Nothing -- stream
-                             (toExecParamList a ++ toExecParamList b) -- params
+                             (inl' ++ outl') -- params
 
 {- 
 execute2 :: Kernel
@@ -247,9 +266,19 @@ runCUDA prg =
 runCUDA' :: CUDAProgram a -> CUDA a
 -- runCUDA' CUDANewId = newIdent
 runCUDA' (CUDAKernel f inputs) = capture f inputs 
-runCUDA' (CUDAUseVector v) = copyIn v 
+runCUDA' (CUDAUseVector v) = copyIn v
+runCUDA' (CUDAAllocaVector Device n) = allocaVector n
   
 runCUDA' (CUDATime str prg) = runCUDA' prg
-runCUDA' (CUDAExecute i bs sm ins outs) = undefined 
+runCUDA' (CUDAExecute i bs sm ins outs) =
+  do
+    execute i bs sm ins outs 
+    --lift $ putStrLn "EXEC" 
+runCUDA' (CUDAReturn a) = return a
+runCUDA' (CUDABind m f) =
+  do
+    a <- runCUDA' m
+    runCUDA' (f a)
+runCUDA' (CUDAFree v) = lift $ putStrLn "Freeing" 
 runCUDA' s = error "Not implemented"
 

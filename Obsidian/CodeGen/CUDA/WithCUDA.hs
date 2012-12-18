@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeOperators,
-             GADTs #-} 
+             GADTs,
+             RankNTypes,
+             ScopedTypeVariables #-} 
 
 {- Joel Svensson 2012 -}
 module Obsidian.CodeGen.CUDA.WithCUDA where
@@ -7,8 +9,10 @@ module Obsidian.CodeGen.CUDA.WithCUDA where
 
 import qualified Data.Vector.Storable as V
 
+
 import Obsidian.Types
 import Obsidian.CodeGen.InOut
+import Obsidian.Exp 
 
 import Data.Word
 
@@ -36,9 +40,11 @@ data CUDAProgram a where
                    => V.Vector a
                    -> CUDAProgram (CUDAVector a)  
 
-  CUDAAllocaVector :: Mem
+  CUDAAllocaVector :: (V.Storable a, Scalar a) 
+                      => Mem
                       -> Int
                       -> CUDAProgram (CUDAVector a)
+                      
   CUDACopy :: (IsVector v1, IsVector v2)
               => v1 a -> v2 a
               -> CUDAProgram () 
@@ -111,10 +117,15 @@ instance Monad CUDAProgram where
 cudaCapture :: ToProgram a b => (a -> b) -> Ips a b -> CUDAProgram Kernel 
 cudaCapture f inputs = CUDAKernel f inputs
 
-cudaAlloca :: Int -> Type -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
-cudaAlloca size typ f =
+
+-- Generalise with a typeclass.
+cudaAlloca :: forall a b . (V.Storable a, Scalar a) 
+              => Int -> (CUDAVector a -> CUDAProgram b) -> CUDAProgram b
+cudaAlloca size f =
   do
-    v <- CUDAAllocaVector Device (size * typeSize typ)
+       --  GAH! FIX THIS!!! 
+    let ts = sizeOf (undefined :: (Exp a)) 
+    v <- CUDAAllocaVector Device (size * ts) -- typeSize typ)
     r <- f v
     CUDAFree v
     return r 
