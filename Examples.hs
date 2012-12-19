@@ -4,9 +4,10 @@
 module Examples where 
 
 import qualified Obsidian.CodeGen.CUDA as CUDA
-import Obsidian.CodeGen.CUDA.WithCUDA
+--import Obsidian.CodeGen.CUDA.WithCUDA
 -- import Obsidian.CodeGen.CUDA.WithCUDA.Text
-import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
+--import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
+import Obsidian.Run.CUDA.Exec
 
 import Obsidian.Program
 import Obsidian.Exp
