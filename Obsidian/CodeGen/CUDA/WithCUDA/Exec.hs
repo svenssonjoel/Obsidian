@@ -3,9 +3,17 @@
              ScopedTypeVariables,
              FlexibleContexts,
              FlexibleInstances,
-             MultiParamTypeClasses #-}
+             MultiParamTypeClasses,
+             UndecidableInstances  #-}
 
 {- Joel Svensson 2012 -}
+
+
+{-
+*
+* TRASH THIS.
+*
+-} 
 
 module Obsidian.CodeGen.CUDA.WithCUDA.Exec where
 
@@ -205,7 +213,7 @@ allocaVector n  =
 ---------------------------------------------------------------------------
 -- execute Kernels on the GPU 
 ---------------------------------------------------------------------------
-execute :: (ParamList a, ParamList b) => Kernel
+execute :: (ExecParamList a, ExecParamList b) => Kernel
            -> Word32 -- Number of blocks 
            -> Word32 -- Amount of Shared mem (get from an analysis) 
          --  -> Maybe CUDAStream.Stream
@@ -213,11 +221,9 @@ execute :: (ParamList a, ParamList b) => Kernel
            -> CUDA ()
 execute (Kernel i)  nb sm {- stream -} a b =
   do
-    let inl = toParamList a
-        outl = toParamList b 
+    inl <- toExecParamList a
+    outl <- toExecParamList b 
 
-        inl' = undefined
-        outl' = undefined 
     m <- return . csKernels =<< get
     let k = fromJust$ M.lookup i m
     lift $ CUDA.launchKernel (kFun k)
@@ -225,8 +231,7 @@ execute (Kernel i)  nb sm {- stream -} a b =
                              (fromIntegral (kThreadsPerBlock k), 1, 1)
                              (fromIntegral sm)
                              Nothing -- stream
-                             (inl' ++ outl') -- params
-
+                             (inl ++ outl) -- params
 {- 
 execute2 :: Kernel
            -> Word32 -- Number of blocks 
@@ -244,13 +249,32 @@ execute2 k nb sm params = lift $
 -} 
 
 class ExecParamList a where
-  toExecParamList :: a -> [CUDA.FunParam]
+  toExecParamList :: a -> CUDA [CUDA.FunParam]
 
-instance ExecParamList (CUDA.DevicePtr a) where
-  toExecParamList a = [CUDA.VArg a]
+--instance ExecParamList (CUDA.DevicePtr a) where
+--  toExecParamList a = return [CUDA.VArg a]
+
+--instance (ExecParamList a, ExecParamList b) => ExecParamList (a :-> b) where
+--  toExecParamList (a :-> b) =
+--    do
+--      a' <- toExecParamList a
+--      b' <- toExecParamList b
+--      return $ a' ++ b' 
+
+
+instance ParamList (CUDAVector a) => ExecParamList (CUDAVector a) where
+  toExecParamList (CUDAVector i) =
+    do
+      m <- return . csDptrs =<< get
+      let ptr = fromJust$ M.lookup i m
+      return $ [CUDA.VArg (CUDA.castDevPtr ptr)]
 
 instance (ExecParamList a, ExecParamList b) => ExecParamList (a :-> b) where
-  toExecParamList (a :-> b) = toExecParamList a ++ toExecParamList b 
+  toExecParamList (a :-> b) =
+    do
+      a' <- toExecParamList a
+      b' <- toExecParamList b
+      return $ a' ++ b'
 
 
 ---------------------------------------------------------------------------
@@ -273,7 +297,7 @@ runCUDA' (CUDATime str prg) = runCUDA' prg
 runCUDA' (CUDAExecute i bs sm ins outs) =
   do
     execute i bs sm ins outs 
-    --lift $ putStrLn "EXEC" 
+    -- lift $ putStrLn "EXEC" 
 runCUDA' (CUDAReturn a) = return a
 runCUDA' (CUDABind m f) =
   do

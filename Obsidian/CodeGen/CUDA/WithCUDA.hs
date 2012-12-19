@@ -93,7 +93,7 @@ data Kernel = Kernel Id
 ---------------------------------------------------------------------------
 
 data FunParam where
-   VArg :: a -> FunParam 
+  VArg :: a -> FunParam 
 
 class ParamList a where
   toParamList :: a -> [FunParam]
