@@ -137,11 +137,13 @@ capture f inputs =
 archStr :: CUDA.DeviceProperties -> String
 archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
   where
-    archStr' (1.0) = "10"
-    archStr' (1.2) = "12"
-    archStr' (2.0) = "20" 
-    archStr' (3.0) = "30"
-    archStr' x = error $ "Unknown architecture: " ++ show x 
+    -- Updated for Cuda bindings version 0.5.0.0
+    archStr' (CUDA.Compute h l) = show h ++ show l
+    --archStr' (CUDA.Compute 1 0) = "10"
+    --archStr' (CUDA.Compute 1 2) = "12"
+    --archStr' (CUDA.Compute 2 0) = "20" 
+    --archStr' (CUDA.Compute 3 0) = "30"
+    --archStr' x = error $ "Unknown architecture: " ++ show x 
     
 
 ---------------------------------------------------------------------------
