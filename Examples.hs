@@ -1,12 +1,14 @@
 {-# LANGUAGE ScopedTypeVariables,
              FlexibleContexts #-} 
              
-module Examples where 
+module Examples where
 
+import qualified Foreign.CUDA.Driver as CUDA
+import qualified Foreign.CUDA.Driver.Device as CUDA
 import qualified Obsidian.CodeGen.CUDA as CUDA
---import Obsidian.CodeGen.CUDA.WithCUDA
+-- import Obsidian.CodeGen.CUDA.WithCUDA
 -- import Obsidian.CodeGen.CUDA.WithCUDA.Text
---import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
+-- import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
 import Obsidian.Run.CUDA.Exec
 
 import Obsidian.Program
@@ -169,17 +171,22 @@ test = putStrLn $ getCUDA $
            return ()
 -} 
 
-test1 = runCUDA $
+test1 = withCUDA $
          do
-           kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
+           kernel <- capture (forceBT . toGlobArray . mapFusion') input2
 
-           cudaUseVector (V.fromList [0..31 :: Int32]) Int32 $ \ i1 ->
-              cudaAlloca 32 $ \(o1 :: CUDAVector Int32) -> 
-                  cudaTime "Timing execution of kernel" $ 
-                    cudaExecute kernel 1 32 i1 o1 
-              
+           useVector (V.fromList [0..31 :: Int32]) $ \ i1 ->
+              allocaVector 32 $ \(o1 :: CUDA.DevicePtr Int32) ->
+              --cudaTime "Timing execution of kernel" $
+                do
+                  -- TODO: Get sharedmem size from some analysis
+                  execute kernel 1 512 i1 o1
+                  r <- lift $ CUDA.peekListArray 32 o1
+                  lift $ putStrLn $ show r 
+
+           
              
-           return ()
+           
 
 
 ---------------------------------------------------------------------------
