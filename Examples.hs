@@ -29,6 +29,13 @@ import Control.Monad.State
 import Prelude hiding (zipWith,sum,replicate)
 import qualified Prelude as P 
 
+{-
+   -- TODO: SeqFor finns i Program. Fixa codegen.
+   -- Force: bry inte om generalisera nu (eller ngnsin). 
+   -- Countingsort: generera kod, se att funkar.
+   -- Riktig Countingsort: TODO!
+-} 
+
 ---------------------------------------------------------------------------
 -- MapFusion example
 ---------------------------------------------------------------------------

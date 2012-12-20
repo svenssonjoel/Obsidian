@@ -39,6 +39,9 @@ data Program t a where
               -> Exp Word32
               -> Atomic a
               -> Program Thread (Exp a)
+  -- TODO: Code generation for this.            
+  SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
+            -> Program Thread () 
 
   ForAll :: Word32
             -> (Exp Word32 -> Program Thread ())
@@ -78,10 +81,11 @@ data Program t a where
 ---------------------------------------------------------------------------
 -- Monad
 --------------------------------------------------------------------------
-instance Monad (Program Thread) where
+instance Monad (Program t) where
   return = Return
   (>>=) = Bind
 
+{-
 instance Monad (Program Block) where
   return = Return
   (>>=) = Bind
@@ -89,7 +93,7 @@ instance Monad (Program Block) where
 instance Monad (Program Grid) where
   return = Return
   (>>=) = Bind
-
+-} 
 
 ---------------------------------------------------------------------------
 -- Aliases 
