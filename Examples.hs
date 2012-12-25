@@ -290,4 +290,6 @@ sklanskyAllBlocks logbsize arr =
 
 
 
-printSklansky = putStrLn $ printPrg $ cheat $ (forceBT . toGlobArray . sklanskyAllBlocks 3  ) input3
+printSklansky = putStrLn
+                $ CUDA.genKernel "sklansky"
+                  (cheat . forceBT . toGlobArray . sklanskyAllBlocks 3) input3 
