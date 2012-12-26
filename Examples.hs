@@ -6,9 +6,6 @@ module Examples where
 import qualified Foreign.CUDA.Driver as CUDA
 import qualified Foreign.CUDA.Driver.Device as CUDA
 import qualified Obsidian.CodeGen.CUDA as CUDA
--- import Obsidian.CodeGen.CUDA.WithCUDA
--- import Obsidian.CodeGen.CUDA.WithCUDA.Text
--- import Obsidian.CodeGen.CUDA.WithCUDA.Exec 
 import Obsidian.Run.CUDA.Exec
 
 import Obsidian.Program

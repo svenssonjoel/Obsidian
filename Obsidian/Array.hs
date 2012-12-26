@@ -36,6 +36,13 @@ namedGlobal name bn bs = Distrib bn
                          (\bix -> (mkPullArray bs
                                    (\ix -> index name (bix * (fromIntegral bs) + ix)))) 
 
+
+---------------------------------------------------------------------------
+-- Sequential arrays
+---------------------------------------------------------------------------
+data Seq a = Seq (Exp Word32) (Exp Word32 -> a)
+
+
 ---------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
@@ -95,6 +102,9 @@ class Indexible a e where
   
 instance Indexible Pull a where
   access p ix = pullFun p ix
+
+instance Indexible Seq a where
+  access (Seq n ixf) ix = ixf ix
 
 
 pushApp (Push _ p) a = p a 

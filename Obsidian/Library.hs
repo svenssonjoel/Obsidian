@@ -34,6 +34,17 @@ instance Functor Push where
   fmap f (Push n pfun) =
     Push n $ \wf -> pfun (\a ix -> wf (f a) ix)
 
+instance Functor Distrib where
+  fmap f (Distrib n bixf) = Distrib n $ \bix -> f (bixf bix)
+
+instance Functor GlobArray where
+  fmap f (GlobArray nb bs wf ) =
+    GlobArray nb bs
+    $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
+
+instance Functor Seq where
+  fmap f (Seq n ixf) = Seq n $ \ix -> f (ixf ix) 
+
 ---------------------------------------------------------------------------
 -- Reverse an array by indexing in it backwards
 ---------------------------------------------------------------------------
@@ -42,6 +53,38 @@ rev :: Pull a -> Pull a
 rev arr = mkPullArray n (\ix -> arr ! (m - ix))  
    where m = fromIntegral (n-1)
          n = len arr
+
+
+---------------------------------------------------------------------------
+-- split into sequential (fixed static) chunks 
+---------------------------------------------------------------------------
+sequentially :: Word32 -> Pull a -> (Pull (Seq a))
+sequentially s arr =
+  case n `mod` s of
+    0 -> Pull chunks
+         $ \ix -> Seq (fromIntegral s)
+                      (\six -> arr ! (ix * (fromIntegral s) + six))
+    _ -> error "sequentially: not evenly divisible" 
+  where
+    n = len arr
+    chunks = n `div` s
+
+-- If Seq are of dynamic length this operation is impossible.
+-- To get around this a Seqsize is passed into the function.
+unSequentially :: Word32 -> Pull (Seq a) -> Pull a
+unSequentially ss arr =
+  Pull n $ \i -> let six = i `mod` (fromIntegral ss)
+                     ix  = i `div` (fromIntegral ss)
+                 in (arr ! ix) ! six 
+  where
+    n = ss * len arr
+
+---------------------------------------------------------------------------
+-- split into sequential and potentially unbalanced chunks
+---------------------------------------------------------------------------
+seqUnbalanced :: Word32 -> (Exp Word32) -> Pull a -> (Pull (Seq a))
+seqUnbalanced nChunks chunkSize arr = undefined 
+
          
 ---------------------------------------------------------------------------
 -- splitAt (name clashes with Prelude.splitAt)
