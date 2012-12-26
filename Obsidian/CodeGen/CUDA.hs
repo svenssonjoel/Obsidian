@@ -32,7 +32,9 @@ import qualified Obsidian.Program as P
 import Obsidian.CodeGen.SPMDC
 
 {- 
-   TODO: 
+   TODO:
+    + Add code generation code for the SeqFor constructor.
+
     + phase out the old string based codegen 
     + Ideally there should be a Program -> SPMDC
       and SPMDC -> CUDA
