@@ -65,9 +65,9 @@ mapFusion' :: Distrib (Pull EInt)
               -> Distrib (BProgram (Pull EInt))
 mapFusion' arr = mapD mapFusion arr
 
-toGlobArray :: forall a. Scalar a
-               => Distrib (BProgram (Pull (Exp a)))
-               -> GlobArray (Exp a)
+
+toGlobArray :: Distrib (BProgram (Pull a))
+               -> GlobArray a               
 toGlobArray inp@(Distrib nb bixf) =
   GlobArray nb bs $
     \wf -> ForAllBlocks nb $
