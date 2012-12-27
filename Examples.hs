@@ -69,7 +69,7 @@ mapFusion' arr = mapD mapFusion arr
 toGlobArray :: Distrib (BProgram (Pull a))
                -> GlobArray a               
 toGlobArray inp@(Distrib nb bixf) =
-  GlobArray nb bs $
+  GPush nb bs $
     \wf -> ForAllBlocks nb $
            \bix ->
            do -- BProgram do block 
@@ -81,7 +81,7 @@ toGlobArray inp@(Distrib nb bixf) =
 
 forceBT :: forall a. Scalar a => GlobArray (Exp a)
            -> Final (GProgram (Distrib (Pull (Exp a))))
-forceBT (GlobArray nb bs pbt) = Final $ 
+forceBT (GPush nb bs pbt) = Final $ 
   do
       global <- Output $ Pointer (typeOf (undefined :: Exp a))
       
@@ -104,7 +104,7 @@ permuteGlobal :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
                  -> Distrib (Pull a)
                  -> GlobArray a
 permuteGlobal perm distr@(Distrib nb bixf) = 
-  GlobArray nb bs $
+  GPush nb bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
          ForAllBlocks nb $
@@ -120,7 +120,7 @@ permuteGlobal' :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
                  -> Distrib (BProgram (Pull a))
                  -> GlobArray a
 permuteGlobal' perm distr@(Distrib nb bixf) = 
-  GlobArray nb bs $
+  GPush nb bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
          ForAllBlocks nb $
@@ -218,7 +218,7 @@ gatherGlobal :: Distrib (Pull (Exp Word32))
 gatherGlobal indices@(Distrib nbs inf)
              nb bs
              elems@(Distrib ebs enf) =
-  GlobArray nb bs $
+  GPush nb bs $
    \wf ->
      ForAllBlocks nb $ \ bid ->
      do

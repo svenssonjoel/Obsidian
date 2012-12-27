@@ -37,9 +37,9 @@ instance Functor Push where
 instance Functor Distrib where
   fmap f (Distrib n bixf) = Distrib n $ \bix -> f (bixf bix)
 
-instance Functor GlobArray where
-  fmap f (GlobArray nb bs wf ) =
-    GlobArray nb bs
+instance Functor GPush where
+  fmap f (GPush nb bs wf ) =
+    GPush nb bs
     $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
 
 instance Functor Seq where

@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses,  
-             FlexibleInstances  #-} 
+             FlexibleInstances, FlexibleContexts,
+             TypeFamilies #-} 
 
 {- Joel Svensson 2012
 
@@ -17,7 +18,6 @@ import Obsidian.Program
 
 import Data.List
 import Data.Word
-
 
 ---------------------------------------------------------------------------
 -- A value that can not be used in further computations
@@ -42,21 +42,27 @@ namedGlobal name bn bs = Distrib bn
 ---------------------------------------------------------------------------
 data Seq a = Seq (Exp Word32) (Exp Word32 -> a)
 
+data SPush a = SPush (Exp Word32)
+                     ((a -> Exp Word32 -> TProgram ()) -> TProgram ())
 
+sPush :: Seq a -> SPush a
+sPush (Seq n ixf) =  
+  SPush n $ \wf -> SeqFor n $ \i -> wf (ixf i) i
 ---------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
-data GlobArray a =
-  GlobArray (Exp Word32)
-            Word32
-            ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
-             GProgram ())
-                             
+data GPush a =
+  GPush (Exp Word32)
+        Word32
+        ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
+         GProgram ())
+
+type GlobArray a = GPush a 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 data Push a = Push Word32
-                        ((a -> Exp Word32 -> TProgram ()) -> BProgram ())   
+                   ((a -> Exp Word32 -> TProgram ()) -> BProgram ())   
 
 data Pull a = Pull {pullLen :: Word32, 
                     pullFun :: Exp Word32 -> a}
@@ -87,7 +93,7 @@ class Pushable a where
 instance Pushable Push where 
   push = id 
   
-instance Pushable Pull  where   
+instance Pushable Pull where   
   push (Pull n ixf) =
     Push n $ \wf -> ForAll n $ \i -> wf (ixf i) i
 

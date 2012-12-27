@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-}  
+{-# LANGUAGE ScopedTypeVariables,
+             FlexibleContexts,
+             GADTs #-}  
 
 module BuildingBlocks where
 
@@ -29,7 +31,9 @@ import Data.Word
 -- Experiment with sequential work. 
 ---------------------------------------------------------------------------
 
-mapDSB :: (a -> b)
+mapDSB :: (Forceable (Pull (Seq b)),
+           (Forced (Pull (Seq b)) ~ Pull (Seq b))) -- Huh! getting out of hand
+          => (a -> b)
           -> Word32
           -> Distrib (Pull a) -> Distrib (BProgram (Pull b))
 mapDSB f chunkSize = fmap body 
@@ -68,7 +72,7 @@ testPrint = putStrLn$ printPrg $ cheat $ test1' testInput
 toGlobArray :: Distrib (BProgram (Pull a))
                -> GlobArray a               
 toGlobArray inp@(Distrib nb bixf) =
-  GlobArray nb bs $
+  GPush nb bs $
     \wf -> ForAllBlocks nb $
            \bix ->
            do -- BProgram do block 
@@ -80,7 +84,7 @@ toGlobArray inp@(Distrib nb bixf) =
 
 forceBT :: forall a. Scalar a => GlobArray (Exp a)
            -> Final (GProgram (Distrib (Pull (Exp a))))
-forceBT (GlobArray nb bs pbt) = Final $ 
+forceBT (GPush nb bs pbt) = Final $ 
   do
       global <- Output $ Pointer (typeOf (undefined :: Exp a))
       
