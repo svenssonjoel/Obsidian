@@ -63,11 +63,11 @@ instance Scalar a => Forceable (Push (Exp a)) where
       Sync
       return rval
 
--- TODO: Implement. 
-instance Scalar a => Forceable (Pull (Seq (Exp a))) where 
-  type Forced (Pull (Seq (Exp a))) = Pull (Seq (Exp a))
-  write_ (Pull n ixf) = undefined
-  force arr = undefined 
+-- -- TODO: Implement. 
+-- instance Scalar a => Forceable (Pull (Seq (Exp a))) where 
+--   type Forced (Pull (Seq (Exp a))) = Pull (Seq (Exp a))
+--   write_ (Pull n ixf) = undefined
+--   force arr = undefined 
 
 
 -- Is it possible to avoid being this repetitive ? 

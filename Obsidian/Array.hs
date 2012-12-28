@@ -39,15 +39,22 @@ namedGlobal name bn bs = Distrib bn
 
 ---------------------------------------------------------------------------
 -- Sequential arrays
+--
+-- Ok. Sequential arrays are problematic.
+--   Especially if the can have dynamic length.
+--   Sequential computation must be handled differently.
+--   Knowing how much memory to allocate is for an array is otherwise
+--   problematic.
+--   
 ---------------------------------------------------------------------------
-data Seq a = Seq (Exp Word32) (Exp Word32 -> a)
+--data Seq a = Seq (Exp Word32) (Exp Word32 -> a)
 
-data SPush a = SPush (Exp Word32)
-                     ((a -> Exp Word32 -> TProgram ()) -> TProgram ())
+--data SPush a = SPush (Exp Word32)
+--                     ((a -> Exp Word32 -> TProgram ()) -> TProgram ())
 
-sPush :: Seq a -> SPush a
-sPush (Seq n ixf) =  
-  SPush n $ \wf -> SeqFor n $ \i -> wf (ixf i) i
+--sPush :: Seq a -> SPush a
+--sPush (Seq n ixf) =  
+--  SPush n $ \wf -> SeqFor n $ \i -> wf (ixf i) i
 ---------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
@@ -88,15 +95,23 @@ instance Resizeable Push where
 -- Pushable
 ---------------------------------------------------------------------------
 class Pushable a where 
-  push :: a e -> Push e 
+  push  :: a e -> Push e
+  pushS :: Word32 -> a e -> Push e 
 
 instance Pushable Push where 
-  push = id 
+  push = id
+  pushS = error "pushS on Push array: don't know how to implement that yet" 
   
 instance Pushable Pull where   
   push (Pull n ixf) =
     Push n $ \wf -> ForAll n $ \i -> wf (ixf i) i
-
+  pushS m (Pull n ixf) =
+    -- Force can still Allocate n elements for this Push array.
+    Push n $ \wf -> ForAll nP
+                    $ \i -> SeqFor nS $ \j -> wf (ixf (i*nS + j)) (i*nS + j)
+    where
+      nS = fromIntegral m
+      nP = fromIntegral (n `div` m)
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
@@ -108,10 +123,6 @@ class Indexible a e where
   
 instance Indexible Pull a where
   access p ix = pullFun p ix
-
-instance Indexible Seq a where
-  access (Seq n ixf) ix = ixf ix
-
 
 pushApp (Push _ p) a = p a 
 

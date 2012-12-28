@@ -31,19 +31,19 @@ import Data.Word
 -- Experiment with sequential work. 
 ---------------------------------------------------------------------------
 
-mapDSB :: (Forceable (Pull (Seq b)),
-           (Forced (Pull (Seq b)) ~ Pull (Seq b))) -- Huh! getting out of hand
-          => (a -> b)
-          -> Word32
-          -> Distrib (Pull a) -> Distrib (BProgram (Pull b))
-mapDSB f chunkSize = fmap body 
-  where
-    body arr =
-      do
-        forced <- force $ (fmap (fmap f)) (chunk arr)
-        return (unchunk forced)                  
-    chunk   = sequentially chunkSize
-    unchunk = unSequentially chunkSize
+-- mapDSB :: (Forceable (Pull (Seq b)),
+--            (Forced (Pull (Seq b)) ~ Pull (Seq b))) -- Huh! getting out of hand
+--           => (a -> b)
+--           -> Word32
+--           -> Distrib (Pull a) -> Distrib (BProgram (Pull b))
+-- mapDSB f chunkSize = fmap body 
+--   where
+--     body arr =
+--       do
+--         forced <- force $ (fmap (fmap f)) (chunk arr)
+--         return (unchunk forced)                  
+--     chunk   = sequentially chunkSize
+--     unchunk = unSequentially chunkSize
 -- Force Instances missing.
 -- TODO: Try something like "push" for Sequential arrays
 --       (Push elements, Push Seqs of elements)
@@ -54,16 +54,16 @@ mapDSB f chunkSize = fmap body
 -- test
 ---------------------------------------------------------------------------
 
-test1 :: Distrib (Pull (Exp Word32)) ->
-         Distrib (BProgram (Pull (Exp Word32)))
-test1 = mapDSB (+1) 2
+-- test1 :: Distrib (Pull (Exp Word32)) ->
+--          Distrib (BProgram (Pull (Exp Word32)))
+-- test1 = mapDSB (+1) 2
 
-testInput :: Distrib (Pull (Exp Word32))
-testInput = namedGlobal "hej" 1 (2*128) 
+-- testInput :: Distrib (Pull (Exp Word32))
+-- testInput = namedGlobal "hej" 1 (2*128) 
 
-test1' = forceBT . toGlobArray . test1 
+-- test1' = forceBT . toGlobArray . test1 
 
-testPrint = putStrLn$ printPrg $ cheat $ test1' testInput 
+-- testPrint = putStrLn$ printPrg $ cheat $ test1' testInput 
 
 
 ---------------------------------------------------------------------------
