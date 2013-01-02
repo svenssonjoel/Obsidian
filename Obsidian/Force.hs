@@ -5,10 +5,11 @@
              TypeFamilies,
              GADTs #-} 
 
-{- Joel Svensson 2012
+{- Joel Svensson 2012, 2013 
 
    Notes:
 
+   2013-01-02: Added simple forceG for globArrays
    2012-12-10: Edited 
 
 

@@ -85,16 +85,6 @@ instance Monad (Program t) where
   return = Return
   (>>=) = Bind
 
-{-
-instance Monad (Program Block) where
-  return = Return
-  (>>=) = Bind
-
-instance Monad (Program Grid) where
-  return = Return
-  (>>=) = Bind
--} 
-
 ---------------------------------------------------------------------------
 -- Aliases 
 ---------------------------------------------------------------------------

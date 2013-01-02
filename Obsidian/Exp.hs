@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs, 
              TypeFamilies,  
-             RankNTypes,
+          
              FlexibleContexts,
              FlexibleInstances, 
              UndecidableInstances #-} 

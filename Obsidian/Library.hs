@@ -1,7 +1,8 @@
-{- Joel Svensson 2012
+{- Joel Svensson 2012, 2013 
    Mary Sheeran  2012
 
    Notes:
+   2013-01-02: Added toGlobArray and toGlobArrayN
    2012-12-10: Refactoring
                (adherence to new Array types and program types)  
 -}

@@ -11,6 +11,16 @@
 
 ## TODO: 
 * Cleaner interface to Programs. 
-    * write "sync" not "BSync" 
+    * DONE: write "sync" not "BSync"  (now called force) 
     * etc
 * Add sequential loop and conditional blocks to ThreadPrograms.
+
+
+## Extensions used and their meaning: 
+* MultiParamTypeClasses
+* FlexibleContexts 
+* FlexibleInstances
+* UndecidableInstances
+* ScopedTypeVariables 
+* TypeFamilies
+* GADTs 
