@@ -18,7 +18,7 @@
       to things like Push arrays of pairs.. 
 -}
 
-module Obsidian.Force where
+module Obsidian.Force (Forceable, Forced, force, forceG) where
 
 
 import Obsidian.Program
@@ -63,13 +63,6 @@ instance Scalar a => Forceable (Push (Exp a)) where
       Sync
       return rval
 
--- -- TODO: Implement. 
--- instance Scalar a => Forceable (Pull (Seq (Exp a))) where 
---   type Forced (Pull (Seq (Exp a))) = Pull (Seq (Exp a))
---   write_ (Pull n ixf) = undefined
---   force arr = undefined 
-
-
 -- Is it possible to avoid being this repetitive ? 
 instance (Scalar a,Scalar b) => Forceable (Push (Exp a,Exp b)) where
   type Forced (Push (Exp a,Exp b)) = Pull (Exp a, Exp b)
@@ -109,3 +102,22 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
       rval <- force p
       Sync
       return rval
+
+
+---------------------------------------------------------------------------
+-- Global
+---------------------------------------------------------------------------
+
+-- Generalise ?
+forceG :: forall a. Scalar a => GlobArray (Exp a)
+           -> Final (GProgram (Distrib (Pull (Exp a))))
+forceG (GPush nb bs pbt) = Final $ 
+  do
+      global <- Output $ Pointer (typeOf (undefined :: Exp a))
+      
+      pbt (assignTo global bs)
+        
+      return $ Distrib nb  $ 
+        \bix -> (Pull bs (\ix -> index global ((bix * (fromIntegral bs)) + ix)))
+    where 
+      assignTo name s e b i = Assign name ((b*(fromIntegral s))+i) e

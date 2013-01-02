@@ -19,11 +19,6 @@ import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate)
 
-
--- TODO: Array Pull/Push a
---       do I have any Library functions that are Push/Pull agnostic? 
---       (There is concP that concatenates any 2 Pushable arrays) 
-
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
@@ -50,38 +45,6 @@ rev :: Pull a -> Pull a
 rev arr = mkPullArray n (\ix -> arr ! (m - ix))  
    where m = fromIntegral (n-1)
          n = len arr
-
-
----------------------------------------------------------------------------
--- split into sequential (fixed static) chunks 
----------------------------------------------------------------------------
--- sequentially :: Word32 -> Pull a -> (Pull (Seq a))
--- sequentially s arr =
---   case n `mod` s of
---     0 -> Pull chunks
---          $ \ix -> Seq (fromIntegral s)
---                       (\six -> arr ! (ix * (fromIntegral s) + six))
---     _ -> error "sequentially: not evenly divisible" 
---   where
---     n = len arr
---     chunks = n `div` s
-
--- -- If Seq are of dynamic length this operation is impossible.
--- -- To get around this a Seqsize is passed into the function.
--- unSequentially :: Word32 -> Pull (Seq a) -> Pull a
--- unSequentially ss arr =
---   Pull n $ \i -> let six = i `mod` (fromIntegral ss)
---                      ix  = i `div` (fromIntegral ss)
---                  in (arr ! ix) ! six 
---   where
---     n = ss * len arr
-
--- ---------------------------------------------------------------------------
--- -- split into sequential and potentially unbalanced chunks
--- ---------------------------------------------------------------------------
--- seqUnbalanced :: Word32 -> (Exp Word32) -> Pull a -> (Pull (Seq a))
--- seqUnbalanced nChunks chunkSize arr = undefined 
-
          
 ---------------------------------------------------------------------------
 -- splitAt (name clashes with Prelude.splitAt)
@@ -207,9 +170,9 @@ twoK n f =  (\arr ->
               in arr')
  
 
-----------------------------------------------------------------------------
--- ***                          PUSHY LIBRARY                        *** ---
-----------------------------------------------------------------------------
+---------------------------------------------------------------------------
+-- ***                          PUSHY LIBRARY                       *** ---
+---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
 -- IxMap Class
@@ -277,3 +240,54 @@ zipP arr1 arr2 =
     (Push n2 p2) = push arr2
 
 
+---------------------------------------------------------------------------
+-- ***                          GLOBAL ARRAYS                        *** --
+---------------------------------------------------------------------------
+
+---------------------------------------------------------------------------
+-- From Distributed array of blocks to a global push array
+---------------------------------------------------------------------------
+toGlobArray :: Distrib (BProgram (Pull a))
+               -> GlobArray a               
+toGlobArray inp@(Distrib nb bixf) =
+  GPush nb bs $
+    \wf -> ForAllBlocks nb $
+           \bix ->
+           do -- BProgram do block 
+             arr <- bixf bix 
+             ForAll bs $ \ix -> wf (arr ! ix) bix ix 
+  where
+    -- Is this Ok?! 
+    bs = len $ fst $ runPrg 0 $ bixf 0
+
+---------------------------------------------------------------------------
+-- Create a global array that pushes to global
+-- memory N elements per thread. 
+--------------------------------------------------------------------------- 
+toGlobArrayN :: Distrib (BProgram (Pull a))
+                -> Word32 
+                -> GlobArray a
+toGlobArrayN dist n =
+  GPush nb bs $ 
+  \wf -> ForAllBlocks nb $
+         \bix ->
+         do -- BProgram do block
+             arr <- getBlock dist bix
+             ForAll (bs `div` n) $
+               \ix ->
+                    sequence_ 
+                    -- correct indexing ? 
+                    [wf (arr ! (ix * n' + i')) bix (ix * n' + i')
+                    | i <- [0..n-1]
+                    , let n' = fromIntegral n
+                    , let i' = fromIntegral i]
+           
+                  
+  where
+    bs = len $ fst $ runPrg 0 $ getBlock dist 0 
+    nb = numBlocks dist
+
+    
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------

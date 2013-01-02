@@ -53,7 +53,7 @@ input3 :: Distrib (Pull (Exp Int32))
 input3 = namedGlobal "apa" 256 32
  
 ---------------------------------------------------------------------------
---
+-- Small experiments 
 ---------------------------------------------------------------------------
 
 sync :: Forceable a => a -> BProgram (Forced a)
@@ -64,70 +64,8 @@ prg0 = putStrLn$ printPrg$  mapFusion input1
 mapFusion' :: Distrib (Pull EInt)
               -> Distrib (BProgram (Pull EInt))
 mapFusion' arr = mapD mapFusion arr
-
-
-toGlobArray :: Distrib (BProgram (Pull a))
-               -> GlobArray a               
-toGlobArray inp@(Distrib nb bixf) =
-  GPush nb bs $
-    \wf -> ForAllBlocks nb $
-           \bix ->
-           do -- BProgram do block 
-             arr <- bixf bix 
-             ForAll bs $ \ix -> wf (arr ! ix) bix ix 
-  where
-    -- Is this Ok?! 
-    bs = len $ fst $ runPrg 0 $ bixf 0
-
----------------------------------------------------------------------------
--- Create a global array that pushes to global
--- memory N elements per thread. 
---------------------------------------------------------------------------- 
-toGlobArrayN :: Distrib (BProgram (Pull a))
-                -> Word32 
-                -> GlobArray a
-toGlobArrayN dist n =
-  GPush nb bs $ 
-  \wf -> ForAllBlocks nb $
-         \bix ->
-         do -- BProgram do block
-             arr <- getBlock dist bix
-             ForAll (bs `div` n) $
-               \ix ->
-                    sequence_ 
-                    -- correct indexing ? 
-                    [wf (arr ! (ix * n' + i')) bix (ix * n' + i')
-                    | i <- [0..n-1]
-                    , let n' = fromIntegral n
-                    , let i' = fromIntegral i]
-           
-                  
-  where
-    bs = len $ fst $ runPrg 0 $ getBlock dist 0 
-    nb = numBlocks dist
-
-    
-  
                  
----------------------------------------------------------------------------
--- Force a globArray
--- This one needs a better name. 
----------------------------------------------------------------------------
-forceBT :: forall a. Scalar a => GlobArray (Exp a)
-           -> Final (GProgram (Distrib (Pull (Exp a))))
-forceBT (GPush nb bs pbt) = Final $ 
-  do
-      global <- Output $ Pointer (typeOf (undefined :: Exp a))
-      
-      pbt (assignTo global bs)
-        
-      return $ Distrib nb  $ 
-        \bix -> (Pull bs (\ix -> index global ((bix * (fromIntegral bs)) + ix)))
-    where 
-      assignTo name s e b i = Assign name ((b*(fromIntegral s))+i) e
-
-
-prg1 = putStrLn$ printPrg$ cheat $ (forceBT . toGlobArray . mapFusion') input2
+prg1 = putStrLn$ printPrg$ cheat $ (forceG . toGlobArray . mapFusion') input2
 
 
 ---------------------------------------------------------------------------
@@ -211,7 +149,7 @@ test = putStrLn $ getCUDA $
 
 test1 = withCUDA $
          do
-           kernel <- capture (forceBT . toGlobArray . mapFusion') input2
+           kernel <- capture (forceG . toGlobArray . mapFusion') input2
 
            useVector (V.fromList [0..31 :: Int32]) $ \ i1 ->
               allocaVector 32 $ \(o1 :: CUDA.DevicePtr Int32) ->
@@ -233,7 +171,7 @@ test1 = withCUDA $
 
 push1 = push $ zipp (input1,input1)
 
-testApa =  printPrg $ write_ push1
+-- testApa =  printPrg $ write_ push1
 
 
 
@@ -323,4 +261,4 @@ sklanskyAllBlocks logbsize arr =
 
 printSklansky = putStrLn
                 $ CUDA.genKernel "sklansky"
-                  (cheat . forceBT . toGlobArray . sklanskyAllBlocks 3) input3 
+                  (cheat . forceG . toGlobArray . sklanskyAllBlocks 3) input3 
