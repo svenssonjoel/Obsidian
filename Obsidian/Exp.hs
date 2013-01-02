@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs, 
-             TypeFamilies,  
-          
+             TypeFamilies,           
              FlexibleContexts,
              FlexibleInstances, 
              UndecidableInstances #-} 

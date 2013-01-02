@@ -162,27 +162,14 @@ test1 = withCUDA $
 
            
              
-           
-
-
----------------------------------------------------------------------------
--- Strange push array 
----------------------------------------------------------------------------
-
-push1 = push $ zipp (input1,input1)
-
--- testApa =  printPrg $ write_ push1
-
-
-
-
+         
 ---------------------------------------------------------------------------
 --
 -- Countingsort start
 --
 ---------------------------------------------------------------------------
 
-gatherGlobal :: Distrib (Pull (Exp Word32))
+gatherGlobal :: Distrib (Pull (Exp Word32)) 
                 -> Exp Word32 -- expected output size number of blocks
                 -> Word32     -- expected output size block-size
                 -> Distrib (Pull a)
@@ -192,26 +179,41 @@ gatherGlobal indices@(Distrib nbs inf)
              elems@(Distrib ebs enf) =
   GPush nb bs $
    \wf ->
-     ForAllBlocks nb $ \ bid ->
-     do
+     ForAllBlocks nb $ \ bid -> 
        ForAll bs $ \ tid -> 
          let  inArr = inf bid
               inix  = inArr ! tid
 
-              bid'  = (inix `div` (fromIntegral bs))
-              tid'  = (inix `mod` (fromIntegral bs))  
-              e     = (enf bid) ! tid 
+              bid'  = inix `div` fromIntegral bs
+              tid'  = inix `mod` fromIntegral bs  
+              e     = (enf bid') ! tid' 
          in wf e bid tid
+
+scatterGlobal :: Distrib  (Pull (Exp Word32)) -- where to scatter
+                 ->  Exp Word32 -- output size
+                 ->  Word32     -- block size
+                 -> Distrib (Pull a) -- the elements to scatter
+                 -> GlobArray a 
+scatterGlobal indices nb bs elems = 
+  GPush nb bs $
+    \wf -> ForAllBlocks nb $ \bid ->
+    ForAll bs $ \tid ->
+    let  inArr = getBlock indices bid
+         inix  = inArr ! tid
+         bid'  = inix `div` fromIntegral bs
+         tid'  = inix `mod` fromIntegral bs 
+         e     = (getBlock elems bid) ! tid 
+    in wf e bid' tid' 
         
 distribute :: Exp Word32 -> Word32 -> a -> Distrib (Pull a)
 distribute nb bs e = Distrib nb $ \bid -> replicate bs e           
 
-histogram :: Num a
-             => Exp Word32
-             -> Word32
+-- Error. gather is not the operation you want here!  
+histogram :: Word32
              -> Distrib (Pull (Exp Word32))
-             -> GlobArray a
-histogram nb bs elems = gatherGlobal elems nb bs (distribute nb bs 1)
+             -> GlobArray (Exp Word32)
+histogram bs elems = scatterGlobal elems nb bs (distribute nb bs 1)
+  where nb = numBlocks elems
 
 reconstruct inp@(Distrib nb bixf) pos@(Distrib _ posf) =
   permuteGlobal perm inp 
@@ -262,3 +264,24 @@ sklanskyAllBlocks logbsize arr =
 printSklansky = putStrLn
                 $ CUDA.genKernel "sklansky"
                   (cheat . forceG . toGlobArray . sklanskyAllBlocks 3) input3 
+
+
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
+
+test2 = withCUDA $
+         do
+           hist   <- capture (forceG . (histogram 255))
+                             (sizedGlobal (variable "N") 256 :: DistArray (Exp Word32))
+           --kernel <- capture (forceG . toGlobArray . mapFusion') input2
+
+           useVector (V.fromList (P.replicate 256 (7::Word32)) {-[0..255 :: Int32]-} ) $ \ i1 ->
+              useVector (V.fromList (P.replicate 256 0)) $ \(o1 :: CUDA.DevicePtr Int32) ->
+              --cudaTime "Timing execution of kernel" $
+                do
+                  -- TODO: Get sharedmem size from some analysis
+                  execute hist 1 256 i1 o1
+                  r <- lift $ CUDA.peekListArray 256 o1
+                  lift $ putStrLn $ show r 

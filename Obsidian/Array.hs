@@ -43,6 +43,8 @@ namedGlobal name bn bs = Distrib bn
                                    (\ix -> index name (bix * (fromIntegral bs) + ix)))) 
 
 
+type DistArray a = Distrib (Pull a) 
+
 ---------------------------------------------------------------------------
 -- Sequential arrays
 --
