@@ -76,9 +76,43 @@ toGlobArray inp@(Distrib nb bixf) =
              arr <- bixf bix 
              ForAll bs $ \ix -> wf (arr ! ix) bix ix 
   where
+    -- Is this Ok?! 
     bs = len $ fst $ runPrg 0 $ bixf 0
-  
 
+---------------------------------------------------------------------------
+-- Create a global array that pushes to global
+-- memory N elements per thread. 
+--------------------------------------------------------------------------- 
+toGlobArrayN :: Distrib (BProgram (Pull a))
+                -> Word32 
+                -> GlobArray a
+toGlobArrayN dist n =
+  GPush nb bs $ 
+  \wf -> ForAllBlocks nb $
+         \bix ->
+         do -- BProgram do block
+             arr <- getBlock dist bix
+             ForAll (bs `div` n) $
+               \ix ->
+                    sequence_ 
+                    -- correct indexing ? 
+                    [wf (arr ! (ix * n' + i')) bix (ix * n' + i')
+                    | i <- [0..n-1]
+                    , let n' = fromIntegral n
+                    , let i' = fromIntegral i]
+           
+                  
+  where
+    bs = len $ fst $ runPrg 0 $ getBlock dist 0 
+    nb = numBlocks dist
+
+    
+  
+                 
+---------------------------------------------------------------------------
+-- Force a globArray
+-- This one needs a better name. 
+---------------------------------------------------------------------------
 forceBT :: forall a. Scalar a => GlobArray (Exp a)
            -> Final (GProgram (Distrib (Pull (Exp a))))
 forceBT (GPush nb bs pbt) = Final $ 

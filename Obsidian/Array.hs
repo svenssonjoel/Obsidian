@@ -30,6 +30,12 @@ data Final a = Final {cheat :: a} -- cheat should not be exposed.
 data Distrib a = Distrib (Exp Word32)
                          (Exp Word32 -> a)
 
+numBlocks :: Distrib a -> Exp Word32
+numBlocks (Distrib n _) = n
+
+getBlock :: Distrib a -> Exp Word32 -> a 
+getBlock (Distrib _ bixf) = bixf
+
 sizedGlobal bn bs = Distrib bn
                     (\bix -> (mkPullArray bs undefined))
 namedGlobal name bn bs = Distrib bn 
@@ -43,7 +49,7 @@ namedGlobal name bn bs = Distrib bn
 -- Ok. Sequential arrays are problematic.
 --   Especially if the can have dynamic length.
 --   Sequential computation must be handled differently.
---   Knowing how much memory to allocate is for an array is otherwise
+--   Knowing how much memory to allocate is, for an array, otherwise
 --   problematic.
 --   
 ---------------------------------------------------------------------------
