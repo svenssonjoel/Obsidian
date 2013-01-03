@@ -265,10 +265,10 @@ toGlobArray inp@(Distrib nb bixf) =
 -- Create a global array that pushes to global
 -- memory N elements per thread. 
 --------------------------------------------------------------------------- 
-toGlobArrayN :: Distrib (BProgram (Pull a))
-                -> Word32 
+toGlobArrayN :: Word32
+                -> Distrib (BProgram (Pull a))
                 -> GlobArray a
-toGlobArrayN dist n =
+toGlobArrayN n dist =
   GPush nb bs $ 
   \wf -> ForAllBlocks nb $
          \bix ->

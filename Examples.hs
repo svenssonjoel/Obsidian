@@ -268,21 +268,39 @@ fan op arr =  a1 `conc`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))
 
+-- TODO: Too specific types everywhere! 
 
 sklanskyAllBlocks :: Int
-                     -> Distrib (Pull (Exp Int32))
-                     -> Distrib (BProgram (Pull (Exp Int32)))
+                     -> Distrib (Pull (Exp Word32))
+                     -> Distrib (BProgram (Pull (Exp Word32)))
 sklanskyAllBlocks logbsize arr =
   mapD (sklanskyLocal logbsize (+)) arr
 
+blockReplicate :: Word32 -- blockSize
+                  -> Exp Word32 -- number of blocks 
+                   -> Pull (Exp Word32)
+                   -> Distrib (Pull (Exp Word32))
+blockReplicate bs nb inp =
+  Distrib nb newPull
+    where
+      mi = fromIntegral bs - 1
+      newPull bix = Pull bs $ \ix -> inp ! bix
 
+{- 
+fuseMaximi :: Distrib (Pull (Exp Word32))
+              -> Distrib (Pull (Exp Word32))
+              -> GlobArray (Exp Word32) -- Distrib (BProgram (Pull (Exp Word32)))
+-- make this prettier
+fuseMaximi a b = toGlobArray $ 
+  Distrib (numBlocks b) $
+  \bix -> force (zipWith (+) (getBlock a bix)
+                             (getBlock b bix))
 
---printSklansky = putStrLn
---                $ CUDA.genKernel "sklansky"
---                  (cheat . forceG . toGlobArray . sklanskyAllBlocks 3) input3 
+-- gets a sync that it does not (really) need. 
+maxDist :: Distrib (Pull (Exp Word32)) -> GlobArray (Exp Word32)
+maxDist inp = toGlobArray $ fmap force (replBlockMaximi inp)
+   -}           
 
-printSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 3)
-                           (sizedGlobal undefined 32) 
 
 ---------------------------------------------------------------------------
 -- 
@@ -310,12 +328,15 @@ test2 = withCUDA $
 -- Print Kernels
 ---------------------------------------------------------------------------
 
-
-getHist = quickPrint (cheat . forceG .  histogram 256) (sizedGlobal undefined 256)
+getHist = quickPrint (forceG .  histogram 256) (sizedGlobal undefined 256)
 
 getRecon = quickPrint reconstruct'  
              ((sizedGlobal undefined 256 :: DistArray (Exp Word32)) :-> 
               (sizedGlobal undefined 256 :: DistArray (Exp Word32)))
            where
-             reconstruct' i1 i2 =
-               cheat (forceG (reconstruct i1 i2)) 
+             reconstruct' i1 i2 = forceG (reconstruct i1 i2)
+
+getSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 8)
+                         (sizedGlobal undefined 256)
+
+              
