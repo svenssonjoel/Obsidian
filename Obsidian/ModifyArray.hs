@@ -10,14 +10,26 @@ import Obsidian.Globs
 import Obsidian.Program
 import Obsidian.Array
 import Obsidian.Atomic
+import Obsidian.Library
 
 import Data.Word
 
--- TODO: Repair contents of this module 
+data Modify a = Modify { modFun   :: (Exp Word32 -> TProgram ()) -> BProgram ()
+                       , atomicOp :: Atomic a 
+                       , length   :: Word32 }
 
---data Modify a = Modify { modFun :: P (Exp Word32), atomicOp :: Atomic a }
+reverse :: Modify a -> Modify a
+reverse (Modify ixf op l) = Modify ixf' op l
+  where ixf' = \k -> ixf (k . rev)
+        rev ix = Literal l - ix -1
 
---type ModArray a = Array Modify a
+instance IxMap Modify where
+  ixMap f (Modify ixf op l) = Modify ixf' op l
+    where ixf' k = ixf (k . f)
 
---mkModifyArray n p op = Array n (Modify p op)
+instance Len Modify where
+  len (Modify _ _ l) = l
 
+mkModifyArray :: ((Exp Word32 -> TProgram ()) -> BProgram ())
+                 -> Atomic a -> Word32 -> Modify a
+mkModifyArray ixf op l = Modify ixf op l
