@@ -235,7 +235,7 @@ input5 k n = namedGlobal "apa" (2^k) (2^n)
 
 writegen k n s f = 
   writeFile (s ++ ".cu") $ CUDA.genKernel s 
-   (cheat . forceG . (flip toGlobArrayN 2) . f k) (input5 k n)
+   (cheat . forceG . toGlobArrayN 2 . f k) (input5 k n)
 
 -- comment. Probably the toGlobArrayN 2 should not work on adjacent elements
 
