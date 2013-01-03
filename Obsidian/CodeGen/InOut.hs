@@ -3,6 +3,7 @@
              MultiParamTypeClasses,
              TypeOperators,
              TypeFamilies ,
+      --       ScopedTypeVariables, 
              CPP #-}
 
 {- Joel Svensson 2012
@@ -49,7 +50,15 @@ type Inputs = [(Name,Type)]
 class ToProgram a b where
   toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.Program ())
 
+
+
 #define toprgBase(t) \
+instance ToProgram (Exp t) (GProgram b) where {\
+  toProgram i f a = \
+    ([(nom,t)],CG.runPrg (f input)) \
+    where {nom = "s" ++ show i; \
+           input = variable nom;}}\
+;\
 instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
   toProgram i f (Distrib n blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (f input)) \
@@ -82,7 +91,17 @@ toprgBase(Word64)
 toprgBase(Float)
 toprgBase(Double) 
 
+
+ 
 #define toprgRec(t) \
+instance ToProgram b c => ToProgram (Exp t) (b -> c) where{\
+  toProgram i f (a :-> rest) = \
+    ((nom,t):ins,prg) \
+    where {\
+      (ins,prg) = toProgram (i+1) (f input) rest;\
+      nom = "s" ++ show i;\
+      input = variable nom;}}\
+;\
 instance ToProgram b c => ToProgram (Distrib (Pull (Exp t))) (b -> c) where{\
   toProgram i f ((Distrib n blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
     where {\
@@ -123,11 +142,13 @@ infixr 5 :->
 type family Ips a b
 type family Ips' a 
 
+-- type instance Ips' (Exp a) = Exp a
 
+-- It seems I need to be this specific for some reason.
+-- The commented line above is not enough! 
 #define ipsBase(t) \
+type instance Ips' (Exp t) = Exp t;\
 type instance Ips' (Distrib (Pull (Exp t))) = Distrib (Pull (Exp t));
-
--- type instance Ips' (GlobArray (Exp t)) = GlobArray (Exp t);
 
 ipsBase(Int)
 ipsBase(Int8)
@@ -143,9 +164,8 @@ ipsBase(Word64)
 ipsBase(Float)
 ipsBase(Double)
 ipsBase(Bool) 
-
+ 
 -- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
-
 type instance Ips a (Final (GProgram b)) = Ips' a 
 type instance Ips a (GProgram b) = Ips' a
 type instance Ips a (b -> c) =  Ips' a :-> Ips b c

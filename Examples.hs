@@ -43,6 +43,15 @@ quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
 quickPrint prg input =
   putStrLn $ CUDA.genKernel "kernel" prg input 
 
+---------------------------------------------------------------------------
+-- Scalar argument
+---------------------------------------------------------------------------
+scalArg :: EInt -> Distrib (Pull EInt) -> Final (GProgram (Distrib (Pull EInt))) -- GlobArray EInt
+--scalArg :: EInt -> Distrib (Pull EInt) -> Distrib (BProgram (Pull EInt))
+scalArg e = forceG . toGlobArray . fmap (force . fmap (+e))
+
+getScalArg = quickPrint scalArg ((variable "X") :->
+                                 (sizedGlobal undefined 256))
 
 ---------------------------------------------------------------------------
 -- MapFusion example
@@ -122,15 +131,7 @@ permuteGlobal' perm distr@(Distrib nb bixf) =
 ---------------------------------------------------------------------------
 -- mapD experiments
 ---------------------------------------------------------------------------
-class LocalArrays a
-instance LocalArrays (Pull a) 
-instance LocalArrays (Push a)
-instance (LocalArrays a, LocalArrays b) => LocalArrays (a,b)
-instance (LocalArrays a, LocalArrays b, LocalArrays c) => LocalArrays (a,b,c)
-  
-
-mapD :: (LocalArrays a, LocalArrays b) =>
-        (a -> BProgram b) ->
+mapD :: (a -> BProgram b) ->
         (Distrib a -> Distrib (BProgram b))
 mapD f inp@(Distrib nb bixf) =
   Distrib nb $ \bid -> f (bixf bid)
