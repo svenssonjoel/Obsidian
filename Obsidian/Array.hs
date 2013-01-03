@@ -132,6 +132,9 @@ class Indexible a e where
 instance Indexible Pull a where
   access p ix = pullFun p ix
 
+instance Indexible Distrib a where
+  access p ix = getBlock p ix 
+
 pushApp (Push _ p) a = p a 
 
 class Len a where 

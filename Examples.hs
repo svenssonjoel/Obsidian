@@ -14,6 +14,7 @@ import Obsidian.Types
 import Obsidian.Array
 import Obsidian.Library
 import Obsidian.Force
+import Obsidian.CodeGen.InOut
 
 import Data.Word
 import Data.Int
@@ -31,7 +32,17 @@ import qualified Prelude as P
    -- Force: bry inte om generalisera nu (eller ngnsin). 
    -- Countingsort: generera kod, se att funkar.
    -- Riktig Countingsort: TODO!
+   -- Genererade kernels behöver ibland ta längden av globala arrayer (antal block)
+   --     som input. 
 -} 
+
+---------------------------------------------------------------------------
+-- Util 
+---------------------------------------------------------------------------
+quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
+quickPrint prg input =
+  putStrLn $ CUDA.genKernel "kernel" prg input 
+
 
 ---------------------------------------------------------------------------
 -- MapFusion example
@@ -75,7 +86,7 @@ prg1 = putStrLn$ printPrg$ cheat $ (forceG . toGlobArray . mapFusion') input2
 permuteGlobal :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
                  -> Distrib (Pull a)
                  -> GlobArray a
-permuteGlobal perm distr@(Distrib nb bixf) = 
+permuteGlobal perm distr{-@(Distrib nb bixf)-} = 
   GPush nb bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
@@ -83,9 +94,10 @@ permuteGlobal perm distr@(Distrib nb bixf) =
            \bix -> ForAll bs $
                    \tix ->
                    let (bix',tix') = perm bix tix 
-                   in wf ((bixf bix) ! tix) bix' tix'
-  where 
-    bs = len (bixf 0)
+                   in wf ((getBlock distr bix) ! tix) bix' tix'
+  where
+    nb = numBlocks distr 
+    bs = len (getBlock distr 0) -- bixf 0)
 
 --Complicated. 
 permuteGlobal' :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
@@ -208,23 +220,27 @@ scatterGlobal indices nb bs elems =
 distribute :: Exp Word32 -> Word32 -> a -> Distrib (Pull a)
 distribute nb bs e = Distrib nb $ \bid -> replicate bs e           
 
--- Error. gather is not the operation you want here!  
+-- DONE: Error. gather is not the operation you want here!
+--   changed to Scatter. (see if concepts are right) 
 histogram :: Word32
              -> Distrib (Pull (Exp Word32))
              -> GlobArray (Exp Word32)
 histogram bs elems = scatterGlobal elems nb bs (distribute nb bs 1)
   where nb = numBlocks elems
 
-reconstruct inp@(Distrib nb bixf) pos@(Distrib _ posf) =
+reconstruct :: Distrib (Pull (Exp Word32))
+               -> Distrib (Pull (Exp Word32))
+               -> GlobArray (Exp Word32)
+reconstruct inp{-@(Distrib nb bixf)-} pos{-@(Distrib _ posf)-} =
   permuteGlobal perm inp 
   where
     perm bix tix =
-      let bs  = len (bixf bix) 
-          gix = (bixf bix) ! tix
+      let bs  = len (getBlock inp bix) -- (bixf bix) 
+          gix = (getBlock inp bix) ! tix
           bix' = gix `div` (fromIntegral bs)
           tix' = gix `mod` (fromIntegral bs)
 
-          pgix = (posf bix') ! tix'
+          pgix = (getBlock pos bix') ! tix'
           pbix = pgix `div` (fromIntegral bs)
           ptix = pgix `mod` (fromIntegral bs) 
       in (pbix,ptix)
@@ -261,11 +277,12 @@ sklanskyAllBlocks logbsize arr =
 
 
 
-printSklansky = putStrLn
-                $ CUDA.genKernel "sklansky"
-                  (cheat . forceG . toGlobArray . sklanskyAllBlocks 3) input3 
+--printSklansky = putStrLn
+--                $ CUDA.genKernel "sklansky"
+--                  (cheat . forceG . toGlobArray . sklanskyAllBlocks 3) input3 
 
-
+printSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 3)
+                           (sizedGlobal undefined 32) 
 
 ---------------------------------------------------------------------------
 -- 
@@ -285,3 +302,20 @@ test2 = withCUDA $
                   execute hist 1 256 i1 o1
                   r <- lift $ CUDA.peekListArray 256 o1
                   lift $ putStrLn $ show r 
+
+
+
+
+---------------------------------------------------------------------------
+-- Print Kernels
+---------------------------------------------------------------------------
+
+
+getHist = quickPrint (cheat . forceG .  histogram 256) (sizedGlobal undefined 256)
+
+getRecon = quickPrint reconstruct'  
+             ((sizedGlobal undefined 256 :: DistArray (Exp Word32)) :-> 
+              (sizedGlobal undefined 256 :: DistArray (Exp Word32)))
+           where
+             reconstruct' i1 i2 =
+               cheat (forceG (reconstruct i1 i2)) 
