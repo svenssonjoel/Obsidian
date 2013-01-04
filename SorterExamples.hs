@@ -196,22 +196,31 @@ ilv2' i f g arr = ilvPush i a1 a2
 -- Here is where I am stuck. I want to make a global ilv
 -- with roughly this type. Perhaps the inputs need to be tupled?
 
--- I suspect that this kernel will need to know about the number
--- of blocks.
--- This needs quite a bit of work in the codegeneration part.
---  (MAYBE NOT)  
+-- This one should output 2 half as long arrays.
+-- So that can be done in many ways... Half as many blocks in each array.. 
+-- Half as many elements in each block of each array..
+-- Trying the first option
 ilvPermuteG :: Int -> Distrib (Pull a) -> (Distrib (Pull  a), Distrib (Pull a))
 ilvPermuteG i arr = undefined 
   where
     nb = numBlocks arr
     bs = len (getBlock arr 0) 
-    --n = nb * (fromIntegral bs) --- Maybe not needed
+    -- n = nb * (fromIntegral bs) --- Maybe not needed
 
     -- This one is tricky. 
     globPerm bix tix bs = let ix = insertZero i (bix * bs + tix)
                           in  (ix `div` bs, ix `mod` bs)
     --need something like ixMap but for Distrib (Pull a)                                  
-    
+
+extractNBlocksBy :: Exp Word32
+                    -> (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
+                    -> Distrib (Pull a)
+                    -> Distrib (Pull a)
+extractNBlocksBy n f (Distrib _ bixf) =
+  Distrib n $ \bix -> Pull bs $ \tix ->
+                let (bix',tix') =  f bix tix (fromIntegral bs)
+                in  (bixf bix') ! tix'
+  where bs = len (bixf 0)
 
 ilvG :: Exp Int -> Distrib (Pull (Exp Int))-> GlobArray (Exp Int)
 ilvG i distr@(Distrib nb bixf) =
