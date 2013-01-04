@@ -140,7 +140,7 @@ ilv2 i f g arr
 -- What does the i represent ?
 -- This one always splits into 2 parts. Is 'i' concerned with that ?
 -- What are the allowed i's ? (0 to numbits ?) 
-ilvPermute :: Int -> Pull a -> (Pull a, Pull a)
+{-ilvPermute :: Int -> Pull a -> (Pull a, Pull a)
 ilvPermute i arr =
   (a1, a2)
   where
@@ -152,7 +152,21 @@ ilvPermute i arr =
     a2 = resize n2 (ixMap right arr)    
     left = insertZero i
     right = flipBit i  . left
+-} 
 
+ilvPermute :: Int -> Pull a -> (Pull a, Pull a)
+ilvPermute i arr = (extractNBy (n-n2) left arr,
+                    extractNBy n2 right arr)
+  where
+    n = len arr
+    n2 = n `div` 2
+    left = insertZero i
+    right = flipBit i  . left
+    
+extractNBy :: Word32 -> (Exp Word32 -> Exp Word32) -> Pull a -> Pull a
+extractNBy i f arr = resize i (ixMap f arr)
+
+    
 ilvPush :: Int -> Pull a -> Pull a -> Push a
 ilvPush i a1 a2 =
   Push (n1+n2) $ \wf -> pf1 wf >> pf2 wf
@@ -168,7 +182,9 @@ ilvPush i a1 a2 =
 
 ilv2' i f g arr = ilvPush i a1 a2 
   where
-    (a1,a2) = ilvPermute i arr
+    n  = len arr
+    n2 = n `div` 2
+    (a1,a2)  = ilvPermute i arr 
     a3 = zipWith f a1 a2
     a4 = zipWith g a1 a2
 
@@ -179,6 +195,23 @@ ilv2' i f g arr = ilvPush i a1 a2
 
 -- Here is where I am stuck. I want to make a global ilv
 -- with roughly this type. Perhaps the inputs need to be tupled?
+
+-- I suspect that this kernel will need to know about the number
+-- of blocks.
+-- This needs quite a bit of work in the codegeneration part.
+--  (MAYBE NOT)  
+ilvPermuteG :: Int -> Distrib (Pull a) -> (Distrib (Pull  a), Distrib (Pull a))
+ilvPermuteG i arr = undefined 
+  where
+    nb = numBlocks arr
+    bs = len (getBlock arr 0) 
+    --n = nb * (fromIntegral bs) --- Maybe not needed
+
+    -- This one is tricky. 
+    globPerm bix tix bs = let ix = insertZero i (bix * bs + tix)
+                          in  (ix `div` bs, ix `mod` bs)
+    --need something like ixMap but for Distrib (Pull a)                                  
+    
 
 ilvG :: Exp Int -> Distrib (Pull (Exp Int))-> GlobArray (Exp Int)
 ilvG i distr@(Distrib nb bixf) =
