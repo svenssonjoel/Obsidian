@@ -201,17 +201,20 @@ ilv2' i f g arr = ilvPush i a1 a2
 -- Half as many elements in each block of each array..
 -- Trying the first option
 ilvPermuteG :: Int -> Distrib (Pull a) -> (Distrib (Pull  a), Distrib (Pull a))
-ilvPermuteG i arr = undefined 
+ilvPermuteG i arr = (extractNBlocksBy (nb - nb2) globLeft arr,
+                     extractNBlocksBy nb globRight arr) 
   where
     nb = numBlocks arr
+    nb2 = nb `div` 2
     bs = len (getBlock arr 0) 
     -- n = nb * (fromIntegral bs) --- Maybe not needed
 
     -- This one is tricky. 
-    globPerm bix tix bs = let ix = insertZero i (bix * bs + tix)
+    globLeft bix tix bs = let ix = insertZero i (bix * bs + tix)
                           in  (ix `div` bs, ix `mod` bs)
-    --need something like ixMap but for Distrib (Pull a)                                  
-
+    globRight bix tix bs = let ix = flipBit i (insertZero i (bix * bs + tix))
+                          in  (ix `div` bs, ix `mod` bs)
+   
 extractNBlocksBy :: Exp Word32
                     -> (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
                     -> Distrib (Pull a)
