@@ -117,7 +117,7 @@ vee1 i f g arr = mkPullArray (len arr) ixf
 
 
 
-ilv2 :: Choice b => Int -> (a -> a -> b) -> (a -> a -> b) -> Pull a -> Push b
+ilv2 :: Int -> (a -> a -> b) -> (a -> a -> b) -> Pull a -> Push b
 ilv2 i f g arr 
    = Push n $ \wf -> a5 wf >> a6 wf
   where
@@ -155,13 +155,13 @@ ilvPermute i arr =
 
 ilvPush :: Int -> Pull a -> Pull a -> Push a
 ilvPush i a1 a2 =
-  Push n $ \wf -> pf1 wf >> pf2 wf
+  Push (n1+n2) $ \wf -> pf1 wf >> pf2 wf
   where
     -- Push to correct position. I do not quite get this part
     -- It seems to me then that ixMap means two different things
     -- related to if it acts on push or pull array.
-    (Push _ pf1) = ixMap left (push a1)
-    (Push _ pf2) = ixMap right (push a1) 
+    (Push n1 pf1) = ixMap left (push a1)
+    (Push n2 pf2) = ixMap right (push a1) 
     left = insertZero i
     right = flipBit i  . left
             
