@@ -7,7 +7,8 @@
                (adherence to new Array types and program types)  
 -}
 
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances,
+             TypeSynonymInstances #-}
 
 module Obsidian.Library where 
 
@@ -197,6 +198,27 @@ ixMap' :: (Exp Word32 -> Exp Word32)
           -> ((a -> Exp Word32 -> TProgram ()) -> BProgram ()) 
 ixMap' f p = \wf -> p (\a ix -> wf a (f ix))
 
+---------------------------------------------------------------------------
+-- Messy experimentation
+---------------------------------------------------------------------------
+class IxMap2 a where
+  ixMap2 :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
+            -> a
+            -> a
+
+instance IxMap2 (GlobArray a) where
+  ixMap2 f (GPush nb bs p) = GPush nb bs (ixMap2' f (fromIntegral bs) p )
+
+ixMap2' :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
+           -> Exp Word32 
+           -> ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) -> GProgram ()) 
+           -> ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) -> GProgram ())
+ixMap2' f bs p= \wf -> p $ \ a bix tix ->
+                            let (bix',tix') = f bix tix bs
+                            in wf a bix' tix' 
+                              
+instance IxMap2 (Distrib (Pull a)) where
+  ixMap2 = undefined 
 
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 
