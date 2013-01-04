@@ -29,15 +29,8 @@ import qualified Prelude as P
 ---------------------------------------------------------------------------
 -- mapD experiments
 ---------------------------------------------------------------------------
-class LocalArrays a
-instance LocalArrays (Pull a) 
-instance LocalArrays (Push a)
-instance (LocalArrays a, LocalArrays b) => LocalArrays (a,b)
-instance (LocalArrays a, LocalArrays b, LocalArrays c) => LocalArrays (a,b,c)
-  
 
-mapD :: (LocalArrays a, LocalArrays b) =>
-        (a -> BProgram b) ->
+mapD :: (a -> BProgram b) ->
         (Distrib a -> Distrib (BProgram b))
 mapD f inp@(Distrib nb bixf) =
   Distrib nb $ \bid -> f (bixf bid)
@@ -130,16 +123,59 @@ ilv2 i f g arr
   where
     n  = len arr
     n2 = n `div` 2
-    a1 = resize (n-n2) (ixMap left arr) 
-    a2 = resize n2 (ixMap right arr)   
+    a1 = resize (n-n2) (ixMap left arr) -- Take (n-n2) elements from 'left'permuted arr
+    a2 = resize n2 (ixMap right arr)    -- Take n2 elements from 'right'permuted arr
     a3 = zipWith f a1 a2
-    a4 = zipWith g a1 a2
+    a4 = zipWith g a1 a2                -- up to here we are still in pull arrays
     (Push _ a5) = ixMap left (push a3)
-    (Push _ a6) = ixMap right (push a4)
+    (Push _ a6) = ixMap right (push a4) -- here same permutation is applied..
+                                        -- What does that mean ?
     left = insertZero i
     right = flipBit i  . left
 
+---------------------------------------------------------------------------
+-- Spliting Ilv up. Just to see if it leads to anything.
+---------------------------------------------------------------------------
 
+-- What does the i represent ?
+-- This one always splits into 2 parts. Is 'i' concerned with that ?
+-- What are the allowed i's ? (0 to numbits ?) 
+ilvPermute :: Int -> Pull a -> (Pull a, Pull a)
+ilvPermute i arr =
+  (a1, a2)
+  where
+    n  = len arr
+    n2 = n `div` 2 -- Here div by 2 (center split).
+                   -- Does all i's lead to a division into equal parts ?
+    -- Pull out the elements we are interested in. 
+    a1 = resize (n-n2) (ixMap left arr) 
+    a2 = resize n2 (ixMap right arr)    
+    left = insertZero i
+    right = flipBit i  . left
+
+ilvPush :: Int -> Pull a -> Pull a -> Push a
+ilvPush i a1 a2 =
+  Push n $ \wf -> pf1 wf >> pf2 wf
+  where
+    -- Push to correct position. I do not quite get this part
+    -- It seems to me then that ixMap means two different things
+    -- related to if it acts on push or pull array.
+    (Push _ pf1) = ixMap left (push a1)
+    (Push _ pf2) = ixMap right (push a1) 
+    left = insertZero i
+    right = flipBit i  . left
+            
+
+ilv2' i f g arr = ilvPush i a1 a2 
+  where
+    (a1,a2) = ilvPermute i arr
+    a3 = zipWith f a1 a2
+    a4 = zipWith g a1 a2
+
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
 
 -- Here is where I am stuck. I want to make a global ilv
 -- with roughly this type. Perhaps the inputs need to be tupled?
