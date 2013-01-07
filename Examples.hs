@@ -376,6 +376,11 @@ mapG' f (GlobPull n ixf) =
             in  f pully
 
 
+-- The number of blocks is rarely used.
+-- But here in reverseG the nblocks is needed. Maybe such
+-- functions where the number of blocks are needed should take that value
+-- as input? This means the representation of Global arrays does not need to carry
+-- that value along with them (at all). 
 reverseG :: Exp Word32 -> GlobPull a -> GlobPull a
 reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - ix - 1))
 
@@ -385,4 +390,6 @@ toGlobArrayGP (GlobPull n ixf) = -- Should be GPull for symmetry
   GPush (variable "X") -- make this up for now
         n
         $ \wf -> ForAllBlocks (variable "X")
-                 $ \ bix ->  ForAll n $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix 
+                 $ \ bix ->  ForAll n $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
+
+
