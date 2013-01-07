@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables,
-             FlexibleContexts #-} 
+             FlexibleContexts,
+             FlexibleInstances,
+             TypeFamilies #-} 
              
 module SorterExamples where
 
@@ -34,7 +36,6 @@ mapD :: (a -> BProgram b) ->
         (Distrib a -> Distrib (BProgram b))
 mapD f inp@(Distrib nb bixf) =
   Distrib nb $ \bid -> f (bixf bid)
-
 
 
 
@@ -321,3 +322,78 @@ writegen k n s f =
 -- comment. Probably the toGlobArrayN 2 should not work on adjacent elements
 
 runt2 k n = writegen k n "tmerge2" tmerge2
+
+
+
+---------------------------------------------------------------------------
+-- Joel Experimentation
+---------------------------------------------------------------------------
+
+
+
+-- push and flatten sequential part
+pushF :: Pull [a] -> Push a
+pushF (Pull n ixf) =
+  Push (n * fromIntegral m) $ \wf ->
+    ForAll n $ \ix ->
+      let el  = ixf ix
+      in  sequence_ [wf (el !! i) ((ix * fromIntegral m)+ fromIntegral i)  | i <- [0..m]] 
+    
+  where m = length (ixf 0)
+
+-- adding a force instance for Pull [Exp a]
+instance Scalar a => Forceable (Pull [Exp a]) where
+  type Forced (Pull [Exp a]) = Pull (Exp a) 
+  write_ arr = write_ (pushF arr)
+  force  arr = force (pushF arr)
+
+-- now it should be possible to describe sequential computations by creating
+-- pull [a] arrays.
+
+-- the same for Global Pushing (a new version of toGlobArray)
+toGlobArrayF :: Distrib (BProgram (Pull [a]))
+                -> GlobArray a
+toGlobArrayF inp@(Distrib nb bixf) =
+  GPush nb bs $
+    \wf -> ForAllBlocks nb $
+            \bix ->
+            do  -- BProgram do block
+              arr <- bixf bix
+              ForAll bs $ \ix ->
+                let el = arr ! ix
+                    m  = length el
+                in sequence_ [wf (el !! i) bix ((ix * fromIntegral m) + fromIntegral i)
+                             | i <- [0..m]]
+  where
+    -- Is this Ok?! 
+    bs = len $ fst $ runPrg 0 $ bixf 0          
+
+-- This one also reveals that you can express another dimnension of sequentiallity 
+--  (Or Both at the same time!?) 
+
+---------------------------------------------------------------------------
+-- Experiments with something that might be called pushBy.
+---------------------------------------------------------------------------
+
+pushBy :: Pull (Exp Word32) -> Pull a -> Push a 
+pushBy (Pull m ixixf) (Pull n ixf) =
+    Push m $ \wf -> ForAll m $ \i -> wf (ixf (ixixf i)) i -- n or m long ? 
+-- of course normal push is (pushBy (Pull n id)) 
+
+toGlobalBy :: Distrib (Pull (Exp Word32))
+              -> Distrib (BProgram (Pull a))
+              -> GlobArray a
+toGlobalBy (Distrib mb ixbixf) (Distrib nb bixf) =
+  GPush mb bs $
+    \wf -> ForAllBlocks mb $
+             \bix ->
+             do -- BProgram do block
+               arr <- bixf bix
+               ForAll bs $ \ix ->
+                 let gix = ixbixf bix ! ix 
+                     bix' =  gix `div` nb -- (getting this right? nb or mb)
+                     tix' =  gix `mod` nb -- (again nb or mb?) 
+                 in wf (arr ! ix) bix' tix' 
+   where
+    -- Is this Ok?! 
+    bs = len $ fst $ runPrg 0 $ bixf 0

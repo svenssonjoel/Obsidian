@@ -19,7 +19,8 @@
       to things like Push arrays of pairs.. 
 -}
 
-module Obsidian.Force (Forceable, Forced, force, forceG) where
+--  write_ should be internal use only
+module Obsidian.Force (Forceable, Forced, force,write_, forceG) where
 
 
 import Obsidian.Program
