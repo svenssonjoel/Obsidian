@@ -226,6 +226,7 @@ extractNBlocksBy n f (Distrib _ bixf) =
                 in  (bixf bix') ! tix'
   where bs = len (bixf 0)
 
+{- 
 ilvG :: Exp Int -> Distrib (Pull (Exp Int))-> GlobArray (Exp Int)
 ilvG i distr@(Distrib nb bixf) =
   GPush nb bs $
@@ -236,6 +237,7 @@ ilvG i distr@(Distrib nb bixf) =
                    \tix -> undefined
   where 
     bs = len (bixf 0) 
+-} 
 
 {--  This is the CUDA that I want to generate in the end (probably
 with stride as first input) :
@@ -354,22 +356,37 @@ instance Scalar a => Forceable (Pull [Exp a]) where
 toGlobArrayF :: Distrib (BProgram (Pull [a]))
                 -> GlobArray a
 toGlobArrayF inp@(Distrib nb bixf) =
-  GPush nb bs $
+  GPush nb (bs*(fromIntegral m)) $
     \wf -> ForAllBlocks nb $
             \bix ->
             do  -- BProgram do block
               arr <- bixf bix
               ForAll bs $ \ix ->
                 let el = arr ! ix
-                    m  = length el
+                    -- m  = length el
                 in sequence_ [wf (el !! i) bix ((ix * fromIntegral m) + fromIntegral i)
                              | i <- [0..m]]
   where
     -- Is this Ok?! 
-    bs = len $ fst $ runPrg 0 $ bixf 0          
-
+    arry = fst $ runPrg 0 $ bixf 0          
+    bs   = len arry
+    m    = length (arry ! 0)
+    
 -- This one also reveals that you can express another dimnension of sequentiallity 
 --  (Or Both at the same time!?) 
+toGlobArrayF' :: Distrib [BProgram (Pull a)]
+                 -> GlobArray a 
+toGlobArrayF' (Distrib nb bixf) =
+  GPush nb bs $
+    \wf -> ForAllBlocks nb $
+           \bix -> 
+  where
+    -- Is this Ok?! 
+    larry  = bixf 0          
+    m      = length larry
+    bs     = len (fst (runPrg 0 (head larry)))
+    --bs   = len arry
+    --m    = length (arry ! 0) 
 
 ---------------------------------------------------------------------------
 -- Experiments with something that might be called pushBy.

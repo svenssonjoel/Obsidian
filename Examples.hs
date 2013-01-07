@@ -340,4 +340,41 @@ getRecon = quickPrint reconstruct'
 getSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 8)
                          (sizedGlobal undefined 256)
 
-              
+
+
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
+--mapD :: (a -> BProgram b) ->
+--        (Distrib a -> Distrib (BProgram b))
+--mapD f inp@(Distrib nb bixf) =
+--  Distrib nb $ \bid -> f (bixf bid)
+
+mapG :: (Pull a -> BProgram (Pull b))
+        -> GlobPull a
+        -> GlobArray b
+mapG f (GlobPull n ixf)  =
+  GPush (variable "X") -- just make it up (for now)
+        n
+        $ \wf ->
+          ForAllBlocks (variable "X")  -- making up number of blocks.
+           $ \bix ->
+             do -- BProgram do block 
+               let pully = Pull n (\ix -> ixf (bix * (fromIntegral n) + ix))
+               res <- f pully
+               ForAll n $ \ix -> wf (res ! ix) bix ix
+
+mapG' :: (Pull a -> BProgram (Pull b))
+         -> GlobPull a
+         -> Distrib (BProgram (Pull b))
+mapG' f (GlobPull n ixf) =
+  Distrib (variable "X") -- Making the number of blocks up (for now)
+          $ \bix ->
+            let pully = Pull n (\ix -> ixf (bix * (fromIntegral n) + ix))
+            in  f pully
+
+
+reverseG :: Exp Word32 -> GlobPull a -> GlobPull a
+reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - ix - 1))
