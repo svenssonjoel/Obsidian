@@ -378,3 +378,11 @@ mapG' f (GlobPull n ixf) =
 
 reverseG :: Exp Word32 -> GlobPull a -> GlobPull a
 reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - ix - 1))
+
+
+toGlobArrayGP :: GlobPull a -> GlobArray a
+toGlobArrayGP (GlobPull n ixf) = -- Should be GPull for symmetry 
+  GPush (variable "X") -- make this up for now
+        n
+        $ \wf -> ForAllBlocks (variable "X")
+                 $ \ bix ->  ForAll n $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix 
