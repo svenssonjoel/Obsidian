@@ -34,8 +34,8 @@ import qualified Prelude as P
 
 mapD :: (a -> BProgram b) ->
         (Distrib a -> Distrib (BProgram b))
-mapD f inp@(Distrib nb bixf) =
-  Distrib nb $ \bid -> f (bixf bid)
+mapD f inp@(Distrib bixf) =
+  Distrib $ \bid -> f (bixf bid)
 
 
 
@@ -201,30 +201,30 @@ ilv2' i f g arr = ilvPush i a1 a2
 -- So that can be done in many ways... Half as many blocks in each array.. 
 -- Half as many elements in each block of each array..
 -- Trying the first option
-ilvPermuteG :: Int -> Distrib (Pull a) -> (Distrib (Pull  a), Distrib (Pull a))
-ilvPermuteG i arr = (extractNBlocksBy (nb - nb2) globLeft arr,
-                     extractNBlocksBy nb globRight arr) 
-  where
-    nb = numBlocks arr
-    nb2 = nb `div` 2
-    bs = len (getBlock arr 0) 
-    -- n = nb * (fromIntegral bs) --- Maybe not needed
+--ilvPermuteG :: Int -> Distrib (Pull a) -> (Distrib (Pull  a), Distrib (Pull a))
+--ilvPermuteG i arr = (extractNBlocksBy (nb - nb2) globLeft arr,
+--                     extractNBlocksBy nb globRight arr) -
+--  where
+--    nb = numBlocks arr
+--    nb2 = nb `div` 2
+--    bs = len (getBlock arr 0) 
+--    -- n = nb * (fromIntegral bs) --- Maybe not needed
 
-    -- This one is tricky. 
-    globLeft bix tix bs = let ix = insertZero i (bix * bs + tix)
-                          in  (ix `div` bs, ix `mod` bs)
-    globRight bix tix bs = let ix = flipBit i (insertZero i (bix * bs + tix))
-                          in  (ix `div` bs, ix `mod` bs)
+--    -- This one is tricky. 
+--    globLeft bix tix bs = let ix = insertZero i (bix * bs + tix)
+--                          in  (ix `div` bs, ix `mod` bs)
+--    globRight bix tix bs = let ix = flipBit i (insertZero i (bix * bs + tix))
+--                          in  (ix `div` bs, ix `mod` bs)
    
-extractNBlocksBy :: Exp Word32
-                    -> (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
-                    -> Distrib (Pull a)
-                    -> Distrib (Pull a)
-extractNBlocksBy n f (Distrib _ bixf) =
-  Distrib n $ \bix -> Pull bs $ \tix ->
-                let (bix',tix') =  f bix tix (fromIntegral bs)
-                in  (bixf bix') ! tix'
-  where bs = len (bixf 0)
+--extractNBlocksBy :: Exp Word32
+--                    -> (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
+--                   -> Distrib (Pull a)
+--                    -> Distrib (Pull a)
+--extractNBlocksBy n f (Distrib _ bixf) =
+--  Distrib n $ \bix -> Pull bs $ \tix ->
+--                let (bix',tix') =  f bix tix (fromIntegral bs)
+--                in  (bixf bix') ! tix'
+--  where bs = len (bixf 0)
 
 {- 
 ilvG :: Exp Int -> Distrib (Pull (Exp Int))-> GlobArray (Exp Int)
@@ -314,16 +314,16 @@ oBits i = (2^i) - 1
 
 -- testing
 
-input5 :: Int -> Word32 -> Distrib (Pull (Exp Int))
-input5 k n = namedGlobal "apa" (2^k) (2^n)
+--input5 :: Int -> Word32 -> Distrib (Pull (Exp Int))
+--input5 n = namedGlobal "apa" (2^n)
 
-writegen k n s f = 
-  writeFile (s ++ ".cu") $ CUDA.genKernel s 
-   (cheat . forceG . toGlobArrayN 2 . f k) (input5 k n)
+--writegen k n s f = 
+--  writeFile (s ++ ".cu") $ CUDA.genKernel s 
+--   (cheat . forceG . toGlobArrayN 2 . f k) (input5 k n)
 
 -- comment. Probably the toGlobArrayN 2 should not work on adjacent elements
 
-runt2 k n = writegen k n "tmerge2" tmerge2
+-- runt2 k n = writegen k n "tmerge2" tmerge2
 
 
 
@@ -354,10 +354,10 @@ instance Scalar a => Forceable (Pull [Exp a]) where
 
 -- the same for Global Pushing (a new version of toGlobArray)
 toGlobArrayF :: Distrib (BProgram (Pull [a]))
-                -> GlobArray a
-toGlobArrayF inp@(Distrib nb bixf) =
-  GPush nb (bs*(fromIntegral m)) $
-    \wf -> ForAllBlocks nb $
+                -> GlobPush a
+toGlobArrayF inp@(Distrib bixf) =
+  GlobPush (bs*(fromIntegral m)) $
+    \wf -> ForAllBlocks $
             \bix ->
             do  -- BProgram do block
               arr <- bixf bix
@@ -375,11 +375,11 @@ toGlobArrayF inp@(Distrib nb bixf) =
 -- This one also reveals that you can express another dimnension of sequentiallity 
 --  (Or Both at the same time!?) 
 toGlobArrayF' :: Distrib [BProgram (Pull a)]
-                 -> GlobArray a 
-toGlobArrayF' (Distrib nb bixf) =
-  GPush nb bs $
-    \wf -> ForAllBlocks nb $
-           \bix -> 
+                 -> GlobPush a 
+toGlobArrayF' (Distrib bixf) =
+  GlobPush bs $
+    \wf -> ForAllBlocks $
+           \bix -> undefined -- implement later (if possible) 
   where
     -- Is this Ok?! 
     larry  = bixf 0          
@@ -394,22 +394,22 @@ toGlobArrayF' (Distrib nb bixf) =
 
 pushBy :: Pull (Exp Word32) -> Pull a -> Push a 
 pushBy (Pull m ixixf) (Pull n ixf) =
-    Push m $ \wf -> ForAll m $ \i -> wf (ixf (ixixf i)) i -- n or m long ? 
+    Push m $ \wf -> ForAll m $ \i -> wf (ixf (ixixf i)) i 
 -- of course normal push is (pushBy (Pull n id)) 
 
 toGlobalBy :: Distrib (Pull (Exp Word32))
               -> Distrib (BProgram (Pull a))
-              -> GlobArray a
-toGlobalBy (Distrib mb ixbixf) (Distrib nb bixf) =
-  GPush mb bs $
-    \wf -> ForAllBlocks mb $
+              -> GlobPush a
+toGlobalBy (Distrib ixbixf) (Distrib bixf) =
+  GlobPush bs $
+    \wf -> ForAllBlocks $
              \bix ->
              do -- BProgram do block
                arr <- bixf bix
                ForAll bs $ \ix ->
                  let gix = ixbixf bix ! ix 
-                     bix' =  gix `div` nb -- (getting this right? nb or mb)
-                     tix' =  gix `mod` nb -- (again nb or mb?) 
+                     bix' =  gix `div` (fromIntegral bs) 
+                     tix' =  gix `mod` (fromIntegral bs) 
                  in wf (arr ! ix) bix' tix' 
    where
     -- Is this Ok?! 
