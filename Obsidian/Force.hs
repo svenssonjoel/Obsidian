@@ -111,15 +111,15 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
 ---------------------------------------------------------------------------
 
 -- Generalise ?
-forceG :: forall a. Scalar a => GlobArray (Exp a)
+forceG :: forall a. Scalar a => GlobPush (Exp a)
            -> Final (GProgram (Distrib (Pull (Exp a))))
-forceG (GPush nb bs pbt) = Final $ 
+forceG (GlobPush bs pbt) = Final $ 
   do
       global <- Output $ Pointer (typeOf (undefined :: Exp a))
       
       pbt (assignTo global bs)
         
-      return $ Distrib nb  $ 
+      return $ Distrib $ 
         \bix -> (Pull bs (\ix -> index global ((bix * (fromIntegral bs)) + ix)))
     where 
       assignTo name s e b i = Assign name ((b*(fromIntegral s))+i) e

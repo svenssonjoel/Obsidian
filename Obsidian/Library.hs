@@ -2,6 +2,7 @@
    Mary Sheeran  2012
 
    Notes:
+   2013-01-08: Renamed GlobArray to GlobPush 
    2013-01-02: Added toGlobArray and toGlobArrayN
    2012-12-10: Refactoring
                (adherence to new Array types and program types)  
@@ -32,11 +33,11 @@ instance Functor Push where
     Push n $ \wf -> pfun (\a ix -> wf (f a) ix)
 
 instance Functor Distrib where
-  fmap f (Distrib n bixf) = Distrib n $ \bix -> f (bixf bix)
+  fmap f (Distrib bixf) = Distrib $ \bix -> f $ bixf bix
 
-instance Functor GPush where
-  fmap f (GPush nb bs wf ) =
-    GPush nb bs
+instance Functor GlobPush where
+  fmap f (GlobPush bs wf ) =
+    GlobPush bs
     $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
 
 ---------------------------------------------------------------------------
@@ -206,8 +207,8 @@ class IxMap2 a where
             -> a
             -> a
 
-instance IxMap2 (GlobArray a) where
-  ixMap2 f (GPush nb bs p) = GPush nb bs (ixMap2' f (fromIntegral bs) p )
+instance IxMap2 (GlobPush a) where
+  ixMap2 f (GlobPush bs p) = GlobPush bs (ixMap2' f (fromIntegral bs) p )
 
 ixMap2' :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
            -> Exp Word32 
@@ -270,12 +271,12 @@ zipP arr1 arr2 =
 ---------------------------------------------------------------------------
 -- From Distributed array of blocks to a global push array
 ---------------------------------------------------------------------------
-toGlobArray :: Distrib (BProgram (Pull a))
-               -> GlobArray a               
-toGlobArray inp@(Distrib nb bixf) =
-  GPush nb bs $
-    \wf -> ForAllBlocks nb $
-           \bix ->
+toGlobPush :: Distrib (BProgram (Pull a))
+               -> GlobPush a               
+toGlobPush inp@(Distrib bixf) =
+  GlobPush bs $
+    \wf -> ForAllBlocks 
+           $ \bix ->
            do -- BProgram do block 
              arr <- bixf bix 
              ForAll bs $ \ix -> wf (arr ! ix) bix ix 
@@ -287,13 +288,13 @@ toGlobArray inp@(Distrib nb bixf) =
 -- Create a global array that pushes to global
 -- memory N elements per thread. 
 --------------------------------------------------------------------------- 
-toGlobArrayN :: Word32
+toGlobPushN :: Word32
                 -> Distrib (BProgram (Pull a))
-                -> GlobArray a
-toGlobArrayN n dist =
-  GPush nb bs $ 
-  \wf -> ForAllBlocks nb $
-         \bix ->
+                -> GlobPush a
+toGlobPushN n dist =
+  GlobPush bs $ 
+  \wf -> ForAllBlocks 
+         $ \bix ->
          do -- BProgram do block
              arr <- getBlock dist bix
              ForAll (bs `div` n) $
@@ -308,7 +309,7 @@ toGlobArrayN n dist =
                   
   where
     bs = len $ fst $ runPrg 0 $ getBlock dist 0 
-    nb = numBlocks dist
+    -- nb = numBlocks dist
 
     
 ---------------------------------------------------------------------------

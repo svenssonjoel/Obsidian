@@ -5,6 +5,7 @@
 {- Joel Svensson 2012
 
    Notes:
+    2013-01-08: Removed number-of-blocks field from Distribs
     2012-12-10: Drastically shortened. 
 -}
 
@@ -27,20 +28,19 @@ data Final a = Final {cheat :: a} -- cheat should not be exposed.
 ---------------------------------------------------------------------------
 -- An Array distributed over MultiProcessors (same as old Blocks) 
 ---------------------------------------------------------------------------
-data Distrib a = Distrib (Exp Word32)
+data Distrib a = Distrib -- (Exp Word32)
                          (Exp Word32 -> a)
 
-numBlocks :: Distrib a -> Exp Word32
-numBlocks (Distrib n _) = n
+-- numBlocks :: Distrib a -> Exp Word32
+-- numBlocks (Distrib _) = n
 
 getBlock :: Distrib a -> Exp Word32 -> a 
-getBlock (Distrib _ bixf) = bixf
+getBlock (Distrib bixf) = bixf
 
-sizedGlobal bn bs = Distrib bn
-                    (\bix -> (mkPullArray bs undefined))
-namedGlobal name bn bs = Distrib bn 
-                         (\bix -> (mkPullArray bs
-                                   (\ix -> index name (bix * (fromIntegral bs) + ix)))) 
+sizedGlobal bs = Distrib (\bix -> (mkPullArray bs undefined))
+namedGlobal name bs = Distrib  
+                      (\bix -> (mkPullArray bs
+                                (\ix -> index name (bix * (fromIntegral bs) + ix)))) 
 
 
 type DistArray a = Distrib (Pull a) 
@@ -66,13 +66,13 @@ type DistArray a = Distrib (Pull a)
 ---------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
-data GPush a =
-  GPush (Exp Word32)
+data GlobPush a =
+  GlobPush -- (Exp Word32)
         Word32
         ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
          GProgram ())
 
-type GlobArray a = GPush a
+-- type GlobPush a = GPush a
 
 ---------------------------------------------------------------------------
 -- Experiment
@@ -126,6 +126,23 @@ instance Pushable Pull where
     where
       nS = fromIntegral m
       nP = fromIntegral (n `div` m)
+
+---------------------------------------------------------------------------
+-- Global Pushable
+--------------------------------------------------------------------------- 
+
+class PushableGlobal a where
+  pushG :: a e -> GlobPush e 
+  pushGF :: a [e] -> GlobPush e
+
+instance PushableGlobal GlobPull where
+  pushG (GlobPull n ixf) =
+      GlobPush n
+        $ \wf -> ForAllBlocks 
+                 $ \ bix -> ForAll n
+                            $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
+
+  
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------

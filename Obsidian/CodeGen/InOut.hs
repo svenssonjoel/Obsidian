@@ -10,6 +10,7 @@
 
   Notes:
 
+  2013-01-08: Edited
   2012-12-10: Edited
 
 -} 
@@ -60,20 +61,18 @@ instance ToProgram (Exp t) (GProgram b) where {\
            input = variable nom;}}\
 ;\
 instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
-  toProgram i f (Distrib n blkf)  =      \
+  toProgram i f (Distrib blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (f input)) \
      where {nom = "input" ++ show i; \
-            var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \
-            input = namedGlobal  nom (variable var) n;}}  \
+            input = namedGlobal  nom n;}}  \
 ;\
 instance ToProgram (Distrib (Pull (Exp t))) (Final (GProgram a)) where { \
-  toProgram i f (Distrib n blkf)  =      \
+  toProgram i f (Distrib blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
      where  {nom = "input" ++ show i; \
-            var = "N" ++ show i; \
             n   = len (blkf (variable "X")); \
-            input = namedGlobal  nom (variable var) n;}} 
+            input = namedGlobal  nom n;}} 
 
 toprgBase(Int)
 
@@ -103,13 +102,12 @@ instance ToProgram b c => ToProgram (Exp t) (b -> c) where{\
       input = variable nom;}}\
 ;\
 instance ToProgram b c => ToProgram (Distrib (Pull (Exp t))) (b -> c) where{\
-  toProgram i f ((Distrib n blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
+  toProgram i f ((Distrib blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
     where {\
       (ins,prg) = toProgram (i+1) (f input) rest;\
       nom = "input" ++ show i;\
-      var = "N" ++ show i;\
       n   = len (blkf (variable "X"));\
-      input = namedGlobal  nom (variable var) n;}}\
+      input = namedGlobal  nom n;}}\
 
 toprgRec(Int)
 

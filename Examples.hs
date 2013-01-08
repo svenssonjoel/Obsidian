@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables,
              FlexibleContexts #-} 
-             
+
 module Examples where
 
 import qualified Foreign.CUDA.Driver as CUDA
@@ -48,10 +48,10 @@ quickPrint prg input =
 ---------------------------------------------------------------------------
 scalArg :: EInt -> Distrib (Pull EInt) -> Final (GProgram (Distrib (Pull EInt))) -- GlobArray EInt
 --scalArg :: EInt -> Distrib (Pull EInt) -> Distrib (BProgram (Pull EInt))
-scalArg e = forceG . toGlobArray . fmap (force . fmap (+e))
+scalArg e = forceG . toGlobPush. fmap (force . fmap (+e))
 
 getScalArg = quickPrint scalArg ((variable "X") :->
-                                 (sizedGlobal undefined 256))
+                                 (sizedGlobal 256))
 
 ---------------------------------------------------------------------------
 -- MapFusion example
@@ -67,10 +67,10 @@ input1 :: Pull EInt
 input1 = namedArray "apa" 32
 
 input2 :: Distrib (Pull EInt)
-input2 = namedGlobal "apa" 256 32
+input2 = namedGlobal "apa"  32
 
 input3 :: Distrib (Pull (Exp Int32))
-input3 = namedGlobal "apa" 256 32
+input3 = namedGlobal "apa"  32
  
 ---------------------------------------------------------------------------
 -- Small experiments 
@@ -85,7 +85,7 @@ mapFusion' :: Distrib (Pull EInt)
               -> Distrib (BProgram (Pull EInt))
 mapFusion' arr = mapD mapFusion arr
                  
-prg1 = putStrLn$ printPrg$ cheat $ (forceG . toGlobArray . mapFusion') input2
+prg1 = putStrLn$ printPrg$ cheat $ (forceG . toGlobPush . mapFusion') input2
 
 
 ---------------------------------------------------------------------------
@@ -94,29 +94,29 @@ prg1 = putStrLn$ printPrg$ cheat $ (forceG . toGlobArray . mapFusion') input2
 --  a post permutation (very little can be done with a GlobArray) 
 permuteGlobal :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
                  -> Distrib (Pull a)
-                 -> GlobArray a
+                 -> GlobPush a
 permuteGlobal perm distr{-@(Distrib nb bixf)-} = 
-  GPush nb bs $
+  GlobPush bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
-         ForAllBlocks nb $
+         ForAllBlocks $
            \bix -> ForAll bs $
                    \tix ->
                    let (bix',tix') = perm bix tix 
                    in wf ((getBlock distr bix) ! tix) bix' tix'
   where
-    nb = numBlocks distr 
+--    nb = numBlocks distr 
     bs = len (getBlock distr 0) -- bixf 0)
 
 --Complicated. 
 permuteGlobal' :: (Exp Word32 -> Exp Word32 -> (Exp Word32, Exp Word32))
                  -> Distrib (BProgram (Pull a))
-                 -> GlobArray a
-permuteGlobal' perm distr@(Distrib nb bixf) = 
-  GPush nb bs $
+                 -> GlobPush a
+permuteGlobal' perm distr@(Distrib bixf) = 
+  GlobPush bs $
     \wf -> -- (a -> W32 -> W32 -> TProgram)
        do
-         ForAllBlocks nb $
+         ForAllBlocks $
            \bix ->
            do -- BProgram do block
              arr <- bixf bix
@@ -133,8 +133,8 @@ permuteGlobal' perm distr@(Distrib nb bixf) =
 ---------------------------------------------------------------------------
 mapD :: (a -> BProgram b) ->
         (Distrib a -> Distrib (BProgram b))
-mapD f inp@(Distrib nb bixf) =
-  Distrib nb $ \bid -> f (bixf bid)
+mapD f inp@(Distrib bixf) =
+  Distrib $ \bid -> f (bixf bid)
 
 
 
@@ -146,7 +146,7 @@ mapD f inp@(Distrib nb bixf) =
 {-
 test = putStrLn $ getCUDA $
          do
-           kernel <- cudaCapture (forceBT . toGlobArray . mapFusion') input2
+           kernel <- cudaCapture (forceBT . toGlobPush . mapFusion') input2
 
            i1 <- cudaUseVector (V.fromList [0..31 :: Int32]) Int32
            o1 <- cudaAlloca 32 Int32
@@ -162,7 +162,7 @@ test = putStrLn $ getCUDA $
 
 test1 = withCUDA $
          do
-           kernel <- capture (forceG . toGlobArray . mapFusion') input2
+           kernel <- capture (forceG . toGlobPush . mapFusion') input2
 
            useVector (V.fromList [0..31 :: Int32]) $ \ i1 ->
               allocaVector 32 $ \(o1 :: CUDA.DevicePtr Int32) ->
@@ -186,13 +186,13 @@ gatherGlobal :: Distrib (Pull (Exp Word32))
                 -> Exp Word32 -- expected output size number of blocks
                 -> Word32     -- expected output size block-size
                 -> Distrib (Pull a)
-                -> GlobArray a
-gatherGlobal indices@(Distrib nbs inf)
+                -> GlobPush a
+gatherGlobal indices@(Distrib inf)
              nb bs
-             elems@(Distrib ebs enf) =
-  GPush nb bs $
+             elems@(Distrib enf) =
+  GlobPush bs $
    \wf ->
-     ForAllBlocks nb $ \ bid -> 
+     ForAllBlocks $ \ bid -> 
        ForAll bs $ \ tid -> 
          let  inArr = inf bid
               inix  = inArr ! tid
@@ -203,13 +203,13 @@ gatherGlobal indices@(Distrib nbs inf)
          in wf e bid tid
 
 scatterGlobal :: Distrib  (Pull (Exp Word32)) -- where to scatter
-                 ->  Exp Word32 -- output size
+                 -- ->  Exp Word32 -- output size
                  ->  Word32     -- block size
                  -> Distrib (Pull a) -- the elements to scatter
-                 -> GlobArray a 
-scatterGlobal indices nb bs elems = 
-  GPush nb bs $
-    \wf -> ForAllBlocks nb $ \bid ->
+                 -> GlobPush a 
+scatterGlobal indices bs elems = 
+  GlobPush bs $
+    \wf -> ForAllBlocks $ \bid ->
     ForAll bs $ \tid ->
     let  inArr = getBlock indices bid
          inix  = inArr ! tid
@@ -218,20 +218,21 @@ scatterGlobal indices nb bs elems =
          e     = (getBlock elems bid) ! tid 
     in wf e bid' tid' 
         
-distribute :: Exp Word32 -> Word32 -> a -> Distrib (Pull a)
-distribute nb bs e = Distrib nb $ \bid -> replicate bs e           
+distribute :: Word32 -> a -> Distrib (Pull a)
+distribute bs e = Distrib $ \bid -> replicate bs e           
 
 -- DONE: Error. gather is not the operation you want here!
 --   changed to Scatter. (see if concepts are right) 
-histogram :: Word32
+histogram :: -- Exp Word32
+              Word32
              -> Distrib (Pull (Exp Word32))
-             -> GlobArray (Exp Word32)
-histogram bs elems = scatterGlobal elems nb bs (distribute nb bs 1)
-  where nb = numBlocks elems
+             -> GlobPush (Exp Word32)
+histogram bs elems = scatterGlobal elems bs (distribute bs 1)
+  -- where nb = numBlocks elems
 
 reconstruct :: Distrib (Pull (Exp Word32))
                -> Distrib (Pull (Exp Word32))
-               -> GlobArray (Exp Word32)
+               -> GlobPush (Exp Word32)
 reconstruct inp{-@(Distrib nb bixf)-} pos{-@(Distrib _ posf)-} =
   permuteGlobal perm inp 
   where
@@ -278,11 +279,10 @@ sklanskyAllBlocks logbsize arr =
   mapD (sklanskyLocal logbsize (+)) arr
 
 blockReplicate :: Word32 -- blockSize
-                  -> Exp Word32 -- number of blocks 
                    -> Pull (Exp Word32)
                    -> Distrib (Pull (Exp Word32))
-blockReplicate bs nb inp =
-  Distrib nb newPull
+blockReplicate bs inp =
+  Distrib newPull
     where
       mi = fromIntegral bs - 1
       newPull bix = Pull bs $ \ix -> inp ! bix
@@ -290,15 +290,15 @@ blockReplicate bs nb inp =
 {- 
 fuseMaximi :: Distrib (Pull (Exp Word32))
               -> Distrib (Pull (Exp Word32))
-              -> GlobArray (Exp Word32) -- Distrib (BProgram (Pull (Exp Word32)))
+              -> GlobPush (Exp Word32) -- Distrib (BProgram (Pull (Exp Word32)))
 -- make this prettier
-fuseMaximi a b = toGlobArray $ 
+fuseMaximi a b = toGlobPush $ 
   Distrib (numBlocks b) $
   \bix -> force (zipWith (+) (getBlock a bix)
                              (getBlock b bix))
 
 -- gets a sync that it does not (really) need. 
-maxDist :: Distrib (Pull (Exp Word32)) -> GlobArray (Exp Word32)
+maxDist :: Distrib (Pull (Exp Word32)) -> GlobPush (Exp Word32)
 maxDist inp = toGlobArray $ fmap force (replBlockMaximi inp)
    -}           
 
@@ -310,7 +310,7 @@ maxDist inp = toGlobArray $ fmap force (replBlockMaximi inp)
 test2 = withCUDA $
          do
            hist   <- capture (forceG . (histogram 255))
-                             (sizedGlobal (variable "N") 256 :: DistArray (Exp Word32))
+                             (sizedGlobal  256 :: DistArray (Exp Word32))
            --kernel <- capture (forceG . toGlobArray . mapFusion') input2
 
            useVector (V.fromList (P.replicate 256 (7::Word32)) {-[0..255 :: Int32]-} ) $ \ i1 ->
@@ -329,16 +329,16 @@ test2 = withCUDA $
 -- Print Kernels
 ---------------------------------------------------------------------------
 
-getHist = quickPrint (forceG .  histogram 256) (sizedGlobal undefined 256)
+getHist = quickPrint (forceG .  histogram 256) (sizedGlobal 256)
 
 getRecon = quickPrint reconstruct'  
-             ((sizedGlobal undefined 256 :: DistArray (Exp Word32)) :-> 
-              (sizedGlobal undefined 256 :: DistArray (Exp Word32)))
+             ((sizedGlobal 256 :: DistArray (Exp Word32)) :-> 
+              (sizedGlobal 256 :: DistArray (Exp Word32)))
            where
              reconstruct' i1 i2 = forceG (reconstruct i1 i2)
 
-getSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 8)
-                         (sizedGlobal undefined 256)
+getSklansky = quickPrint (forceG . toGlobPush . sklanskyAllBlocks 8)
+                         (sizedGlobal 256)
 
 
 
@@ -354,12 +354,12 @@ getSklansky = quickPrint (forceG . toGlobArray . sklanskyAllBlocks 8)
 
 mapG :: (Pull a -> BProgram (Pull b))
         -> GlobPull a
-        -> GlobArray b
+        -> GlobPush b
 mapG f (GlobPull n ixf)  =
-  GPush (variable "X") -- just make it up (for now)
+  GlobPush 
         n
         $ \wf ->
-          ForAllBlocks (variable "X")  -- making up number of blocks.
+          ForAllBlocks 
            $ \bix ->
              do -- BProgram do block 
                let pully = Pull n (\ix -> ixf (bix * (fromIntegral n) + ix))
@@ -370,7 +370,7 @@ mapG' :: (Pull a -> BProgram (Pull b))
          -> GlobPull a
          -> Distrib (BProgram (Pull b))
 mapG' f (GlobPull n ixf) =
-  Distrib (variable "X") -- Making the number of blocks up (for now)
+  Distrib 
           $ \bix ->
             let pully = Pull n (\ix -> ixf (bix * (fromIntegral n) + ix))
             in  f pully
@@ -385,11 +385,10 @@ reverseG :: Exp Word32 -> GlobPull a -> GlobPull a
 reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - ix - 1))
 
 
-toGlobArrayGP :: GlobPull a -> GlobArray a
+toGlobArrayGP :: GlobPull a -> GlobPush a
 toGlobArrayGP (GlobPull n ixf) = -- Should be GPull for symmetry 
-  GPush (variable "X") -- make this up for now
-        n
-        $ \wf -> ForAllBlocks (variable "X")
+  GlobPush n
+        $ \wf -> ForAllBlocks
                  $ \ bix ->  ForAll n $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
 
 

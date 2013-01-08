@@ -1,7 +1,14 @@
-{- Joel Svensson 2012 -}
+{- Joel Svensson 2012
+
+   Notes:
+   2013-01-08: removed number-of-blocks field from ForAllBlocks
+
+-}
 
 {-# LANGUAGE GADTs,
              FlexibleInstances #-} 
+
+
 module Obsidian.Program  where 
  
 import Data.Word
@@ -56,8 +63,8 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32)
-                  -> (Exp Word32 -> Program Block ()) 
+  ForAllBlocks :: -- (Exp Word32)
+                  (Exp Word32 -> Program Block ()) 
                   -> Program Grid () 
 
   
@@ -135,10 +142,10 @@ printPrg' i (ForAll n f) =
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
-printPrg' i (ForAllBlocks n f) =
+printPrg' i (ForAllBlocks f) =
   let (d,prg2,i') = printPrg' i (f (variable "BIX"))
   in ((), 
-      "blocks (i in 0.." ++ show n ++ ")" ++
+      "blocks (i)" ++
       "{\n" ++ prg2 ++ "\n}",
       i')
 printPrg' i (Return a) = (a,"MonadReturn;\n",i)

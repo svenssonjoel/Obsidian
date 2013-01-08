@@ -35,7 +35,7 @@ data Program extra
        AtomicOp Name Name (Exp Word32) (Atomic a)
      | ForAll Word32 (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
-     | ForAllBlocks (Exp Word32) (Exp Word32 -> Program extra)
+     | ForAllBlocks {-(Exp Word32)-} (Exp Word32 -> Program extra)
      | Allocate Name Word32 Type extra
        -- Not Present in old Program datatype 
      | Output Name Type 
@@ -63,9 +63,9 @@ runPrg' i (P.AtomicOp name ix at) =
 runPrg' i (P.ForAll n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in  ((),ForAll n newf)
-runPrg' i (P.ForAllBlocks n f) =
+runPrg' i (P.ForAllBlocks f) =
   let newf = (\x -> snd (runPrg' i (f x)))
-  in ((),ForAllBlocks n newf)
+  in ((),ForAllBlocks newf)
 runPrg' i (P.Bind p f) =
   let (s1,s2) = split2 i
       (a,prg1) = runPrg' s1 p
@@ -95,8 +95,8 @@ printPrg (AtomicOp res arr ix op) =
 printPrg (ForAll n f) =
   "forAll i in [0.."++show n ++"] do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
-printPrg (ForAllBlocks n f) =
-  "Blocks i in [0.."++show n ++"] do\n" ++
+printPrg (ForAllBlocks f) =
+  "Blocks i do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
 printPrg (Allocate nom n t e) =
   nom ++ " = malloc(" ++ show n ++ ");\n" ++
@@ -114,7 +114,7 @@ printPrg (ProgramSeq p1 p2) =
 
 threadsPerBlock :: Program e -> Word32
 threadsPerBlock (ForAll n f) = n
-threadsPerBlock (ForAllBlocks n f) = threadsPerBlock (f (variable "X"))
+threadsPerBlock (ForAllBlocks f) = threadsPerBlock (f (variable "X"))
 threadsPerBlock (p1 `ProgramSeq` p2) =
   max (threadsPerBlock p1)
       (threadsPerBlock p2)
@@ -125,7 +125,7 @@ collectOutputs (Output nom t) = [(nom,t)]
 collectOutputs (p1 `ProgramSeq` p2) = collectOutputs p1 ++
                                       collectOutputs p2
 collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
-collectOutputs (ForAllBlocks n f) = collectOutputs (f (variable "X"))
+collectOutputs (ForAllBlocks f) = collectOutputs (f (variable "X"))
 collectOutputs a = []
 
 ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ extract prg = case extract' prg of
   Nothing -> error "extract: unsupported program structure"
   
   where
-    extract' (ForAllBlocks n f) = Just (f (BlockIdx X))
+    extract' (ForAllBlocks f) = Just (f (BlockIdx X))
     extract' (p1 `ProgramSeq` p2) =
       case (extract' p1, extract' p2) of
         (Nothing, Nothing) -> Nothing
