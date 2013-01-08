@@ -2,7 +2,8 @@
              TypeFamilies,           
              FlexibleContexts,
              FlexibleInstances, 
-             UndecidableInstances #-} 
+             UndecidableInstances,
+             RankNTypes #-} 
 
 {- Joel Svensson 2012 -} 
 
@@ -55,7 +56,7 @@ type EBool   = Exp Bool
 ---------------------------------------------------------------------------
 -- Class Scalar. All the things we can handle code generation for 
 
-class (ExpToCExp a, Show a) => Scalar a where 
+class (Eq a, ExpToCExp a, Show a) => Scalar a where 
   sizeOf :: Exp a -> Int   --  
   typeOf :: Exp a -> Type  --   Good enough for me ... 
 
@@ -92,7 +93,7 @@ instance Scalar Float where
 
   
 instance Scalar Double where 
-  sizeOf _ = Storable.sizeOf (undefined :: Double) 
+  sizeOf _ = 8 -- Storable.sizeOf (undefined :: Double) 
   typeOf _ = Double
 
 instance Scalar Word where
@@ -199,9 +200,11 @@ data Op a where
   BitwiseAnd :: Bits a => Op ((a,a) -> a) 
   BitwiseOr  :: Bits a => Op ((a,a) -> a)
   BitwiseXor :: Bits a => Op ((a,a) -> a) 
-  BitwiseNeg :: Bits a => Op (a -> a) 
-  ShiftL     :: Bits a => Op ((a, Int) -> a) 
-  ShiftR     :: Bits a => Op ((a, Int) -> a) 
+  BitwiseNeg :: Bits a => Op (a -> a)
+
+  -- I DO NOT EVEN KNOW WHAT THIS MEANS: work around it! 
+  ShiftL     :: forall a b. (Num b, Bits a) => Op ((a, b) -> a)  
+  ShiftR     :: forall a b .(Num b, Bits a) => Op ((a, b) -> a)  
   
   -- built-ins
   Min        :: Ord a => Op ((a,a) -> a) 
@@ -270,9 +273,12 @@ collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++
 instance Scalar a => Show (Exp a) where 
   show = printExp 
 
-instance Scalar a => Eq (Exp a) where 
-  (==) = undefined 
+-- Look this over. Do I really need a types expression data type ?
+--  (No real need for a Exp GADT I think. Go back to keeping it simple!) 
+instance (Eq a, Scalar a) => Eq (Exp a) where
+  (==) a b = error $ "equality test between exps: " ++ show a ++ " " ++ show b -- expToCExp a == expToCExp b 
 
+  
 instance (Scalar a, Ord a) => Ord (Exp a) where 
     min a b = BinOp Min a b
     max a b = BinOp Max a b
@@ -297,8 +303,8 @@ instance Num (Exp Int) where
   (*) (Literal 1) a = a
   (*) a b = BinOp Mul a b 
   
-  signum = undefined 
-  abs = undefined
+  signum = error "signum: not implemented for Exp Int" 
+  abs = error "abs: not implemented for Exp Int" 
   fromInteger a = Literal (fromInteger a) 
   
 -- Added new cases for literal 0 (2012/09/25)
@@ -323,17 +329,17 @@ instance Bits (Exp Int) where
 
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int) where
-  toRational = undefined 
+  toRational = error "toRational: not implemented for Exp Int)"  
 
 instance Enum (Exp Int) where
-  toEnum = undefined
-  fromEnum = undefined 
+  toEnum = error "toEnum: not implemented for Exp Int" 
+  fromEnum = error "fromEnum: not implemented for Exp Int"
          
 instance Integral (Exp Int) where
   mod a b = BinOp Mod a b 
   div a b = BinOp Div a b
-  quotRem = undefined
-  toInteger = undefined
+  quotRem = error "quotRem: not implemented for Exp Int" 
+  toInteger = error "toInteger: not implemented for Exp Int" 
 
 ---------------------------------------------------------------------------
 -- Int32
@@ -355,8 +361,8 @@ instance Num (Exp Int32) where
   (*) (Literal 1) a = a
   (*) a b = BinOp Mul a b 
   
-  signum = undefined 
-  abs = undefined
+  signum = error "signum: not implemented for Exp Int32"
+  abs = error "abs: not implemented for Exp Int32" 
   fromInteger a = Literal (fromInteger a) 
   
 -- Added new cases for literal 0 (2012/09/25)
@@ -376,22 +382,22 @@ instance Bits (Exp Int32) where
   complement a = UnOp BitwiseNeg a
   shiftL a i = BinOp ShiftL  a (Literal i)
   shiftR a i = BinOp ShiftR  a (Literal i)
-  bitSize a  = sizeOf a * 8
+  bitSize a  = 32 -- sizeeOf a * 8
   isSigned a = True
 
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int32) where
-  toRational = undefined 
+  toRational = error "toRational: not implemented for Exp Int32"
 
 instance Enum (Exp Int32) where
-  toEnum = undefined
-  fromEnum = undefined 
+  toEnum = error "toEnum: not implemented for Exp Int32" 
+  fromEnum = error "fromEnum: not implemented for Exp Int32" 
          
 instance Integral (Exp Int32) where
   mod a b = BinOp Mod a b 
   div a b = BinOp Div a b
-  quotRem = undefined
-  toInteger = undefined
+  quotRem = error "quotRem: not implemented for Exp Int32" 
+  toInteger = error "toInteger: not implemented for Exp Int32" 
 
 
 ---------------------------------------------------------------------------
@@ -416,10 +422,20 @@ instance Num (Exp Word32) where
   (*) (Literal 1) a = a
   (*) a b = BinOp Mul a b 
   
-  signum = undefined 
-  abs = undefined
+  signum = error "signum: not implemented for Exp Word32"
+  abs = error "abs: not implemented for Exp Word32" 
   fromInteger a = Literal (fromInteger a) 
   
+
+-- adding special shift operators for when both inputs are 
+-- runtime values (2013-01-08) 
+(<<*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
+(<<*) a b = BinOp ShiftL a b 
+
+(>>*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
+(>>*) a b = BinOp ShiftR a b 
+
+
  -- Added new cases for literal 0 (2012/09/25)
 instance Bits (Exp Word32) where 
   (.&.) x (Literal 0) = Literal 0
@@ -442,18 +458,18 @@ instance Bits (Exp Word32) where
   isSigned a = False
 
 instance Real (Exp Word32) where 
-  toRational = undefined
+  toRational = error "toRational: not implemented for Exp Word32" 
   
 
 instance Enum (Exp Word32) where
-  toEnum = undefined
-  fromEnum = undefined
+  toEnum = error "toEnum: not implemented for Exp Word32" 
+  fromEnum = error "fromEnum: not implemented for Exp Word32" 
 
 instance Integral (Exp Word32) where
   mod a b = BinOp Mod a b 
   div a b = BinOp Div a b
-  quotRem = undefined
-  toInteger = undefined
+  quotRem = error "quotRem: not implemented for Exp Word32" 
+  toInteger = error "toInteger: not implemented for Exp Word32"
   
 instance Num (Exp Float) where
   (+) a (Literal 0) = a

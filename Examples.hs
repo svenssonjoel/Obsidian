@@ -263,7 +263,22 @@ sklanskyLocal n op arr =
     let arr1 = twoK (n-1) (fan op) arr
     arr2 <- force arr1
     sklanskyLocal (n-1) op arr2
-                     
+
+
+sklansky
+  :: (Num (Exp a), Scalar a) =>
+     Int
+     -> (Exp a -> Exp a -> Exp a)
+     -> Pull (Exp a)
+     -> BProgram (Pull (Exp a))
+sklansky 0 op arr = return (shiftRight 1 0 arr)
+sklansky n op arr =
+  do 
+    let arr1 = twoK (n-1) (fan op) arr
+    arr2 <- force arr1
+    sklanskyLocal (n-1) op arr2
+
+
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
@@ -448,3 +463,25 @@ getSklansky' = quickPrint (forceG . sklanskyAllBlocks' 8 . changeIn . silly)
    Cons: Not sure. Maybe less flexible ?
 -} 
 
+--blockMaximi :: Word32 -> GlobPush a -> GlobPush a
+--blockMaximi m (GlobPush n pushf) =
+--  GlobPush n
+--  $ \wf -> Cond (
+   
+ 
+-- ilv2G :: Word32 -> (Exp Int -> Exp Int -> Exp Int) -> (Exp Int -> Exp Int -> Exp Int) -> Exp Word32 -> GlobPull (Exp Int) -> Final (GProgram (Distrib (Pull (Exp Int))))
+
+ilv2G bs f g s (GlobPull n gixf) =
+  forceG $ GlobPush bs
+  $ \wf -> ForAllBlocks
+           $ \bix ->
+           ForAll bs $ \ix -> let l = gixf (getixLeft bix ix)
+                                  r = gixf (getixRight bix ix)
+                                  l1 = f l r
+                                  r1 = g l r
+                              in wf l1 bix ix >> wf r1 bix ix
+ where
+   -- (GlobPull n gixf) = changeIn . silly $ arr
+   getixLeft bix tix = iZero s ((bix * (fromIntegral bs)) + tix)
+   getixRight bix tix = fBit s $ getixLeft bix tix
+   nb = (fromIntegral n) `div` bs

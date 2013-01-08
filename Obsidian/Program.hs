@@ -46,6 +46,13 @@ data Program t a where
               -> Exp Word32
               -> Atomic a
               -> Program Thread (Exp a)
+
+  -- TODO: Code generation for this.
+  -- May want this at all levels. (Grid, Block, Thread)
+  Cond :: Exp Bool
+          -> Program Thread ()
+          -> Program Thread ()
+  
   -- TODO: Code generation for this.            
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
