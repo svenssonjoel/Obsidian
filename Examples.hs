@@ -409,6 +409,12 @@ changeIn (GlobPull2 n bixixf) =
       ix  = gix `mod` (fromIntegral n)
   in bixixf bix ix
 
+-- Remove this after removing all occurances of Distrib 
+silly :: Distrib (Pull a) -> GlobPull2 a
+silly (Distrib bixf) = GlobPull2 n $ \bix ix -> (bixf bix) ! ix
+  where
+    n = len (bixf 0) 
+
 
 ---------------------------------------------------------------------------
 -- Global computations may care about number of blocks!
@@ -423,10 +429,5 @@ reverseG :: Exp Word32 -> GlobPull a -> GlobPull a
 reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - ix - 1))
 
 
-toGlobArrayGP :: GlobPull a -> GlobPush a
-toGlobArrayGP (GlobPull n ixf) = -- Should be GPull for symmetry 
-  GlobPush n
-        $ \wf -> ForAllBlocks
-                 $ \ bix ->  ForAll n $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
 
 
