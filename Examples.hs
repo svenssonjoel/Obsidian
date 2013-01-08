@@ -345,13 +345,20 @@ getSklansky = quickPrint (forceG . toGlobPush . sklanskyAllBlocks 8)
 
 ---------------------------------------------------------------------------
 --
+-- Experimenting with GlobPull and GlobPull2.
+--  These represent two different "views" on a global array. 
+--  GlobPull pulls from a Global array using a global thread id
+--   (bix * bs + ix usually).
+--  GlobPull2 pulls from a Global array using a block id and a thread id.
+--
+--  Maybe GlobPull2 can replace Distrib.
+--
+--  Hopefully GlobPull provides a cleaner way to implement simple global
+--  permutation.
+--
+--  I have a feeling there is a generalisation of these. Let's see
+--  if it surfaces. 
 ---------------------------------------------------------------------------
-
---mapD :: (a -> BProgram b) ->
---        (Distrib a -> Distrib (BProgram b))
---mapD f inp@(Distrib nb bixf) =
---  Distrib nb $ \bid -> f (bixf bid)
-
 mapG :: (Pull a -> BProgram (Pull b))
         -> GlobPull a
         -> GlobPush b
@@ -366,6 +373,18 @@ mapG f (GlobPull n ixf)  =
                res <- f pully
                ForAll n $ \ix -> wf (res ! ix) bix ix
 
+mapG2 :: (Pull a -> BProgram (Pull b))
+         -> GlobPull2 a
+         -> GlobPush b
+mapG2 f (GlobPull2 n bixixf) =
+  GlobPush n
+  $ \wf -> ForAllBlocks
+           $ \bix ->
+           do -- BProgram do block
+             let pully = Pull n (\ix -> bixixf bix ix)
+             res <- f pully
+             ForAll n $ \ix -> wf (res ! ix) bix ix 
+
 mapG' :: (Pull a -> BProgram (Pull b))
          -> GlobPull a
          -> Distrib (BProgram (Pull b))
@@ -375,6 +394,25 @@ mapG' f (GlobPull n ixf) =
             let pully = Pull n (\ix -> ixf (bix * (fromIntegral n) + ix))
             in  f pully
 
+
+---------------------------------------------------------------------------
+-- Is it possible to change view?
+---------------------------------------------------------------------------
+changeOut :: GlobPull a -> GlobPull2 a
+changeOut (GlobPull n ixf) =
+  GlobPull2 n $ \bix ix -> ixf (bix * (fromIntegral n) + ix)
+
+changeIn :: GlobPull2 a -> GlobPull a
+changeIn (GlobPull2 n bixixf) =
+  GlobPull n $ \ gix ->
+  let bix = gix `div` (fromIntegral n)
+      ix  = gix `mod` (fromIntegral n)
+  in bixixf bix ix
+
+
+---------------------------------------------------------------------------
+-- Global computations may care about number of blocks!
+---------------------------------------------------------------------------
 
 -- The number of blocks is rarely used.
 -- But here in reverseG the nblocks is needed. Maybe such

@@ -77,8 +77,10 @@ data GlobPush a =
 ---------------------------------------------------------------------------
 -- Experiment
 ---------------------------------------------------------------------------
-data GlobPull a = GlobPull Word32 (Exp Word32 -> a) 
+data GlobPull a = GlobPull Word32 (Exp Word32 -> a)
 
+-- replaces Distrib ? 
+data GlobPull2 a = GlobPull2 Word32 (Exp Word32 -> Exp Word32 -> a) 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
@@ -141,6 +143,15 @@ instance PushableGlobal GlobPull where
         $ \wf -> ForAllBlocks 
                  $ \ bix -> ForAll n
                             $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
+  pushGF (GlobPull n ixf) = undefined
+
+instance PushableGlobal GlobPull2 where
+  pushG (GlobPull2 n ixf) =
+      GlobPush n
+        $ \wf -> ForAllBlocks 
+                 $ \ bix -> ForAll n
+                            $ \ ix -> wf (ixf bix ix) bix ix
+  pushGF (GlobPull2 n bixixf) = undefined 
 
   
 ---------------------------------------------------------------------------
