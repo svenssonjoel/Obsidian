@@ -430,4 +430,21 @@ reverseG bs (GlobPull n ixf) =  GlobPull n (\ix -> ixf (bs * (fromIntegral n) - 
 
 
 
+---------------------------------------------------------------------------
+-- Testing new kinds of Arrays 
+---------------------------------------------------------------------------
+sklanskyAllBlocks' :: Int
+                     -> GlobPull (Exp Word32)
+                     -> GlobPush (Exp Word32)
+sklanskyAllBlocks' logbsize arr =
+  mapG (sklanskyLocal logbsize (+)) arr
+
+-- (changeIn . silly) is just there until a proper InOut instance is
+-- created for GlobPull arrays.
+getSklansky' = quickPrint (forceG . sklanskyAllBlocks' 8 . changeIn . silly)
+                          (sizedGlobal 256)
+{-
+   Pros: Compared to the Distrib version, lots simpler types (cleaner).
+   Cons: Not sure. Maybe less flexible ?
+-} 
 
