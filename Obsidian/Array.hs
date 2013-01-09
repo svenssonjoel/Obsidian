@@ -63,8 +63,7 @@ type DistArray a = Distrib (Pull a)
 -- Global result array. 
 ---------------------------------------------------------------------------
 data GlobPush a =
-  GlobPush -- (Exp Word32)
-        Word32
+  GlobPush Word32
         ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
          GProgram ())
 
