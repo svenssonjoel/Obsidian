@@ -28,6 +28,7 @@ import Prelude hiding (zipWith,sum,replicate)
 import qualified Prelude as P 
 
 {-
+   -- TODO: Cond finns i Program. Fixa codegen.
    -- TODO: SeqFor finns i Program. Fixa codegen.
    -- Force: bry inte om generalisera nu (eller ngnsin). 
    -- Countingsort: generera kod, se att funkar.
@@ -467,21 +468,3 @@ getSklansky' = quickPrint (forceG . sklanskyAllBlocks' 8 . changeIn . silly)
 --blockMaximi m (GlobPush n pushf) =
 --  GlobPush n
 --  $ \wf -> Cond (
-   
- 
--- ilv2G :: Word32 -> (Exp Int -> Exp Int -> Exp Int) -> (Exp Int -> Exp Int -> Exp Int) -> Exp Word32 -> GlobPull (Exp Int) -> Final (GProgram (Distrib (Pull (Exp Int))))
-
-ilv2G bs f g s (GlobPull n gixf) =
-  forceG $ GlobPush bs
-  $ \wf -> ForAllBlocks
-           $ \bix ->
-           ForAll bs $ \ix -> let l = gixf (getixLeft bix ix)
-                                  r = gixf (getixRight bix ix)
-                                  l1 = f l r
-                                  r1 = g l r
-                              in wf l1 bix ix >> wf r1 bix ix
- where
-   -- (GlobPull n gixf) = changeIn . silly $ arr
-   getixLeft bix tix = iZero s ((bix * (fromIntegral bs)) + tix)
-   getixRight bix tix = fBit s $ getixLeft bix tix
-   nb = (fromIntegral n) `div` bs

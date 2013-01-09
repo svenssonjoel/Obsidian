@@ -28,11 +28,7 @@ data Final a = Final {cheat :: a} -- cheat should not be exposed.
 ---------------------------------------------------------------------------
 -- An Array distributed over MultiProcessors (same as old Blocks) 
 ---------------------------------------------------------------------------
-data Distrib a = Distrib -- (Exp Word32)
-                         (Exp Word32 -> a)
-
--- numBlocks :: Distrib a -> Exp Word32
--- numBlocks (Distrib _) = n
+data Distrib a = Distrib (Exp Word32 -> a)
 
 getBlock :: Distrib a -> Exp Word32 -> a 
 getBlock (Distrib bixf) = bixf
@@ -72,7 +68,22 @@ data GlobPush a =
         ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
          GProgram ())
 
--- type GlobPush a = GPush a
+data GlobPush' a =
+  GlobPush' Word32
+            (( a -> Exp Word32 -> TProgram ()) -> GProgram ())
+
+
+conv1 :: GlobPush a -> GlobPush' a
+conv1 (GlobPush n pushf) = GlobPush' n pushf'
+  where
+    pushf' wf = pushf $ \a bix tix -> wf a (bix * fromIntegral n + tix)
+
+conv2 :: GlobPush' a -> GlobPush a
+conv2 (GlobPush' n pushf) = GlobPush n pushf'
+  where
+    pushf' wf = pushf $ \a gix -> wf a (gix `div` fromIntegral n)
+                                       (gix `mod` fromIntegral n) 
+
 
 ---------------------------------------------------------------------------
 -- Experiment
