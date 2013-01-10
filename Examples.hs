@@ -464,7 +464,45 @@ getSklansky' = quickPrint (forceG . sklanskyAllBlocks' 8 . changeIn . silly)
    Cons: Not sure. Maybe less flexible ?
 -} 
 
---blockMaximi :: Word32 -> GlobPush a -> GlobPush a
---blockMaximi m (GlobPush n pushf) =
---  GlobPush n
---  $ \wf -> Cond (
+---------------------------------------------------------------------------
+-- Push Experiments
+---------------------------------------------------------------------------
+
+pushBy :: [Exp Word32 -> Exp Word32] -> Pull a -> Push a
+pushBy ixtrans (Pull n ixf) =
+  Push n 
+  $ \wf ->  ForAll (n `div` fromIntegral m)
+            $ \ix -> sequence_ [wf (ixf i) ((ixtrans !! j) i)
+                               | j <- [0..m-1]
+                               , let i = ix * fromIntegral m +
+                                              fromIntegral j]
+                     
+  where
+    m = length ixtrans
+
+pushByP :: (Exp Word32 -> Exp Word32,
+            Exp Word32 -> Exp Word32)
+           -> Pull (a,a)
+           -> Push a
+pushByP (t1,t2) (Pull n ixf) =
+  Push (n*2)
+  $ \wf -> ForAll n
+           $ \ix -> sequence_ [wf (fst (ixf ix)) (t1 ix),
+                               wf (snd (ixf ix)) (t2 ix)] 
+                               
+
+---------------------------------------------------------------------------
+-- pushBy test
+---------------------------------------------------------------------------
+
+testBy :: Pull (Exp Int32) -> Push (Exp Int32)
+testBy = pushBy [(`div` 2),\x -> x `div` 2 + 1 ]
+
+
+  
+testAB :: GlobPull (Exp Int32)
+          -> GlobPush (Exp Int32)
+testAB = mapG (force . testBy)
+
+getTestAB = quickPrint (forceG . testAB . changeIn . silly)
+                          (sizedGlobal 256)
