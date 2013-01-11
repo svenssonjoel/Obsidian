@@ -580,3 +580,51 @@ mapPermSeq f inp outp pull@(Pull bs ixf) =
     outN = length (outp (variable "X"))
    
 
+---------------------------------------------------------------------------
+-- And Again for Global arrays.
+--
+-- There should be a way to unify these. 
+---------------------------------------------------------------------------
+mapPermSeqG :: ([a] -> [b])
+               -> (Exp Word32 -> [Exp Word32])
+               -> (Exp Word32 -> [Exp Word32])  -> GlobPull a -> GlobPush' b
+mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
+
+  GlobPush' (bn * fromIntegral outN)
+  $ \wf -> ForAllBlocks
+           $ \bix -> ForAll bn
+                     $ \tix ->
+                     let p = gatherSeq pull
+                         dat = f (p ! (bix * fromIntegral bn + tix))  
+                     in sequence_ [wf (dat !! i) ((outp (bix * fromIntegral bn + tix)) !! i)
+                                  | i <- [0..outN-1]]
+  where 
+    bn = bs `div` fromIntegral inN 
+    gatherSeq (GlobPull n ixf) =
+      GlobPull (n `div` fromIntegral inN)
+      $ \ix -> [ixf i | i <- inp ix]
+               
+    inN = length (inp (variable "X")) 
+    outN = length (outp (variable "X"))
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
+test3 :: GlobPull (Exp Int32) -> GlobPush' (Exp Int32)
+test3 = mapPermSeqG (\[a,b] -> [min a b, max a b])
+                    (\ix -> [ix, ix + 1024])
+                    (\ix -> [ix, ix + 1024])
+
+
+
+  
+--test2' :: GlobPull (Exp Int32)
+--         -> GlobPush (Exp Int32)
+--test2' = mapG (force . testBy)
+
+getTest3 = quickPrint (forceG . conv2 . test3 . changeIn . silly)
+                       (sizedGlobal 256)
+
+
+-- TODO: Probably lots of bugs right now

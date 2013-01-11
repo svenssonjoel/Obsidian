@@ -176,6 +176,9 @@ class Indexible a e where
 instance Indexible Pull a where
   access p ix = pullFun p ix
 
+instance Indexible GlobPull a where
+  access (GlobPull _ ixf)  ix = ixf ix 
+
 instance Indexible Distrib a where
   access p ix = getBlock p ix 
 
@@ -185,10 +188,18 @@ class Len a where
   len :: a e -> Word32
 
 instance Len Pull where 
-  len (Pull n _) = n 
+  len (Pull n _) = n
 
 instance Len Push where
-  len (Push n _) = n 
+  len (Push n _) = n
+
+instance Len GlobPull where
+  len (GlobPull n _) = n
+
+instance Len GlobPull2 where
+  len (GlobPull2 n _) = n
+
+
 
 infixl 9 ! 
 (!) :: Indexible a e => a e -> Exp Word32 -> e 
