@@ -539,6 +539,12 @@ mapSeq f (Pull bs ixf) =
    #4 mapSeq f over the array
 
    #5 permute resulting push array in whatever way you want.
+
+   --
+
+   mapSeq could have been given the type ([a] -> [b]) -> Pull [a] -> Pull [b]
+   
+      
 -} 
     
 chunk :: Int -> Pull a -> Pull [a]
