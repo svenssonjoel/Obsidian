@@ -488,8 +488,8 @@ pushByP (t1,t2) (Pull n ixf) =
   Push (n*2)
   $ \wf -> ForAll n
            $ \ix -> sequence_ [wf (fst (ixf ix)) (t1 ix),
-                               wf (snd (ixf ix)) (t2 ix)] 
-                               
+                               wf (snd (ixf ix)) (t2 ix)]
+
 
 ---------------------------------------------------------------------------
 -- pushBy test
@@ -506,3 +506,47 @@ testAB = mapG (force . testBy)
 
 getTestAB = quickPrint (forceG . testAB . changeIn . silly)
                           (sizedGlobal 256)
+
+
+
+---------------------------------------------------------------------------
+-- Apply an n-input m-output sequential computation across in parallel
+-- across an array
+---------------------------------------------------------------------------
+
+mapSeq :: ([a] -> [b]) -> Pull [a] -> Push b
+mapSeq f (Pull bs ixf) =
+  Push (bs * fromIntegral n)
+  $ \wf -> ForAll bs
+           $ \ ix ->
+           let dat = f (ixf ix) 
+               m   = length dat
+           in sequence_ [wf (dat !! i) (ix * fromIntegral m + fromIntegral i)
+                        | i <- [0..m-1]]
+  where
+    n = length (ixf 0) -- in an array of lists all list have same length.
+
+{- Intended use of mapSeq:
+
+   #1 create a n-input m-output function
+
+   ex:  f [a,b] = [min a b, max a b]
+
+   #2 permute input pull array in whatever way you want
+
+   #3 split input pull array up into an array of lists
+
+   #4 mapSeq f over the array
+
+   #5 permute resulting push array in whatever way you want.
+-} 
+    
+chunk :: Int -> Pull a -> Pull [a]
+chunk cs (Pull n ixf) =
+  Pull (n `div` fromIntegral cs)
+  $ \ix -> [ixf (ix * fromIntegral cs + fromIntegral i)
+           | i <- [0..cs-1]]
+
+---------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------- 
