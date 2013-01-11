@@ -543,7 +543,6 @@ mapSeq f (Pull bs ixf) =
    --
 
    mapSeq could have been given the type ([a] -> [b]) -> Pull [a] -> Pull [b]
-   
       
 -} 
     
@@ -554,5 +553,30 @@ chunk cs (Pull n ixf) =
            | i <- [0..cs-1]]
 
 ---------------------------------------------------------------------------
---
---------------------------------------------------------------------------- 
+-- Maybe what Mary needs. (Here in the simpler local array version) 
+---------------------------------------------------------------------------
+mapPermSeq :: ([a] -> [b])
+              -> (Exp Word32 -> [Exp Word32])
+              -> (Exp Word32 -> [Exp Word32]) -> Pull a -> Push b
+mapPermSeq f inp outp pull@(Pull bs ixf) =
+  
+  Push (bn * fromIntegral outN)
+  $ \wf -> ForAll bn
+           $ \ix ->
+           let p   = gatherSeq pull
+               dat = f (p ! ix)  -- apply sequential computation
+           in  sequence_ [wf (dat !! i) ((outp ix) !! i)
+                         | i <- [0..outN-1]]
+           
+  where
+    -- create a Pull [a] with help of the inP
+
+    bn = bs `div` fromIntegral inN 
+    gatherSeq (Pull n ixf) =
+      Pull (n `div` fromIntegral inN)
+      $ \ix -> [ixf i | i <- inp ix]
+               
+    inN = length (inp (variable "X")) 
+    outN = length (outp (variable "X"))
+   
+
