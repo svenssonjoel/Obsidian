@@ -33,6 +33,8 @@ data Program extra
        Assign Name (Exp Word32) (Exp a) 
      | forall a. Scalar a =>
        AtomicOp Name Name (Exp Word32) (Atomic a)
+
+     | SeqFor (Exp Word32) (Exp Word32 -> Program extra) 
      | ForAll Word32 (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
      | ForAllBlocks {-(Exp Word32)-} (Exp Word32 -> Program extra)
@@ -59,7 +61,10 @@ runPrg' :: Supply Int -> P.Program t a -> (a,Program ())
 runPrg' i (P.Assign name ix e) = ((),Assign name ix e)
 runPrg' i (P.AtomicOp name ix at) =
   let nom = "a" ++ show (supplyValue i)
-  in  (variable nom,AtomicOp nom name ix at) 
+  in  (variable nom,AtomicOp nom name ix at)
+runPrg' i (P.SeqFor n f) =
+  let newf = (\x -> snd (runPrg' i (f x)))
+  in ((),SeqFor n newf) 
 runPrg' i (P.ForAll n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in  ((),ForAll n newf)
@@ -92,6 +97,9 @@ printPrg (Assign name ix e) =
 printPrg (AtomicOp res arr ix op) =
   res ++ " = " ++
   printAtomic op ++ "(" ++ arr ++ "[" ++ printExp ix ++ "]);\n"
+printPrg (SeqFor n f) =
+  "seqFor i in [0.."++show n++"] do\n" ++
+  printPrg (f (variable "i")) ++ "\ndone;\n"
 printPrg (ForAll n f) =
   "forAll i in [0.."++show n ++"] do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
@@ -113,6 +121,7 @@ printPrg (ProgramSeq p1 p2) =
 ---------------------------------------------------------------------------
 
 threadsPerBlock :: Program e -> Word32
+threadsPerBlock (SeqFor n f) = 1 
 threadsPerBlock (ForAll n f) = n
 threadsPerBlock (ForAllBlocks f) = threadsPerBlock (f (variable "X"))
 threadsPerBlock (p1 `ProgramSeq` p2) =
@@ -124,6 +133,7 @@ collectOutputs :: Program e -> [(Name,Type)]
 collectOutputs (Output nom t) = [(nom,t)]
 collectOutputs (p1 `ProgramSeq` p2) = collectOutputs p1 ++
                                       collectOutputs p2
+collectOutputs (SeqFor n f) = collectOutputs (f (variable "X"))
 collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
 collectOutputs (ForAllBlocks f) = collectOutputs (f (variable "X"))
 collectOutputs a = []

@@ -488,8 +488,8 @@ pushByP (t1,t2) (Pull n ixf) =
   Push (n*2)
   $ \wf -> ForAll n
            $ \ix -> sequence_ [wf (fst (ixf ix)) (t1 ix),
-                               wf (snd (ixf ix)) (t2 ix)] 
-                               
+                               wf (snd (ixf ix)) (t2 ix)]
+
 
 ---------------------------------------------------------------------------
 -- pushBy test
@@ -506,3 +506,125 @@ testAB = mapG (force . testBy)
 
 getTestAB = quickPrint (forceG . testAB . changeIn . silly)
                           (sizedGlobal 256)
+
+
+
+---------------------------------------------------------------------------
+-- Apply an n-input m-output sequential computation across in parallel
+-- across an array
+---------------------------------------------------------------------------
+
+mapSeq :: ([a] -> [b]) -> Pull [a] -> Push b
+mapSeq f (Pull bs ixf) =
+  Push (bs * fromIntegral n)
+  $ \wf -> ForAll bs
+           $ \ ix ->
+           let dat = f (ixf ix) 
+               m   = length dat
+           in sequence_ [wf (dat !! i) (ix * fromIntegral m + fromIntegral i)
+                        | i <- [0..m-1]]
+  where
+    n = length (ixf 0) -- in an array of lists all list have same length.
+
+{- Intended use of mapSeq:
+
+   #1 create a n-input m-output function
+
+   ex:  f [a,b] = [min a b, max a b]
+
+   #2 permute input pull array in whatever way you want
+
+   #3 split input pull array up into an array of lists
+
+   #4 mapSeq f over the array
+
+   #5 permute resulting push array in whatever way you want.
+
+   --
+
+   mapSeq could have been given the type ([a] -> [b]) -> Pull [a] -> Pull [b]
+      
+-} 
+    
+chunk :: Int -> Pull a -> Pull [a]
+chunk cs (Pull n ixf) =
+  Pull (n `div` fromIntegral cs)
+  $ \ix -> [ixf (ix * fromIntegral cs + fromIntegral i)
+           | i <- [0..cs-1]]
+
+---------------------------------------------------------------------------
+-- Maybe what Mary needs. (Here in the simpler local array version) 
+---------------------------------------------------------------------------
+mapPermSeq :: ([a] -> [b])
+              -> (Exp Word32 -> [Exp Word32])
+              -> (Exp Word32 -> [Exp Word32]) -> Pull a -> Push b
+mapPermSeq f inp outp pull@(Pull bs ixf) =
+  
+  Push (bn * fromIntegral outN)
+  $ \wf -> ForAll bn
+           $ \ix ->
+           let p   = gatherSeq pull
+               dat = f (p ! ix)  -- apply sequential computation
+           in  sequence_ [wf (dat !! i) ((outp ix) !! i)
+                         | i <- [0..outN-1]]
+           
+  where
+    -- create a Pull [a] with help of the inP
+
+    bn = bs `div` fromIntegral inN 
+    gatherSeq (Pull n ixf) =
+      Pull (n `div` fromIntegral inN)
+      $ \ix -> [ixf i | i <- inp ix]
+               
+    inN = length (inp (variable "X")) 
+    outN = length (outp (variable "X"))
+   
+
+---------------------------------------------------------------------------
+-- And Again for Global arrays.
+--
+-- There should be a way to unify these. 
+---------------------------------------------------------------------------
+mapPermSeqG :: ([a] -> [b])
+               -> (Exp Word32 -> [Exp Word32])
+               -> (Exp Word32 -> [Exp Word32])  -> GlobPull a -> GlobPush' b
+mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
+
+  GlobPush' (bn * fromIntegral outN)
+  $ \wf -> ForAllBlocks
+           $ \bix -> ForAll bn
+                     $ \tix ->
+                     let p = gatherSeq pull
+                         dat = f (p ! (bix * fromIntegral bn + tix))  
+                     in sequence_ [wf (dat !! i) ((outp (bix * fromIntegral bn + tix)) !! i)
+                                  | i <- [0..outN-1]]
+  where 
+    bn = bs `div` fromIntegral inN 
+    gatherSeq (GlobPull n ixf) =
+      GlobPull (n `div` fromIntegral inN)
+      $ \ix -> [ixf i | i <- inp ix]
+               
+    inN = length (inp (variable "X")) 
+    outN = length (outp (variable "X"))
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
+test3 :: GlobPull (Exp Int32) -> GlobPush' (Exp Int32)
+test3 = mapPermSeqG (\[a,b] -> [min a b, max a b])
+                    (\ix -> [ix, ix + 1024])
+                    (\ix -> [ix, ix + 1024])
+
+
+
+  
+--test2' :: GlobPull (Exp Int32)
+--         -> GlobPush (Exp Int32)
+--test2' = mapG (force . testBy)
+
+getTest3 = quickPrint (forceG . conv2 . test3 . changeIn . silly)
+                       (sizedGlobal 256)
+
+
+-- TODO: Probably lots of bugs right now
