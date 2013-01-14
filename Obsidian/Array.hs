@@ -42,24 +42,6 @@ namedGlobal name bs = Distrib
 type DistArray a = Distrib (Pull a) 
 
 ---------------------------------------------------------------------------
--- Sequential arrays
---
--- Ok. Sequential arrays are problematic.
---   Especially if the can have dynamic length.
---   Sequential computation must be handled differently.
---   Knowing how much memory to allocate is, for an array, otherwise
---   problematic.
---   
----------------------------------------------------------------------------
---data Seq a = Seq (Exp Word32) (Exp Word32 -> a)
-
---data SPush a = SPush (Exp Word32)
---                     ((a -> Exp Word32 -> TProgram ()) -> TProgram ())
-
---sPush :: Seq a -> SPush a
---sPush (Seq n ixf) =  
---  SPush n $ \wf -> SeqFor n $ \i -> wf (ixf i) i
----------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
 data GlobPush a =
