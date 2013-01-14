@@ -595,8 +595,8 @@ mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
            $ \bix -> ForAll bn
                      $ \tix ->
                      let p = gatherSeq pull
-                         dat = f (p ! (bix * fromIntegral bn + tix))  
-                     in sequence_ [wf (dat !! i) ((outp (bix * fromIntegral bn + tix)) !! i)
+                         dat = f (p ! (bix * fromIntegral bn + tix))  -- TODO: maybe should be bs and not bn.
+                     in sequence_ [wf (dat !! i) ((outp (bix * fromIntegral bn + tix)) !! i) -- TODO: same as above.
                                   | i <- [0..outN-1]]
   where 
     bn = bs `div` fromIntegral inN 
