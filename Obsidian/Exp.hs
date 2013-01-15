@@ -276,7 +276,9 @@ instance Scalar a => Show (Exp a) where
 -- Look this over. Do I really need a types expression data type ?
 --  (No real need for a Exp GADT I think. Go back to keeping it simple!) 
 instance (Eq a, Scalar a) => Eq (Exp a) where
-  (==) a b = error $ "equality test between exps: " ++ show a ++ " " ++ show b -- expToCExp a == expToCExp b 
+  (==) a b = -- error $ "equality test between exps: " ++ show a ++ " " ++ show b --
+    expToCExp a == expToCExp b
+    -- Maybe not efficient! But simple.
 
   
 instance (Scalar a, Ord a) => Ord (Exp a) where 
@@ -407,6 +409,14 @@ instance Num (Exp Word32) where
   (+) a (Literal 0) = a
   (+) (Literal 0) a = a
   (+) (Literal a) (Literal b) = Literal (a+b)
+
+  -- Added 15 Jan 2013
+  (+) (BinOp Mul (BinOp Div x (Literal a)) (Literal b))
+       (BinOp Mod y (Literal c))
+        | x == y && a == b && b == c = x 
+      -- This spots the kind of indexing that occurs from 
+      --  converting a bix tix view to and from gix view
+        
 
   -- Added 2 oct 2012
   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 

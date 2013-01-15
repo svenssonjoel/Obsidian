@@ -32,13 +32,27 @@ instance Functor Push where
   fmap f (Push n pfun) =
     Push n $ \wf -> pfun (\a ix -> wf (f a) ix)
 
-instance Functor Distrib where
-  fmap f (Distrib bixf) = Distrib $ \bix -> f $ bixf bix
+--instance Functor Distrib where
+--  fmap f (Distrib bixf) = Distrib $ \bix -> f $ bixf bix
+
+instance Functor GlobPush2 where
+  fmap f (GlobPush2 bs wf ) =
+    GlobPush2 bs
+    $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
 
 instance Functor GlobPush where
   fmap f (GlobPush bs wf ) =
     GlobPush bs
-    $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
+    $ \wf' -> wf (\a gix -> wf' (f a) gix)
+
+instance Functor GlobPull where
+  fmap f (GlobPull bs ixf) = GlobPull bs (f . ixf)
+
+instance Functor GlobPull2 where
+  fmap f (GlobPull2 bs bixixf) = GlobPull2 bs (\bix tix -> f (bixixf bix tix))
+
+-- instance Functor GlobPush2 where
+  
 
 ---------------------------------------------------------------------------
 -- Reverse an array by indexing in it backwards
@@ -207,8 +221,8 @@ class IxMap2 a where
             -> a
             -> a
 
-instance IxMap2 (GlobPush a) where
-  ixMap2 f (GlobPush bs p) = GlobPush bs (ixMap2' f (fromIntegral bs) p )
+instance IxMap2 (GlobPush2 a) where
+  ixMap2 f (GlobPush2 bs p) = GlobPush2 bs (ixMap2' f (fromIntegral bs) p )
 
 ixMap2' :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
            -> Exp Word32 
@@ -218,8 +232,8 @@ ixMap2' f bs p= \wf -> p $ \ a bix tix ->
                             let (bix',tix') = f bix tix bs
                             in wf a bix' tix' 
                               
-instance IxMap2 (Distrib (Pull a)) where
-  ixMap2 = undefined 
+--instance IxMap2 (Distrib (Pull a)) where
+--  ixMap2 = undefined 
 
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 
@@ -271,45 +285,45 @@ zipP arr1 arr2 =
 ---------------------------------------------------------------------------
 -- From Distributed array of blocks to a global push array
 ---------------------------------------------------------------------------
-toGlobPush :: Distrib (BProgram (Pull a))
-               -> GlobPush a               
-toGlobPush inp@(Distrib bixf) =
-  GlobPush bs $
-    \wf -> ForAllBlocks 
-           $ \bix ->
-           do -- BProgram do block 
-             arr <- bixf bix 
-             ForAll bs $ \ix -> wf (arr ! ix) bix ix 
-  where
-    -- Is this Ok?! 
-    bs = len $ fst $ runPrg 0 $ bixf 0
+--toGlobPush :: Distrib (BProgram (Pull a))
+--               -> GlobPush a               
+--toGlobPush inp@(Distrib bixf) =
+--  GlobPush bs $
+--    \wf -> ForAllBlocks 
+--           $ \bix ->
+--           do -- BProgram do block 
+--             arr <- bixf bix 
+--             ForAll bs $ \ix -> wf (arr ! ix) bix ix 
+--  where
+--    -- Is this Ok?! 
+--    bs = len $ fst $ runPrg 0 $ bixf 0
 
 ---------------------------------------------------------------------------
 -- Create a global array that pushes to global
 -- memory N elements per thread. 
 --------------------------------------------------------------------------- 
-toGlobPushN :: Word32
-                -> Distrib (BProgram (Pull a))
-                -> GlobPush a
-toGlobPushN n dist =
-  GlobPush bs $ 
-  \wf -> ForAllBlocks 
-         $ \bix ->
-         do -- BProgram do block
-             arr <- getBlock dist bix
-             ForAll (bs `div` n) $
-               \ix ->
-                    sequence_ 
-                    -- correct indexing ? 
-                    [wf (arr ! (ix * n' + i')) bix (ix * n' + i')
-                    | i <- [0..n-1]
-                    , let n' = fromIntegral n
-                    , let i' = fromIntegral i]
-           
-                  
-  where
-    bs = len $ fst $ runPrg 0 $ getBlock dist 0 
-    -- nb = numBlocks dist
+--toGlobPushN :: Word32
+--                -> Distrib (BProgram (Pull a))
+--                -> GlobPush a
+--toGlobPushN n dist =
+--  GlobPush bs $ 
+--  \wf -> ForAllBlocks 
+--         $ \bix ->
+--         do -- BProgram do block
+--             arr <- getBlock dist bix
+--             ForAll (bs `div` n) $
+--               \ix ->
+--                    sequence_ 
+--                    -- correct indexing ? 
+--                    [wf (arr ! (ix * n' + i')) bix (ix * n' + i')
+--                   | i <- [0..n-1]
+--                    , let n' = fromIntegral n
+--                    , let i' = fromIntegral i]
+--           
+--                  
+-- where
+--    bs = len $ fst $ runPrg 0 $ getBlock dist 0 
+--    -- nb = numBlocks dist
 
     
 ---------------------------------------------------------------------------

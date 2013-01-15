@@ -3,7 +3,7 @@
              MultiParamTypeClasses,
              TypeOperators,
              TypeFamilies ,
-      --       ScopedTypeVariables, 
+             ScopedTypeVariables, 
              CPP #-}
 
 {- Joel Svensson 2012
@@ -51,15 +51,7 @@ type Inputs = [(Name,Type)]
 class ToProgram a b where
   toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.Program ())
 
-
-
-#define toprgBase(t) \
-instance ToProgram (Exp t) (GProgram b) where {\
-  toProgram i f a = \
-    ([(nom,t)],CG.runPrg (f input)) \
-    where {nom = "s" ++ show i; \
-           input = variable nom;}}\
-;\
+{-
 instance ToProgram (Distrib (Pull (Exp t))) (GProgram a) where { \
   toProgram i f (Distrib blkf)  =      \
     ([(nom,Pointer t)],CG.runPrg (f input)) \
@@ -74,6 +66,45 @@ instance ToProgram (Distrib (Pull (Exp t))) (Final (GProgram a)) where { \
             n   = len (blkf (variable "X")); \
             input = namedGlobal  nom n;}} 
 
+
+-} 
+
+#define toprgBase(t) \
+instance ToProgram (Exp t) (GProgram b) where {\
+  toProgram i f a = \
+    ([(nom,t)],CG.runPrg (f input)) \
+    where {nom = "s" ++ show i; \
+           input = variable nom;}}\
+;\
+instance ToProgram (GlobPull (Exp t)) (GProgram a) where { \
+  toProgram i f (GlobPull bs ixf) = \
+    ([(nom,Pointer t)],CG.runPrg (f input)) \
+      where {nom = "input" ++ show i; \
+             n   = bs; \
+             input = namedGlobal nom n; }}\
+;\
+instance ToProgram (GlobPull (Exp t)) (Final (GProgram a)) where { \
+  toProgram i f (GlobPull bs ixf) = \
+    ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
+      where {nom = "input" ++ show i; \
+             n   = bs; \
+             input = namedGlobal nom n; }}\
+;\
+instance ToProgram (GlobPull2 (Exp t)) (GProgram a) where { \
+  toProgram i f (GlobPull2 bs ixf) = \
+    ([(nom,Pointer t)],CG.runPrg (f input)) \
+      where {nom = "input" ++ show i; \
+             n   = bs; \
+             input = namedGlobal2 nom n; }}\
+;\
+instance ToProgram (GlobPull2 (Exp t)) (Final (GProgram a)) where { \
+  toProgram i f (GlobPull2 bs ixf) = \
+    ([(nom,Pointer t)],CG.runPrg (cheat (f input))) \
+      where {nom = "input" ++ show i; \
+             n   = bs; \
+             input = namedGlobal2 nom n; }}\
+
+                                                              
 toprgBase(Int)
 
 toprgBase(Int8)
@@ -91,6 +122,15 @@ toprgBase(Float)
 toprgBase(Double) 
 
 
+{-
+instance ToProgram b c => ToProgram (Distrib (Pull (Exp t))) (b -> c) where{\
+  toProgram i f ((Distrib blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
+    where {\
+      (ins,prg) = toProgram (i+1) (f input) rest;\
+      nom = "input" ++ show i;\
+      n   = len (blkf (variable "X"));\
+      input = namedGlobal  nom n;}}\
+-} 
  
 #define toprgRec(t) \
 instance ToProgram b c => ToProgram (Exp t) (b -> c) where{\
@@ -101,13 +141,13 @@ instance ToProgram b c => ToProgram (Exp t) (b -> c) where{\
       nom = "s" ++ show i;\
       input = variable nom;}}\
 ;\
-instance ToProgram b c => ToProgram (Distrib (Pull (Exp t))) (b -> c) where{\
-  toProgram i f ((Distrib blkf) :-> rest) = ((nom,Pointer t):ins,prg)\
+instance ToProgram b c => ToProgram (GlobPull (Exp t)) (b -> c) where{\
+  toProgram i f ((GlobPull bs ixf) :-> rest) = ((nom,Pointer t):ins,prg)\
     where {\
       (ins,prg) = toProgram (i+1) (f input) rest;\
       nom = "input" ++ show i;\
-      n   = len (blkf (variable "X"));\
-      input = namedGlobal  nom n;}}\
+      n   = bs;\
+      input = namedGlobal nom n;}}\
 
 toprgRec(Int)
 
@@ -146,7 +186,9 @@ type family Ips' a
 -- The commented line above is not enough! 
 #define ipsBase(t) \
 type instance Ips' (Exp t) = Exp t;\
-type instance Ips' (Distrib (Pull (Exp t))) = Distrib (Pull (Exp t));
+--type instance Ips' (Distrib (Pull (Exp t))) = Distrib (Pull (Exp t));
+type instance Ips' (GlobPull (Exp t)) = GlobPull (Exp t);
+type instance Ips' (GlobPull2 (Exp t)) = GlobPull2 (Exp t);
 
 ipsBase(Int)
 ipsBase(Int8)

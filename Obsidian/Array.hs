@@ -25,42 +25,35 @@ import Data.Word
 --------------------------------------------------------------------------- 
 data Final a = Final {cheat :: a} -- cheat should not be exposed. 
 
+
 ---------------------------------------------------------------------------
--- An Array distributed over MultiProcessors (same as old Blocks) 
+-- Experiments 
 ---------------------------------------------------------------------------
-data Distrib a = Distrib (Exp Word32 -> a)
-
-getBlock :: Distrib a -> Exp Word32 -> a 
-getBlock (Distrib bixf) = bixf
-
-sizedGlobal bs = Distrib (\bix -> (mkPullArray bs undefined))
-namedGlobal name bs = Distrib  
-                      (\bix -> (mkPullArray bs
-                                (\ix -> index name (bix * (fromIntegral bs) + ix)))) 
 
 
-type DistArray a = Distrib (Pull a) 
 
 ---------------------------------------------------------------------------
 -- Global result array. 
 ---------------------------------------------------------------------------
+
 data GlobPush a =
-  GlobPush Word32
+  GlobPush  Word32
+            (( a -> Exp Word32 -> TProgram ()) -> GProgram ())
+
+data GlobPush2 a =
+  GlobPush2 Word32
         ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) ->
          GProgram ())
 
-data GlobPush' a =
-  GlobPush' Word32
-            (( a -> Exp Word32 -> TProgram ()) -> GProgram ())
 
-
-conv1 :: GlobPush a -> GlobPush' a
-conv1 (GlobPush n pushf) = GlobPush' n pushf'
+-- Conversions between kinds of global push arrays 
+globView :: GlobPush2 a -> GlobPush a
+globView (GlobPush2 n pushf) = GlobPush n pushf'
   where
     pushf' wf = pushf $ \a bix tix -> wf a (bix * fromIntegral n + tix)
 
-conv2 :: GlobPush' a -> GlobPush a
-conv2 (GlobPush' n pushf) = GlobPush n pushf'
+blockView :: GlobPush a -> GlobPush2 a
+blockView (GlobPush n pushf) = GlobPush2 n pushf'
   where
     pushf' wf = pushf $ \a gix -> wf a (gix `div` fromIntegral n)
                                        (gix `mod` fromIntegral n) 
@@ -72,7 +65,17 @@ conv2 (GlobPush' n pushf) = GlobPush n pushf'
 data GlobPull a = GlobPull Word32 (Exp Word32 -> a)
 
 -- replaces Distrib ? 
-data GlobPull2 a = GlobPull2 Word32 (Exp Word32 -> Exp Word32 -> a) 
+data GlobPull2 a = GlobPull2 Word32 (Exp Word32 -> Exp Word32 -> a)
+
+-- Create global pull arrays 
+sizedGlobal bs = GlobPull bs $ \gix -> undefined
+namedGlobal name bs = GlobPull bs $ \gix -> index name gix
+
+
+sizedGlobal2 bs = GlobPull2 bs $ \bix tix -> undefined
+namedGlobal2 name bs = GlobPull2 bs
+                       $ \gix tix -> index name (gix * fromIntegral bs + tix) 
+
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
@@ -126,12 +129,12 @@ instance Pushable Pull where
 --------------------------------------------------------------------------- 
 
 class PushableGlobal a where
-  pushG :: a e -> GlobPush e 
-  pushGF :: a [e] -> GlobPush e
+  pushG :: a e -> GlobPush2 e 
+  pushGF :: a [e] -> GlobPush2 e
 
 instance PushableGlobal GlobPull where
   pushG (GlobPull n ixf) =
-      GlobPush n
+      GlobPush2 n
         $ \wf -> ForAllBlocks 
                  $ \ bix -> ForAll n
                             $ \ ix -> wf (ixf (bix * fromIntegral n + ix)) bix ix
@@ -139,7 +142,7 @@ instance PushableGlobal GlobPull where
 
 instance PushableGlobal GlobPull2 where
   pushG (GlobPull2 n ixf) =
-      GlobPush n
+      GlobPush2 n
         $ \wf -> ForAllBlocks 
                  $ \ bix -> ForAll n
                             $ \ ix -> wf (ixf bix ix) bix ix
@@ -161,8 +164,8 @@ instance Indexible Pull a where
 instance Indexible GlobPull a where
   access (GlobPull _ ixf)  ix = ixf ix 
 
-instance Indexible Distrib a where
-  access p ix = getBlock p ix 
+--instance Indexible Distrib a where
+--  access p ix = getBlock p ix 
 
 pushApp (Push _ p) a = p a 
 
