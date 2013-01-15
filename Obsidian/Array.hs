@@ -28,25 +28,42 @@ data Final a = Final {cheat :: a} -- cheat should not be exposed.
 
 
 ---------------------------------------------------------------------------
--- Experiments 
+-- Experiments
+--  
 ---------------------------------------------------------------------------
+data PushArray x b a
+    = PushArray Word32
+                ((a -> x -> TProgram ()) -> Program b ()) 
 
--- data V = VLocal    (Exp Word32)
---       | VBlocked  (Exp Word32,Exp Word32) 
---       | VGlobal   (Exp Word32)
+data PullArray x b a   -- The b is nonsense
+    = PullArray Word32
+                (x -> a)
 
-type ViewLocal   = (Exp Word32,BProgram ())
-type ViewBlocked = ((Exp Word32,Exp Word32),GProgram ())
-type ViewGlobal  = (Exp Word32,GProgram ())
 
-data PushArray x a where
-  MkPushArray :: Word32 -> ((a -> v -> TProgram ()) -> p) -> PushArray (v,p) a 
+class ViewConv a where
+  bView :: a (Exp Word32) Grid e -> a (Exp Word32, Exp Word32) Grid e
+  gView :: a (Exp Word32, Exp Word32) Grid e -> a (Exp Word32) Grid e 
 
-data PullArray x a where
-  MkPullArray :: Word32 -> (v -> a) -> PullArray (v,p) a 
+instance ViewConv PullArray where
+  bView (PullArray n gixf) =
+    PullArray n $ \(bix,tix) -> gixf (bix * fromIntegral n + tix)
+  gView (PullArray n bixtixf) =
+    PullArray n $ \gix -> let bix = gix `div` fromIntegral n
+                              tix = gix `mod` fromIntegral n
+                          in  bixtixf (bix,tix) 
 
-type Pa a  = PushArray ViewLocal
-type Pa' a = PullArray ViewLocal
+instance ViewConv PushArray where
+  bView (PushArray n pushf) = PushArray n pushf'
+   where
+    pushf' wf = pushf $ \a gix -> wf a (gix `div` fromIntegral n,
+                                        gix `mod` fromIntegral n)
+  gView (PushArray n pushf) = PushArray n pushf'
+   where
+    pushf' wf = pushf $ \a (bix,tix) -> wf a (bix * fromIntegral n + tix)
+
+
+type Pa a  = PushArray (Exp Word32) Block 
+type Pa' a = PullArray (Exp Word32) 
 
 
 ---------------------------------------------------------------------------

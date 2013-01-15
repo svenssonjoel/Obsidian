@@ -300,7 +300,7 @@ mapG2 f (GlobPull2 n bixixf) =
              ForAll n $ \ix -> wf (res ! ix) bix ix 
 
 
-{-
+
 ---------------------------------------------------------------------------
 -- Is it possible to change view?
 ---------------------------------------------------------------------------
@@ -315,13 +315,7 @@ changeIn (GlobPull2 n bixixf) =
       ix  = gix `mod` (fromIntegral n)
   in bixixf bix ix
 
--- Remove this after removing all occurances of Distrib 
-silly :: Distrib (Pull a) -> GlobPull2 a
-silly (Distrib bixf) = GlobPull2 n $ \bix ix -> (bixf bix) ! ix
-  where
-    n = len (bixf 0) 
-
-
+{- 
 ---------------------------------------------------------------------------
 -- Global computations may care about number of blocks!
 ---------------------------------------------------------------------------
@@ -446,8 +440,10 @@ chunk cs (Pull n ixf) =
 -- Maybe what Mary needs. (Here in the simpler local array version) 
 ---------------------------------------------------------------------------
 mapPermSeq :: ([a] -> [b])
-              -> (Exp Word32 -> [Exp Word32])
-              -> (Exp Word32 -> [Exp Word32]) -> Pull a -> Push b
+              -> (Exp Word32 -> [Exp Word32]) -- Not nice! 
+              -> (Exp Word32 -> [Exp Word32]) -- Not nice!
+                                               
+              -> Pull a -> Push b
 mapPermSeq f inp outp pull@(Pull bs ixf) =
   
   Push (bn * fromIntegral outN)
@@ -476,8 +472,9 @@ mapPermSeq f inp outp pull@(Pull bs ixf) =
 -- There should be a way to unify these. 
 ---------------------------------------------------------------------------
 mapPermSeqG :: ([a] -> [b])
-               -> (Exp Word32 -> [Exp Word32])
-               -> (Exp Word32 -> [Exp Word32])  -> GlobPull a -> GlobPush b
+               -> (Exp Word32 -> [Exp Word32]) -- Not Nice! 
+               -> (Exp Word32 -> [Exp Word32]) -- Not Nice!
+               -> GlobPull a -> GlobPush b
 mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
 
   GlobPush (bn * fromIntegral outN)
@@ -498,7 +495,7 @@ mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
     outN = length (outp (variable "X"))
 
 ---------------------------------------------------------------------------
---
+-- Testing 
 ---------------------------------------------------------------------------
 
 test3 :: GlobPull (Exp Int32) -> GlobPush (Exp Int32)
@@ -509,12 +506,13 @@ test3 = mapPermSeqG (\[a,b] -> [min a b, max a b])
 
 
   
---test2' :: GlobPull (Exp Int32)
---         -> GlobPush (Exp Int32)
---test2' = mapG (force . testBy)
+-- getTest3 and getTest3' should give same code
+getTest3 = quickPrint (forceG2 . blockView . test3 . changeIn )
+                       (sizedGlobal2 256)
 
-getTest3 = quickPrint (forceG . test3)
+getTest3' = quickPrint (forceG . test3 )
                        (sizedGlobal 256)
+
 
 
 -- TODO: Probably lots of bugs right now
