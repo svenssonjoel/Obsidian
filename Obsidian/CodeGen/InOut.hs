@@ -24,7 +24,6 @@ import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs 
 import Obsidian.Program
-import Obsidian.ModifyArray
 import qualified Obsidian.CodeGen.Program as CG 
 
 import Data.Word
