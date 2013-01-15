@@ -166,34 +166,25 @@ scatterGlobal indices bs elems =
 
 distribute :: Word32 -> a -> GlobPull a
 distribute bs e = GlobPull bs  $ \gix -> e           
-{-
--- DONE: Error. gather is not the operation you want here!
---   changed to Scatter. (see if concepts are right) 
-histogram :: -- Exp Word32
-              Word32
-             -> Distrib (Pull (Exp Word32))
+
+histogram :: Word32
+             -> GlobPull (Exp Word32)
              -> GlobPush (Exp Word32)
 histogram bs elems = scatterGlobal elems bs (distribute bs 1)
-  -- where nb = numBlocks elems
 
-reconstruct :: Distrib (Pull (Exp Word32))
-               -> Distrib (Pull (Exp Word32))
+
+reconstruct :: GlobPull (Exp Word32)
+               -> GlobPull (Exp Word32)
                -> GlobPush (Exp Word32)
-reconstruct inp{-@(Distrib nb bixf)-} pos{-@(Distrib _ posf)-} =
-  permuteGlobal perm inp 
+reconstruct inp pos =
+  gatherGlobal perm inp  -- not sure! 
   where
-    perm bix tix =
-      let bs  = len (getBlock inp bix) -- (bixf bix) 
-          gix = (getBlock inp bix) ! tix
-          bix' = gix `div` (fromIntegral bs)
-          tix' = gix `mod` (fromIntegral bs)
+    perm =
+      GlobPull (len inp) $ \gix ->
+      let gix' = inp ! gix 
+      in  pos ! gix' 
 
-          pgix = (getBlock pos bix') ! tix'
-          pbix = pgix `div` (fromIntegral bs)
-          ptix = pgix `mod` (fromIntegral bs) 
-      in (pbix,ptix)
-
-
+{- 
 ---------------------------------------------------------------------------
 -- Scan  (TODO: Rewrite as a exclusive scan (0 as first elem in result) 
 ---------------------------------------------------------------------------
