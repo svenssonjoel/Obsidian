@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses,  
              FlexibleInstances, FlexibleContexts,
+             GADTs, 
              TypeFamilies #-} 
 
 {- Joel Svensson 2012
@@ -30,6 +31,22 @@ data Final a = Final {cheat :: a} -- cheat should not be exposed.
 -- Experiments 
 ---------------------------------------------------------------------------
 
+-- data V = VLocal    (Exp Word32)
+--       | VBlocked  (Exp Word32,Exp Word32) 
+--       | VGlobal   (Exp Word32)
+
+type ViewLocal   = (Exp Word32,BProgram ())
+type ViewBlocked = ((Exp Word32,Exp Word32),GProgram ())
+type ViewGlobal  = (Exp Word32,GProgram ())
+
+data PushArray x a where
+  MkPushArray :: Word32 -> ((a -> v -> TProgram ()) -> p) -> PushArray (v,p) a 
+
+data PullArray x a where
+  MkPullArray :: Word32 -> (v -> a) -> PullArray (v,p) a 
+
+type Pa a  = PushArray ViewLocal
+type Pa' a = PullArray ViewLocal
 
 
 ---------------------------------------------------------------------------
@@ -85,11 +102,11 @@ data Push a = Push Word32
 data Pull a = Pull {pullLen :: Word32, 
                     pullFun :: Exp Word32 -> a}
 
-type PushArray a = Push a
-type PullArray a = Pull a
+--type PushArray a = Push a
+--type PullArray a = Pull a
 
 mkPushArray :: Word32 -> ((a -> Exp Word32 -> TProgram ())
-                         -> BProgram ()) -> PushArray a
+                         -> BProgram ()) -> Push a
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 
