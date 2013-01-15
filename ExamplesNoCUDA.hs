@@ -126,52 +126,47 @@ perm perm@(GlobPull _ pf) (GlobPush bs pushf) =
   \wf -> -- (a -> W32 -> TProgram)
    pushf (\a gix -> wf a (pf gix)) 
 
-{- 
+ 
 ---------------------------------------------------------------------------
 --
 -- Countingsort start
 --
 ---------------------------------------------------------------------------
 
-gatherGlobal :: Distrib (Pull (Exp Word32)) 
-                -> Exp Word32 -- expected output size number of blocks
-                -> Word32     -- expected output size block-size
-                -> Distrib (Pull a)
+-- gather: output is as long as the array of indices.
+--   this is same as permutePush above (gather may be better name) 
+gatherGlobal :: GlobPull (Exp Word32)
+                -> GlobPull a
                 -> GlobPush a
-gatherGlobal indices@(Distrib inf)
-             nb bs
-             elems@(Distrib enf) =
+gatherGlobal indices elems    =
   GlobPush bs $
    \wf ->
      ForAllBlocks $ \ bid -> 
        ForAll bs $ \ tid -> 
-         let  inArr = inf bid
-              inix  = inArr ! tid
+         let  inix  = indices ! (bid * fromIntegral bs + tid) 
+              e     = elems   ! inix  
+         in wf e (bid * fromIntegral bs + tid) 
+  where bs = len indices 
 
-              bid'  = inix `div` fromIntegral bs
-              tid'  = inix `mod` fromIntegral bs  
-              e     = (enf bid') ! tid' 
-         in wf e bid tid
-
-scatterGlobal :: Distrib  (Pull (Exp Word32)) -- where to scatter
+scatterGlobal :: GlobPull (Exp Word32) -- where to scatter
                  -- ->  Exp Word32 -- output size
-                 ->  Word32     -- block size
-                 -> Distrib (Pull a) -- the elements to scatter
+                 -> Word32     -- block size
+                 -> GlobPull a -- the elements to scatter
                  -> GlobPush a 
 scatterGlobal indices bs elems = 
-  GlobPush bs $
+  GlobPush bs $  --what blocksize has the output. Vague.. 
     \wf -> ForAllBlocks $ \bid ->
-    ForAll bs $ \tid ->
-    let  inArr = getBlock indices bid
-         inix  = inArr ! tid
-         bid'  = inix `div` fromIntegral bs
-         tid'  = inix `mod` fromIntegral bs 
-         e     = (getBlock elems bid) ! tid 
-    in wf e bid' tid' 
-        
-distribute :: Word32 -> a -> Distrib (Pull a)
-distribute bs e = Distrib $ \bid -> replicate bs e           
+    ForAll n $ \tid ->
+    let  scix = indices ! (bid * fromIntegral n + tid)
+         e    = elems   ! (bid * fromIntegral n + tid) 
+    in wf e scix
+       where
+         n = len elems -- (should be same length or shorter then the 
+                       --  indices array) 
 
+distribute :: Word32 -> a -> GlobPull a
+distribute bs e = GlobPull bs  $ \gix -> e           
+{-
 -- DONE: Error. gather is not the operation you want here!
 --   changed to Scatter. (see if concepts are right) 
 histogram :: -- Exp Word32
