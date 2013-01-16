@@ -145,21 +145,21 @@ scatterGlobal indices elems =
 distribute :: a -> GlobPull a
 distribute e = GlobPull $ \gix -> e           
 
-histogram :: Word32
-             -> GlobPull (Exp Word32)
-             -> GlobPush (Exp Word32)
-histogram bs elems = scatterGlobal elems (distribute 1)
+histogram :: GlobPull (Exp Int32)
+             -> GlobPush (Exp Int32)
+             -- a type cast is needed!
+histogram elems = scatterGlobal (fmap int32ToWord32 elems) (distribute 1)
 
 
-reconstruct :: GlobPull (Exp Word32)
+reconstruct :: GlobPull (Exp Int32)
                -> GlobPull (Exp Word32)
-               -> GlobPush (Exp Word32)
+               -> GlobPush (Exp Int32)
 reconstruct inp pos =
-  gatherGlobal perm inp  -- not sure! 
+  gatherGlobal perm inp  
   where
     perm =
       GlobPull $ \gix ->
-      let gix' = inp ! gix 
+      let gix' = (fmap int32ToWord32 inp) ! gix 
       in  pos ! gix' 
 
 -- This function is supposed to compute the histogram for the input vector.
@@ -188,24 +188,10 @@ fullHistogram (GlobPull ixf) = Final $
 -- #3: I changed this to only use GlobPull. (GlobPull2 is removed in this branch)
 
 
-{- 
----------------------------------------------------------------------------
--- Scan  (TODO: Rewrite as a exclusive scan (0 as first elem in result) 
----------------------------------------------------------------------------
-sklanskyLocal
-  :: (Num (Exp a), Scalar a) =>
-     Int
-     -> (Exp a -> Exp a -> Exp a)
-     -> Pull (Exp a)
-     -> BProgram (Pull (Exp a))
-sklanskyLocal 0 op arr = return (shiftRight 1 0 arr)
-sklanskyLocal n op arr =
-  do 
-    let arr1 = twoK (n-1) (fan op) arr
-    arr2 <- force arr1
-    sklanskyLocal (n-1) op arr2
 
-
+---------------------------------------------------------------------------
+-- Scan
+---------------------------------------------------------------------------
 sklansky
   :: (Num (Exp a), Scalar a) =>
      Int
@@ -217,7 +203,7 @@ sklansky n op arr =
   do 
     let arr1 = twoK (n-1) (fan op) arr
     arr2 <- force arr1
-    sklanskyLocal (n-1) op arr2
+    sklansky (n-1) op arr2
 
 
 
@@ -226,14 +212,14 @@ fan op arr =  a1 `conc`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))
 
--- TODO: Too specific types everywhere! 
 
 sklanskyAllBlocks :: Int
-                     -> Distrib (Pull (Exp Word32))
-                     -> Distrib (BProgram (Pull (Exp Word32)))
+                     -> GlobPull (Exp Int32)
+                     -> GlobPush (Exp Int32)
 sklanskyAllBlocks logbsize arr =
-  mapD (sklanskyLocal logbsize (+)) arr
+  mapG (sklansky logbsize (+)) (2^logbsize) arr
 
+{- 
 blockReplicate :: Word32 -- blockSize
                    -> Pull (Exp Word32)
                    -> Distrib (Pull (Exp Word32))
@@ -246,20 +232,20 @@ blockReplicate bs inp =
 ---------------------------------------------------------------------------
 -- Print Kernels
 ---------------------------------------------------------------------------
-
-getHist = quickPrint (forceG .  histogram 256) (sizedGlobal 256)
+-} 
+getHist = quickPrint (forceG .  histogram) undefinedGlobal
 
 getRecon = quickPrint reconstruct'  
-             ((sizedGlobal 256 :: DistArray (Exp Word32)) :-> 
-              (sizedGlobal 256 :: DistArray (Exp Word32)))
+             ((undefinedGlobal :: GlobPull (Exp Int32)) :->
+              (undefinedGlobal :: GlobPull (Exp Word32)))
            where
              reconstruct' i1 i2 = forceG (reconstruct i1 i2)
 
-getSklansky = quickPrint (forceG . toGlobPush . sklanskyAllBlocks 8)
-                         (sizedGlobal 256)
+getSklansky = quickPrint (forceG . sklanskyAllBlocks 8)
+                         undefinedGlobal
 
 
-
+{- 
 ---------------------------------------------------------------------------
 --
 -- Experimenting with GlobPull and GlobPull2.

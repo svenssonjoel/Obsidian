@@ -89,7 +89,9 @@ data CBinOp = CAdd | CSub | CMul | CDiv | CMod
             | CShiftL | CShiftR 
             deriving (Eq,Ord,Show) 
                      
-data CUnOp = CBitwiseNeg                     
+data CUnOp = CBitwiseNeg
+           | CInt32ToWord32
+           | CWord32ToInt32
            deriving (Eq,Ord,Show)
 
 {-
@@ -243,7 +245,9 @@ ppBinOp CShiftL     = line$ "<<"
 ppBinOp CShiftR     = line$ ">>"
                      
 ppUnOp CBitwiseNeg = line$ "~"       
-
+-- May be incorrect.
+ppUnOp CInt32ToWord32 = line$ "(uint32_t)"
+ppUnOp CWord32ToInt32 = line$ "(int32_t)" 
 
 ----------------------------------------------------------------------------
 --

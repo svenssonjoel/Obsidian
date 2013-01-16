@@ -51,7 +51,7 @@ genType gc (Local t)  = local gc  ++" "++ genType gc t
 genCast gc t = "(" ++ genType gc t ++ ")"
 
 parens s = '(' : s ++ ")"
-
+ 
 ---------------------------------------------------------------------------
 -- genExp C-style 
 genExp :: Scalar a => GenConfig -> MemMap -> Exp a -> [String]
@@ -134,6 +134,9 @@ genOp ShiftR     [a,b] = oper ">>" a b
 -- built-ins 
 genOp Min      [a,b] = func "min" (a ++ "," ++ b) 
 genOp Max      [a,b] = func "max" (a ++ "," ++ b) 
+
+genOp Int32ToWord32 [a]  = func "(uint32_t)" a
+genOp Word32ToInt32 [a]  = func "(int32_t)" a 
 
 func  f a = f ++ "(" ++ a ++ ")" 
 oper  f a b = "(" ++ a ++ f ++ b ++ ")" 
