@@ -184,6 +184,25 @@ reconstruct inp pos =
       let gix' = inp ! gix 
       in  pos ! gix' 
 
+-- This function is supposed to compute the histogram for the input vector.
+-- Three things I'm not sure about:
+    -- 1. The looping that I do seems to be wrong. How do I do it correctly?
+    -- The intention is to loop over the whole input array.
+    -- 2. Are arrays initialized to zero? If we want to use this for counting
+    -- sort then the `global` array needs to be zero everywhere from the start.
+    -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
+    -- used whatever was most convenient for each task.
+fullHistogram :: Word32
+             -> GlobPull2 (Exp Word32)
+             -> Final (GProgram (GlobPull (Exp Int)))
+fullHistogram bs (GlobPull2 l ixf) = Final $
+                 do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
+                    ForAllBlocks $ \b ->
+                      ForAll bs $ \t ->
+                        do AtomicOp global (ixf b t) AtomicInc
+                           return ()
+                    return (GlobPull bs (\i -> index global i))
+
 {- 
 ---------------------------------------------------------------------------
 -- Scan  (TODO: Rewrite as a exclusive scan (0 as first elem in result) 
