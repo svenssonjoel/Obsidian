@@ -170,10 +170,9 @@ reconstruct inp pos =
     -- sort then the `global` array needs to be zero everywhere from the start.
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
-fullHistogram :: Word32
-             -> GlobPull (Exp Word32)
+fullHistogram :: GlobPull (Exp Word32)
              -> Final (GProgram (GlobPull (Exp Int)))
-fullHistogram bs (GlobPull ixf) = Final $
+fullHistogram (GlobPull ixf) = Final $
                  do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
                     forAllT $ \gix ->
                       do AtomicOp global (ixf gix)  AtomicInc
