@@ -12,6 +12,7 @@ import Obsidian.Array
 import Obsidian.Library
 import Obsidian.Force
 import Obsidian.CodeGen.InOut
+import Obsidian.Atomic
 
 import Data.Word
 import Data.Int
@@ -169,16 +170,24 @@ reconstruct inp pos =
     -- sort then the `global` array needs to be zero everywhere from the start.
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
---fullHistogram :: Word32
---             -> GlobPull2 (Exp Word32)
---             -> Final (GProgram (GlobPull (Exp Int)))
---fullHistogram bs (GlobPull2 l ixf) = Final $
---                 do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
---         ForAllBlocks $ \b ->
---                      ForAll bs $ \t ->
---                        do AtomicOp global (ixf b t) AtomicInc
---                           return ()
---                    return (GlobPull bs (\i -> index global i))
+fullHistogram :: Word32
+             -> GlobPull (Exp Word32)
+             -> Final (GProgram (GlobPull (Exp Int)))
+fullHistogram bs (GlobPull ixf) = Final $
+                 do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
+                    forAllT $ \gix ->
+                      do AtomicOp global (ixf gix)  AtomicInc
+                         return ()
+                    return (GlobPull (\i -> index global i))
+
+-- Possible answers:
+-- #1: I think I adapted the code to answer this.
+--     This is how it might work, at least in this experimental branch
+-- #2: Normally not initialized to zero. When allocating a global array
+--     it should be followed by a "memset". but this is outside of what we
+--     can do from inside Obsidian right now.
+-- #3: I changed this to only use GlobPull. (GlobPull2 is removed in this branch)
+
 
 {- 
 ---------------------------------------------------------------------------
