@@ -35,9 +35,10 @@ data Program extra
        AtomicOp Name Name (Exp Word32) (Atomic a)
 
      | SeqFor (Exp Word32) (Exp Word32 -> Program extra) 
-     | ForAll Word32 (Exp Word32 -> Program extra)
+     | ForAll (Maybe Word32) (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
-     | ForAllBlocks {-(Exp Word32)-} (Exp Word32 -> Program extra)
+     | ForAllBlocks (Exp Word32 -> Program extra)
+     -- | ForAllG (Exp Word32 -> Program extra)
      | Allocate Name Word32 Type extra
        -- Not Present in old Program datatype 
      | Output Name Type 
@@ -71,6 +72,9 @@ runPrg' i (P.ForAll n f) =
 runPrg' i (P.ForAllBlocks f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in ((),ForAllBlocks newf)
+--runPrg' i (P.ForAllG f) =
+--  let newf = (\x -> snd (runPrg' i (f x)))
+--  in ((),ForAllG newf)
 runPrg' i (P.Bind p f) =
   let (s1,s2) = split2 i
       (a,prg1) = runPrg' s1 p
@@ -106,6 +110,9 @@ printPrg (ForAll n f) =
 printPrg (ForAllBlocks f) =
   "Blocks i do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
+--printPrg (ForAllG f) =
+--  "Blocks i do\n" ++
+--  printPrg (f (variable "i")) ++ "\ndone;\n"
 printPrg (Allocate nom n t e) =
   nom ++ " = malloc(" ++ show n ++ ");\n" ++
   "***" ++ show e ++ "***\n"
@@ -122,7 +129,8 @@ printPrg (ProgramSeq p1 p2) =
 
 threadsPerBlock :: Program e -> Word32
 threadsPerBlock (SeqFor n f) = 1 
-threadsPerBlock (ForAll n f) = n
+threadsPerBlock (ForAll (Just n) f) = n
+threadsPerBlock (ForAll Nothing f) = 0 -- really the answer is "Any number of threads" 
 threadsPerBlock (ForAllBlocks f) = threadsPerBlock (f (variable "X"))
 threadsPerBlock (p1 `ProgramSeq` p2) =
   max (threadsPerBlock p1)
@@ -134,8 +142,9 @@ collectOutputs (Output nom t) = [(nom,t)]
 collectOutputs (p1 `ProgramSeq` p2) = collectOutputs p1 ++
                                       collectOutputs p2
 collectOutputs (SeqFor n f) = collectOutputs (f (variable "X"))
-collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
+-- collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
 collectOutputs (ForAllBlocks f) = collectOutputs (f (variable "X"))
+--collectOutputs (ForAllG f) = collectOutputs (f (variable "X"))
 collectOutputs a = []
 
 ---------------------------------------------------------------------------

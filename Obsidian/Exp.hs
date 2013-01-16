@@ -136,7 +136,9 @@ data Exp a where
     idea to add them as constructors here. These 
     can be translated into the CUDA/OpenCL specific 
     concept later in the codegeneration 
-  -} 
+  -}
+  BlockDim :: DimSpec -> Exp Word32
+  
   BlockIdx :: DimSpec 
               -> Exp Word32
   ThreadIdx :: DimSpec

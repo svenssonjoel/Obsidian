@@ -56,7 +56,8 @@ parens s = '(' : s ++ ")"
 -- genExp C-style 
 genExp :: Scalar a => GenConfig -> MemMap -> Exp a -> [String]
 
--- Cheat and do CUDA printing here as well 
+-- Cheat and do CUDA printing here as well
+genExp gc _ (BlockDim X) = ["blockDim.x"]
 genExp gc _ (BlockIdx X) = ["blockIdx.x"]
 genExp gc _ (BlockIdx Y) = ["blockIdx.y"]
 genExp gc _ (BlockIdx Z) = ["blockIdx.z"]

@@ -57,7 +57,7 @@ data Program t a where
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
 
-  ForAll :: Word32
+  ForAll :: (Maybe Word32) 
             -> (Exp Word32 -> Program Thread ())
             -> Program Block () 
 
@@ -70,10 +70,8 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: -- (Exp Word32)
-                  (Exp Word32 -> Program Block ()) 
+  ForAllBlocks :: (Exp Word32 -> Program Block ()) 
                   -> Program Grid () 
-
   
   Allocate :: Word32 -> Type -> Program Block Name
 
@@ -91,6 +89,34 @@ data Program t a where
 
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
+
+---------------------------------------------------------------------------
+-- forAll and forAllN
+---------------------------------------------------------------------------
+forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
+forAll f = ForAll Nothing f
+
+forAllN :: Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
+forAllN n f = ForAll (Just n) f
+
+
+---------------------------------------------------------------------------
+-- forAllT
+--------------------------------------------------------------------------- 
+-- When we know that all threads are independent and
+-- independent of "blocksize".
+-- Also any allocation of local storage is impossible.
+-- Composition of something using forAllT with something
+-- that performs local computations is impossible.
+-- Using the hardcoded BlockDim may turn out to be a problem when
+-- we want to compute more than one thing per thread (may be fine though). 
+forAllT :: (Exp Word32 -> Program Thread ())
+           -> Program Grid ()
+forAllT f = ForAllBlocks
+            $ \bid -> ForAll Nothing
+                      $ \tid -> f (bid * BlockDim X + tid) 
+
+            
 
 ---------------------------------------------------------------------------
 -- Monad

@@ -235,8 +235,9 @@ genProg mm nt (AtomicOp resname name ix AtomicInc) =
         newline
     Nothing -> error "genProg: AtomicOp. Think about this case"       
                 
-genProg mm nt (ForAll n f) = potentialCond gc mm n nt $ 
-                               genProgNoForAll mm nt (f (ThreadIdx X)  )
+genProg mm nt (ForAll (Just n) f) = potentialCond gc mm n nt $ 
+                                    genProgNoForAll mm nt (f (ThreadIdx X)  ) 
+genProg mm nt (ForAll Nothing f) = genProgNoForAll mm nt (f (ThreadIdx X)  )                                   
 genProg mm nt (Allocate name size t _) = return () 
 genProg mm nt (Synchronize True) = syncLine >> newline 
 genProg mm nt (Synchronize False) = return () 
@@ -292,7 +293,7 @@ ctid = cVar "tid" CWord32
 progToSPMDC :: Word32 -> Program a -> [SPMDC] 
 progToSPMDC nt (Assign name ix a) = 
   [cAssign (cVar name CWord8)[expToCExp ix] (expToCExp a)] 
-progToSPMDC nt (ForAll n f) =         
+progToSPMDC nt (ForAll (Just n) f) =         
   if (n < nt) 
   then 
     [cIf (cBinOp CLt ctid (cLiteral (Word32Val n) CWord32) CInt)
@@ -301,7 +302,10 @@ progToSPMDC nt (ForAll n f) =
     code 
   where 
     code = progToSPMDC nt (f (ThreadIdx X))
-    
+
+progToSPMDC nt (ForAll Nothing f) = progToSPMDC nt (f (ThreadIdx X))
+
+
 progToSPMDC nt (Allocate name size t _) = []
 progToSPMDC nt (Synchronize True) = [CSync] 
 progToSPMDC nt (Synchronize False) = [] 
