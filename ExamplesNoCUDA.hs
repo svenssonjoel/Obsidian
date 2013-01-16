@@ -187,7 +187,13 @@ fullHistogram (GlobPull ixf) = Final $
 --     can do from inside Obsidian right now.
 -- #3: I changed this to only use GlobPull. (GlobPull2 is removed in this branch)
 
-
+fullReconstruct :: GlobPull (Exp Word32)
+                -> GlobPush (Exp Word32)
+fullReconstruct (GlobPull ixf) = GlobPush f
+  where f k = do forAllT $ \gix ->
+                   let startIx = ixf gix in
+                   SeqFor (ixf (gix + 1) - startIx) $ \ix ->
+                      k gix (ix + startIx)
 
 ---------------------------------------------------------------------------
 -- Scan
