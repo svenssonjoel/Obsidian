@@ -132,7 +132,6 @@ gatherGlobal indices elems    =
                       in wf e gix 
 
 scatterGlobal :: GlobPull (Exp Word32) -- where to scatter
-                 -- ->  Exp Word32 -- output size
                  -> GlobPull a -- the elements to scatter
                  -> GlobPush a 
 scatterGlobal indices elems =
@@ -171,9 +170,9 @@ reconstruct inp pos =
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
 fullHistogram :: GlobPull (Exp Word32)
-             -> Final (GProgram (GlobPull (Exp Int)))
+             -> Final (GProgram (GlobPull (Exp Int32)))
 fullHistogram (GlobPull ixf) = Final $
-                 do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
+                 do global <- Output $ Pointer (typeOf (undefined :: Exp Int32))
                     forAllT $ \gix ->
                       do AtomicOp global (ixf gix)  AtomicInc
                          return ()
@@ -198,12 +197,11 @@ fullReconstruct (GlobPull ixf) = GlobPush f
 ---------------------------------------------------------------------------
 -- Scan
 ---------------------------------------------------------------------------
-sklansky
-  :: (Num (Exp a), Scalar a) =>
-     Int
-     -> (Exp a -> Exp a -> Exp a)
-     -> Pull (Exp a)
-     -> BProgram (Pull (Exp a))
+sklansky :: (Num (Exp a), Scalar a)
+            => Int
+            -> (Exp a -> Exp a -> Exp a)
+            -> Pull (Exp a)
+            -> BProgram (Pull (Exp a))
 sklansky 0 op arr = return (shiftRight 1 0 arr)
 sklansky n op arr =
   do 
