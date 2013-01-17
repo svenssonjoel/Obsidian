@@ -186,6 +186,7 @@ fullHistogram (GlobPull ixf) = Final $
 --     can do from inside Obsidian right now.
 -- #3: I changed this to only use GlobPull. (GlobPull2 is removed in this branch)
 
+-- Are the types supposed to be this way ? 
 fullReconstruct :: GlobPull (Exp Word32)
                 -> GlobPush (Exp Word32)
 fullReconstruct (GlobPull ixf) = GlobPush f
