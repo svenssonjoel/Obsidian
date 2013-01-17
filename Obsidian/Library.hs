@@ -83,6 +83,7 @@ shiftRight :: Choice a => Word32 -> a -> Pull a -> Pull a
 shiftRight dist elt arr = resize (len arr)
                           $ replicate dist elt `conc` arr
 
+-- TODO: incorrect! 
 shiftLeft :: Choice a => Word32 -> a -> Pull a -> Pull a
 shiftLeft dist elt arr = resize (len arr)
                          $ arr `conc`  replicate dist elt
