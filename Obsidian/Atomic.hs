@@ -13,6 +13,6 @@ import Obsidian.Exp
 -- Atomic operations 
 ---------------------------------------------------------------------------
 data Atomic a where
-  AtomicInc :: Atomic Int
+  AtomicInc :: Num a => Atomic a
 
 printAtomic AtomicInc = "atomicInc"

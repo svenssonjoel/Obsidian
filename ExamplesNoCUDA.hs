@@ -169,14 +169,29 @@ reconstruct inp pos =
     -- sort then the `global` array needs to be zero everywhere from the start.
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
-fullHistogram :: GlobPull (Exp Word32)
-             -> Final (GProgram (GlobPull (Exp Int32)))
+fullHistogram :: GlobPull (Exp Int32)
+                 -> Final (GProgram (GlobPull (Exp Int32)))
 fullHistogram (GlobPull ixf) = Final $
                  do global <- Output $ Pointer (typeOf (undefined :: Exp Int32))
                     forAllT $ \gix ->
-                      do AtomicOp global (ixf gix)  AtomicInc
+                      do AtomicOp global (int32ToWord32 (ixf gix))  (AtomicInc :: Atomic Int32)
                          return ()
                     return (GlobPull (\i -> index global i))
+
+atomicForce :: forall a. Scalar a => Atomic a
+               -> GlobPull (Exp Word32)
+               -> GlobPull (Exp a)
+               -> Final (GProgram (GlobPull (Exp a)))    
+atomicForce atop indices dat = Final $ 
+  do 
+    global <- Output $ Pointer (typeOf (undefined :: Exp a))
+
+    forAllT $ \gix ->
+      do Assign   global gix (dat ! gix)
+         AtomicOp global (indices ! gix) atop >> return () 
+    return $ GlobPull (\gix -> index global gix)
+
+                    
 
 -- Possible answers:
 -- #1: I think I adapted the code to answer this.
@@ -211,6 +226,10 @@ sklansky n op arr =
     sklansky (n-1) op arr2
 
 
+sklanskyMax n op arr = do
+  res <- sklansky n op arr
+  let m = fromIntegral $ (2^n) - 1
+  return (res,res ! m) 
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
