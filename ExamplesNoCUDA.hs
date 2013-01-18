@@ -170,11 +170,11 @@ reconstruct inp pos =
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
 fullHistogram :: GlobPull (Exp Int32)
-                 -> Final (GProgram (GlobPull (Exp Int32)))
+                 -> Final (GProgram (GlobPull (Exp Int)))
 fullHistogram (GlobPull ixf) = Final $
                  do global <- Output $ Pointer (typeOf (undefined :: Exp Int32))
                     forAllT $ \gix ->
-                      do AtomicOp global (int32ToWord32 (ixf gix))  (AtomicInc :: Atomic Int32)
+                      do AtomicOp global (int32ToWord32 (ixf gix))  AtomicInc
                          return ()
                     return (GlobPull (\i -> index global i))
 
@@ -188,7 +188,9 @@ atomicForce atop indices dat = Final $
 
     forAllT $ \gix ->
       do Assign   global gix (dat ! gix)
-         AtomicOp global (indices ! gix) atop >> return () 
+         AtomicOp global (indices ! gix) atop
+         return ()
+         
     return $ GlobPull (\gix -> index global gix)
 
                     
