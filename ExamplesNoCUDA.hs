@@ -293,20 +293,20 @@ getSklansky = quickPrint (forceG . sklanskyAllBlocks 8)
 -}
 
 -- What if global arrays do not have a blocksize associated with them
-mapGP :: Word32
-         -> (Pull a -> BProgram (Pull b))
-         -> GlobPull a
-         -> GlobPush b
-mapGP n f (GlobPull _ ixf)  =
-  GlobPush n
-        $ \wf ->
-          ForAllBlocks 
-           $ \bix ->
-             do -- BProgram do block 
-               let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
-               res <- f pully
-               -- Here a number is needed. 
-               ForAll n $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
+-- mapGP :: Word32
+--          -> (Pull a -> BProgram (Pull b))
+--          -> GlobPull a
+--          -> GlobPush b
+-- mapGP n f (GlobPull _ ixf)  =
+--   GlobPush n
+--         $ \wf ->
+--           ForAllBlocks 
+--            $ \bix ->
+--              do -- BProgram do block 
+--                let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+--                res <- f pully
+--                -- Here a number is needed. 
+--                ForAll n $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
                
 
 
