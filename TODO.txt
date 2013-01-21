@@ -1,3 +1,4 @@
 
 * pushS, pushN: Look at ways to push more than one element per thread.
   Do not push adjacent elements!     
+* Get all example files up to date with current implementation.
