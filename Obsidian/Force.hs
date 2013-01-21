@@ -20,7 +20,7 @@
 -}
 
 --  write_ should be internal use only
-module Obsidian.Force (Forceable, Forced, force,write_, forceG, forceG2) where
+module Obsidian.Force (Forceable, Forced, force,write_, forceG) where
 
 
 import Obsidian.Program
@@ -113,25 +113,14 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
 -- TODO: Make typeclass! 
 forceG :: forall a. Scalar a => GlobPush (Exp a)
            -> Final (GProgram (GlobPull (Exp a)))
-forceG (GlobPush bs pbt) = Final $ 
+forceG (GlobPush pbt) = Final $ 
   do
       global <- Output $ Pointer (typeOf (undefined :: Exp a))
       
       pbt (assignTo global)
         
-      return $ GlobPull bs (\gix -> index global gix) 
+      return $ GlobPull (\gix -> index global gix) 
     where 
       assignTo name e i = Assign name i e
 
 
-forceG2 :: forall a. Scalar a => GlobPush2 (Exp a)
-           -> Final (GProgram (GlobPull2 (Exp a)))
-forceG2 (GlobPush2 bs pbt) = Final $ 
-  do
-      global <- Output $ Pointer (typeOf (undefined :: Exp a))
-      
-      pbt (assignTo global)
-        
-      return $ GlobPull2 bs (\bix tix -> index global (bix * fromIntegral bs + tix))
-    where 
-      assignTo name e b i = Assign name (b * fromIntegral bs + i)  e

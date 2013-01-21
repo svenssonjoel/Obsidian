@@ -35,23 +35,14 @@ instance Functor Push where
 --instance Functor Distrib where
 --  fmap f (Distrib bixf) = Distrib $ \bix -> f $ bixf bix
 
-instance Functor GlobPush2 where
-  fmap f (GlobPush2 bs wf ) =
-    GlobPush2 bs
-    $ \wf' -> wf (\a bix tix -> wf' (f a) bix tix)
-
 instance Functor GlobPush where
-  fmap f (GlobPush bs wf ) =
-    GlobPush bs
+  fmap f (GlobPush wf ) =
+    GlobPush
     $ \wf' -> wf (\a gix -> wf' (f a) gix)
 
 instance Functor GlobPull where
-  fmap f (GlobPull bs ixf) = GlobPull bs (f . ixf)
+  fmap f (GlobPull ixf) = GlobPull (f . ixf)
 
-instance Functor GlobPull2 where
-  fmap f (GlobPull2 bs bixixf) = GlobPull2 bs (\bix tix -> f (bixixf bix tix))
-
--- instance Functor GlobPush2 where
   
 
 ---------------------------------------------------------------------------
@@ -92,6 +83,7 @@ shiftRight :: Choice a => Word32 -> a -> Pull a -> Pull a
 shiftRight dist elt arr = resize (len arr)
                           $ replicate dist elt `conc` arr
 
+-- TODO: incorrect! 
 shiftLeft :: Choice a => Word32 -> a -> Pull a -> Pull a
 shiftLeft dist elt arr = resize (len arr)
                          $ arr `conc`  replicate dist elt
@@ -213,27 +205,6 @@ ixMap' :: (Exp Word32 -> Exp Word32)
           -> ((a -> Exp Word32 -> TProgram ()) -> BProgram ()) 
 ixMap' f p = \wf -> p (\a ix -> wf a (f ix))
 
----------------------------------------------------------------------------
--- Messy experimentation
----------------------------------------------------------------------------
-class IxMap2 a where
-  ixMap2 :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
-            -> a
-            -> a
-
-instance IxMap2 (GlobPush2 a) where
-  ixMap2 f (GlobPush2 bs p) = GlobPush2 bs (ixMap2' f (fromIntegral bs) p )
-
-ixMap2' :: (Exp Word32 -> Exp Word32 -> Exp Word32 -> (Exp Word32,Exp Word32))
-           -> Exp Word32 
-           -> ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) -> GProgram ()) 
-           -> ((a -> Exp Word32 -> Exp Word32 -> TProgram ()) -> GProgram ())
-ixMap2' f bs p= \wf -> p $ \ a bix tix ->
-                            let (bix',tix') = f bix tix bs
-                            in wf a bix' tix' 
-                              
---instance IxMap2 (Distrib (Pull a)) where
---  ixMap2 = undefined 
 
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 

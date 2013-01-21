@@ -136,7 +136,9 @@ data Exp a where
     idea to add them as constructors here. These 
     can be translated into the CUDA/OpenCL specific 
     concept later in the codegeneration 
-  -} 
+  -}
+  BlockDim :: DimSpec -> Exp Word32
+  
   BlockIdx :: DimSpec 
               -> Exp Word32
   ThreadIdx :: DimSpec
@@ -232,7 +234,8 @@ data Op a where
   -- There is no "div" in "Num" but it's already defined above. 
   FDiv :: Floating a => Op ((a, a) -> a) -- "acoshf"
 
-
+  Int32ToWord32 :: Op (Int32 -> Word32)
+  Word32ToInt32 :: Op (Word32 -> Int32) 
 
 
 ---------------------------------------------------------------------------
@@ -267,6 +270,13 @@ collectArrayIndexPairs (UnOp  _ e) = collectArrayIndexPairs e
 collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++ 
                                       collectArrayIndexPairs e1 ++ 
                                       collectArrayIndexPairs e2
+
+
+---------------------------------------------------------------------------
+-- Typecasts
+---------------------------------------------------------------------------
+int32ToWord32 = UnOp Int32ToWord32
+
 
 ---------------------------------------------------------------------------
 -- 
@@ -773,3 +783,5 @@ binOpToCBinOp ShiftR     = CShiftR
 
 unOpToCUnOp   BitwiseNeg = CBitwiseNeg
   
+unOpToCUnOp   Int32ToWord32 = CInt32ToWord32
+unOpToCUnOp   Word32ToInt32 = CWord32ToInt32

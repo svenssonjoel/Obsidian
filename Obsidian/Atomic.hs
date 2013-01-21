@@ -13,6 +13,9 @@ import Obsidian.Exp
 -- Atomic operations 
 ---------------------------------------------------------------------------
 data Atomic a where
-  AtomicInc :: Atomic Int
+
+  -- Cuda only allows AtomicInc on the Int type
+  --  (todo: figure out if CUDA int is 32 or 64 bit) 
+  AtomicInc :: Atomic Int 
 
 printAtomic AtomicInc = "atomicInc"

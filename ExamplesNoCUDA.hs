@@ -12,6 +12,7 @@ import Obsidian.Array
 import Obsidian.Library
 import Obsidian.Force
 import Obsidian.CodeGen.InOut
+import Obsidian.Atomic
 
 import Data.Word
 import Data.Int
@@ -45,10 +46,10 @@ quickPrint prg input =
 -- Scalar argument
 ---------------------------------------------------------------------------
 scalArg :: EInt -> GlobPull EInt -> Final (GProgram (GlobPull EInt)) 
-scalArg e = forceG . mapG (force . fmap (+e))
+scalArg e = forceG . mapG (force . fmap (+e)) 256
 
 getScalArg = quickPrint scalArg ((variable "X") :->
-                                 (sizedGlobal 256))
+                                 undefinedGlobal)
 
 ---------------------------------------------------------------------------
 -- MapFusion example
@@ -64,10 +65,10 @@ input1 :: Pull EInt
 input1 = namedArray "apa" 32
 
 input2 :: GlobPull EInt
-input2 = namedGlobal "apa"  32
+input2 = namedGlobal "apa" 
 
 input3 :: GlobPull (Exp Int32)
-input3 = namedGlobal "apa"  32
+input3 = namedGlobal "apa" 
 
 
 
@@ -82,7 +83,7 @@ prg0 = putStrLn$ printPrg$  mapFusion input1
 
 mapFusion' :: GlobPull EInt
               -> GlobPush EInt
-mapFusion' arr = mapG mapFusion arr
+mapFusion' arr = mapG mapFusion 256 arr
                  
 prg1 = putStrLn$ printPrg$ cheat $ (forceG . mapFusion') input2
 
@@ -94,35 +95,20 @@ prg1 = putStrLn$ printPrg$ cheat $ (forceG . mapFusion') input2
 permutePush :: GlobPull (Exp Word32)
                -> GlobPull a
                -> GlobPush a
-permutePush perm dat@(GlobPull bs gixf) = 
-  GlobPush bs $
+permutePush perm dat@(GlobPull gixf) = 
+  GlobPush $
     \wf -> -- (a -> W32 -> TProgram)
-         ForAllBlocks $
-           \bix -> ForAll bs $
-                   \tix ->
-                   let gix' = perm ! (bix * fromIntegral bs + tix)
-                   in wf (gixf (bix * fromIntegral bs + tix)) gix'
+         forAllT $
+           \gix ->
+            let gix' = perm ! gix
+            in  wf (gixf gix) gix' 
 
-
-permutePush2 :: GlobPull2 (Exp Word32,Exp Word32)
-                -> GlobPull2 a
-                -> GlobPush2 a
-permutePush2 perm@(GlobPull2 _ pf)  dat@(GlobPull2 bs bixtixf) =
-  GlobPush2 bs $
-  \wf -> -- (a -> W32 -> W32 -> TProgram)
-    ForAllBlocks $
-    \bix -> ForAll bs $
-            \tix ->
-            let (bix',tix') = pf bix tix
-                elt = bixtixf bix tix 
-            in wf elt bix' tix' 
       
-
 perm :: GlobPull (Exp Word32)
         -> GlobPush a
         -> GlobPush a
-perm perm@(GlobPull _ pf) (GlobPush bs pushf) =
-  GlobPush bs $
+perm perm@(GlobPull pf) (GlobPush pushf) =
+  GlobPush $
   \wf -> -- (a -> W32 -> TProgram)
    pushf (\a gix -> wf a (pf gix)) 
 
@@ -139,49 +125,40 @@ gatherGlobal :: GlobPull (Exp Word32)
                 -> GlobPull a
                 -> GlobPush a
 gatherGlobal indices elems    =
-  GlobPush bs $
-   \wf ->
-     ForAllBlocks $ \ bid -> 
-       ForAll bs $ \ tid -> 
-         let  inix  = indices ! (bid * fromIntegral bs + tid) 
-              e     = elems   ! inix  
-         in wf e (bid * fromIntegral bs + tid) 
-  where bs = len indices 
+  GlobPush $
+  \wf ->
+    forAllT $ \gix -> let inix = indices ! gix
+                          e    = elems ! inix 
+                      in wf e gix 
 
 scatterGlobal :: GlobPull (Exp Word32) -- where to scatter
-                 -- ->  Exp Word32 -- output size
-                 -> Word32     -- block size
                  -> GlobPull a -- the elements to scatter
                  -> GlobPush a 
-scatterGlobal indices bs elems = 
-  GlobPush bs $  --what blocksize has the output. Vague.. 
-    \wf -> ForAllBlocks $ \bid ->
-    ForAll n $ \tid ->
-    let  scix = indices ! (bid * fromIntegral n + tid)
-         e    = elems   ! (bid * fromIntegral n + tid) 
-    in wf e scix
-       where
-         n = len elems -- (should be same length or shorter then the 
-                       --  indices array) 
+scatterGlobal indices elems =
+  GlobPush $
+    \wf -> forAllT $ \gix ->
+    let scix = indices ! gix
+        e    = elems   ! gix
+    in  wf e scix 
 
-distribute :: Word32 -> a -> GlobPull a
-distribute bs e = GlobPull bs  $ \gix -> e           
+distribute :: a -> GlobPull a
+distribute e = GlobPull $ \gix -> e           
 
-histogram :: Word32
-             -> GlobPull (Exp Word32)
-             -> GlobPush (Exp Word32)
-histogram bs elems = scatterGlobal elems bs (distribute bs 1)
+histogram :: GlobPull (Exp Int32)
+             -> GlobPush (Exp Int32)
+             -- a type cast is needed!
+histogram elems = scatterGlobal (fmap int32ToWord32 elems) (distribute 1)
 
 
-reconstruct :: GlobPull (Exp Word32)
+reconstruct :: GlobPull (Exp Int32)
                -> GlobPull (Exp Word32)
-               -> GlobPush (Exp Word32)
+               -> GlobPush (Exp Int32)
 reconstruct inp pos =
-  gatherGlobal perm inp  -- not sure! 
+  gatherGlobal perm inp  
   where
     perm =
-      GlobPull (len inp) $ \gix ->
-      let gix' = inp ! gix 
+      GlobPull $ \gix ->
+      let gix' = (fmap int32ToWord32 inp) ! gix 
       in  pos ! gix' 
 
 -- This function is supposed to compute the histogram for the input vector.
@@ -192,63 +169,85 @@ reconstruct inp pos =
     -- sort then the `global` array needs to be zero everywhere from the start.
     -- 3. The type is really weird. It uses both GlobPull and GlobPull2. I just
     -- used whatever was most convenient for each task.
-fullHistogram :: Word32
-             -> GlobPull2 (Exp Word32)
-             -> Final (GProgram (GlobPull (Exp Int)))
-fullHistogram bs (GlobPull2 l ixf) = Final $
-                 do global <- Output $ Pointer (typeOf (undefined :: Exp Word32))
-                    ForAllBlocks $ \b ->
-                      ForAll bs $ \t ->
-                        do AtomicOp global (ixf b t) AtomicInc
-                           return ()
-                    return (GlobPull bs (\i -> index global i))
+fullHistogram :: GlobPull (Exp Int32)
+                 -> Final (GProgram (GlobPull (Exp Int)))
+fullHistogram (GlobPull ixf) = Final $
+                 do global <- Output $ Pointer (typeOf (undefined :: Exp Int32))
+                    forAllT $ \gix ->
+                      do AtomicOp global (int32ToWord32 (ixf gix))  AtomicInc
+                         return ()
+                    return (GlobPull (\i -> index global i))
 
-{- 
----------------------------------------------------------------------------
--- Scan  (TODO: Rewrite as a exclusive scan (0 as first elem in result) 
----------------------------------------------------------------------------
-sklanskyLocal
-  :: (Num (Exp a), Scalar a) =>
-     Int
-     -> (Exp a -> Exp a -> Exp a)
-     -> Pull (Exp a)
-     -> BProgram (Pull (Exp a))
-sklanskyLocal 0 op arr = return (shiftRight 1 0 arr)
-sklanskyLocal n op arr =
+atomicForce :: forall a. Scalar a => Atomic a
+               -> GlobPull (Exp Word32)
+               -> GlobPull (Exp a)
+               -> Final (GProgram (GlobPull (Exp a)))    
+atomicForce atop indices dat = Final $ 
   do 
-    let arr1 = twoK (n-1) (fan op) arr
-    arr2 <- force arr1
-    sklanskyLocal (n-1) op arr2
+    global <- Output $ Pointer (typeOf (undefined :: Exp a))
 
+    forAllT $ \gix ->
+      do Assign   global gix (dat ! gix)
+         AtomicOp global (indices ! gix) atop
+         return ()
+         
+    return $ GlobPull (\gix -> index global gix)
 
-sklansky
-  :: (Num (Exp a), Scalar a) =>
-     Int
-     -> (Exp a -> Exp a -> Exp a)
-     -> Pull (Exp a)
-     -> BProgram (Pull (Exp a))
+      
+
+-- Possible answers:
+-- #1: I think I adapted the code to answer this.
+--     This is how it might work, at least in this experimental branch
+-- #2: Normally not initialized to zero. When allocating a global array
+--     it should be followed by a "memset". but this is outside of what we
+--     can do from inside Obsidian right now.
+-- #3: I changed this to only use GlobPull. (GlobPull2 is removed in this branch)
+
+-- Are the types supposed to be this way ? 
+fullReconstruct :: GlobPull (Exp Word32)
+                -> GlobPush (Exp Word32)
+fullReconstruct (GlobPull ixf) = GlobPush f
+  where f k = do forAllT $ \gix ->
+                   let startIx = ixf gix in
+                   SeqFor (ixf (gix + 1) - startIx) $ \ix ->
+                      k gix (ix + startIx)
+
+getFullReconstr = quickPrint (forceG . fullReconstruct) undefinedGlobal
+
+---------------------------------------------------------------------------
+-- Scan
+---------------------------------------------------------------------------
+sklansky :: (Num (Exp a), Scalar a)
+            => Int
+            -> (Exp a -> Exp a -> Exp a)
+            -> Pull (Exp a)
+            -> BProgram (Pull (Exp a))
 sklansky 0 op arr = return (shiftRight 1 0 arr)
 sklansky n op arr =
   do 
     let arr1 = twoK (n-1) (fan op) arr
     arr2 <- force arr1
-    sklanskyLocal (n-1) op arr2
+    sklansky (n-1) op arr2
 
 
+sklanskyMax n op arr = do
+  res <- sklansky n op arr
+  let m = fromIntegral $ (2^n) - 1
+  return (res,res ! m) 
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))
 
--- TODO: Too specific types everywhere! 
 
 sklanskyAllBlocks :: Int
-                     -> Distrib (Pull (Exp Word32))
-                     -> Distrib (BProgram (Pull (Exp Word32)))
+                     -> GlobPull (Exp Int32)
+                     -> GlobPush (Exp Int32)
 sklanskyAllBlocks logbsize arr =
-  mapD (sklanskyLocal logbsize (+)) arr
+  mapG (sklansky logbsize (+)) (2^logbsize) arr
 
+{- 
 blockReplicate :: Word32 -- blockSize
                    -> Pull (Exp Word32)
                    -> Distrib (Pull (Exp Word32))
@@ -261,20 +260,20 @@ blockReplicate bs inp =
 ---------------------------------------------------------------------------
 -- Print Kernels
 ---------------------------------------------------------------------------
-
-getHist = quickPrint (forceG .  histogram 256) (sizedGlobal 256)
+-} 
+getHist = quickPrint (forceG .  histogram) undefinedGlobal
 
 getRecon = quickPrint reconstruct'  
-             ((sizedGlobal 256 :: DistArray (Exp Word32)) :-> 
-              (sizedGlobal 256 :: DistArray (Exp Word32)))
+             ((undefinedGlobal :: GlobPull (Exp Int32)) :->
+              (undefinedGlobal :: GlobPull (Exp Word32)))
            where
              reconstruct' i1 i2 = forceG (reconstruct i1 i2)
 
-getSklansky = quickPrint (forceG . toGlobPush . sklanskyAllBlocks 8)
-                         (sizedGlobal 256)
+getSklansky = quickPrint (forceG . sklanskyAllBlocks 8)
+                         undefinedGlobal
 
 
-
+{- 
 ---------------------------------------------------------------------------
 --
 -- Experimenting with GlobPull and GlobPull2.
@@ -312,46 +311,18 @@ mapGP n f (GlobPull _ ixf)  =
 
 
 mapG :: (Pull a -> BProgram (Pull b))
+        -> Word32 -- BlockSize ! 
         -> GlobPull a
         -> GlobPush b
-mapG f (GlobPull n ixf)  =
+mapG f n (GlobPull ixf)  =
   GlobPush 
-        n
         $ \wf ->
           ForAllBlocks 
            $ \bix ->
              do -- BProgram do block 
                let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
                res <- f pully
-               ForAll n $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
-
-mapG2 :: (Pull a -> BProgram (Pull b))
-         -> GlobPull2 a
-         -> GlobPush2 b
-mapG2 f (GlobPull2 n bixixf) =
-  GlobPush2 n
-  $ \wf -> ForAllBlocks
-           $ \bix ->
-           do -- BProgram do block
-             let pully = Pull n (\ix -> bixixf bix ix)
-             res <- f pully
-             ForAll n $ \ix -> wf (res ! ix) bix ix 
-
-
-
----------------------------------------------------------------------------
--- Is it possible to change view?
----------------------------------------------------------------------------
-changeOut :: GlobPull a -> GlobPull2 a
-changeOut (GlobPull n ixf) =
-  GlobPull2 n $ \bix ix -> ixf (bix * (fromIntegral n) + ix)
-
-changeIn :: GlobPull2 a -> GlobPull a
-changeIn (GlobPull2 n bixixf) =
-  GlobPull n $ \ gix ->
-  let bix = gix `div` (fromIntegral n)
-      ix  = gix `mod` (fromIntegral n)
-  in bixixf bix ix
+               ForAll (Just n) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
 
 {- 
 ---------------------------------------------------------------------------
@@ -439,7 +410,7 @@ getTestAB = quickPrint (forceG . testAB . changeIn . silly)
 mapSeq :: ([a] -> [b]) -> Pull [a] -> Push b
 mapSeq f (Pull bs ixf) =
   Push (bs * fromIntegral n)
-  $ \wf -> ForAll bs
+  $ \wf -> ForAll (Just bs)
            $ \ ix ->
            let dat = f (ixf ix) 
                m   = length dat
@@ -485,7 +456,7 @@ mapPermSeq :: ([a] -> [b])
 mapPermSeq f inp outp pull@(Pull bs ixf) =
   
   Push (bn * fromIntegral outN)
-  $ \wf -> ForAll bn
+  $ \wf -> ForAll (Just bn)
            $ \ix ->
            let p   = gatherSeq pull
                dat = f (p ! ix)  -- apply sequential computation
@@ -513,21 +484,18 @@ mapPermSeqG :: ([a] -> [b])
                -> (Exp Word32 -> [Exp Word32]) -- Not Nice! 
                -> (Exp Word32 -> [Exp Word32]) -- Not Nice!
                -> GlobPull a -> GlobPush b
-mapPermSeqG f inp outp pull@(GlobPull bs ixf) =
-
-  GlobPush (bn * fromIntegral outN)
-  $ \wf -> ForAllBlocks
-           $ \bix -> ForAll bn
-                     $ \tix ->
-                     let p = gatherSeq pull
-                         dat = f (p ! (bix * fromIntegral bn + tix))  -- TODO: maybe should be bs and not bn.
-                     in sequence_ [wf (dat !! i) ((outp (bix * fromIntegral bn + tix)) !! i) -- TODO: same as above.
+mapPermSeqG f inp outp pull@(GlobPull ixf) =
+  -- Here I start to get very confused about what will happen
+  -- when using forAllT (and its direct usage of CUDA's BlockDim.x) 
+  GlobPush 
+  $ \wf -> forAllT
+           $ \gix -> let p = gatherSeq pull
+                         dat = f (p ! gix)  
+                     in sequence_ [wf (dat !! i) ((outp gix) !! i) 
                                   | i <- [0..outN-1]]
   where 
-    bn = bs `div` fromIntegral inN 
-    gatherSeq (GlobPull n ixf) =
-      GlobPull (n `div` fromIntegral inN)
-      $ \ix -> [ixf i | i <- inp ix]
+    gatherSeq (GlobPull ixf) =
+      GlobPull $ \ix -> [ixf i | i <- inp ix]
                
     inN = length (inp (variable "X")) 
     outN = length (outp (variable "X"))
@@ -545,13 +513,19 @@ test3 = mapPermSeqG (\[a,b] -> [min a b, max a b])
 
   
 -- getTest3 and getTest3' should give same code
-getTest3 = quickPrint (forceG2 . blockView . test3 . changeIn )
-                       (sizedGlobal2 256)
 
-getTest3' = quickPrint (forceG . test3 )
-                       (sizedGlobal 256)
+getTest3 = quickPrint (forceG . test3 ) undefinedGlobal
 
 
 
 -- TODO: Probably lots of bugs right now
 
+
+---------------------------------------------------------------------------
+-- Hacking
+---------------------------------------------------------------------------
+forAllT' :: GlobPull (Program Thread ()) -> Program Grid ()
+forAllT' (GlobPull gixf) = forAllT gixf
+
+forAllLocal :: Pull (Program Thread ()) -> Program Block ()
+forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
