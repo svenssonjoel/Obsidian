@@ -101,38 +101,59 @@ instance Resizeable Push where
 ---------------------------------------------------------------------------
 class Pushable a where 
   push  :: a e -> Push e
-  pushS :: Word32 -> a e -> Push e 
-
+  pushN :: Word32 -> a e -> Push e 
+  pushF :: a [e] -> Push e 
+ 
 instance Pushable Push where 
   push = id
-  pushS = error "pushS on Push array: don't know how to implement that yet" 
+  pushN = error "pushN on Push array: don't know how to implement that yet" 
+  pushF = error "pushF on Push array: don't know hot to implement that yet" 
   
 instance Pushable Pull where   
   push (Pull n ixf) =
     Push n $ \wf -> ForAll (Just n) $ \i -> wf (ixf i) i
-  pushS m (Pull n ixf) =
+                                            
+  pushN m (Pull n ixf) =
+    Push n $ \wf ->
+    ForAll (Just nP) $ \i ->
+    -- Probably something off in the indexing here. 
+    sequence_ [wf (ixf (i + fromIntegral (j * nP))) (i + (fromIntegral (j * nP)))
+              | j <- [0..nS]] 
     -- Force can still Allocate n elements for this Push array.
-    Push n $ \wf -> ForAll (Just nP)
-                    $ \i -> SeqFor nS $ \j -> wf (ixf (i*nS + j)) (i*nS + j)
+    --Push n $ \wf -> ForAll (Just nP)
+    --                $ \i -> SeqFor nS $ \j -> wf (ixf (i*nS + j)) (i*nS + j)
     where
       nS = fromIntegral m
       nP = fromIntegral (n `div` m)
+      
+  pushF (Pull n ixf) =
+    Push (n * m) $ \wf ->
+    ForAll (Just n) $ \i ->
+    sequence_ [wf ((ixf i) !! fromIntegral j)  (i * fromIntegral (m + j))
+              | j <- [0..m]]
+    where 
+      m = fromIntegral$ length $ ixf 0 
 
 ---------------------------------------------------------------------------
 -- Global Pushable
 --------------------------------------------------------------------------- 
 
 class PushableGlobal a where
-  pushG :: a e -> GlobPush e 
+  pushG :: a e -> GlobPush e
+  -- Push Global and Flatten
   pushGF :: a [e] -> GlobPush e
 
+  pushGN :: Word32 -> a e -> GlobPush e
+  
 instance PushableGlobal GlobPull where
   pushG (GlobPull ixf) =
       GlobPush 
         $ \wf -> forAllT
-                 $ \gix -> wf (ixf gix) gix 
+                 $ \gix -> wf (ixf gix) gix
+                           
   pushGF (GlobPull ixf) = undefined
 
+  pushGN n (GlobPull ixf) = undefined 
   
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
