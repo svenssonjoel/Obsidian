@@ -272,7 +272,15 @@ genProgNoForAll mm nt (AtomicOp resname name ix AtomicInc) =
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
     Nothing -> error "genProg: AtomicOp. Think about this case"       
-                
+
+genProgNoForAll mm nt (SeqFor nom n f) =
+  do
+    let n' = concat (genExp gc mm n) 
+    line$ "for (int "++ nom ++ " =  0;" ++ nom ++ " < " ++ n' ++ ";" ++ nom ++ "++)"
+    newline
+    begin
+    genProgNoForAll mm nt (f (variable nom)) 
+    end 
 genProgNoForAll mm nt (ForAll n f) = error "genProgNoForAll: Error Program contains nested ForAll" 
 genProgNoForAll mm nt (Allocate name size t _) = return () 
 genProgNoForAll mm nt (Synchronize True) = syncLine >> newline 

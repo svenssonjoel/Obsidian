@@ -1,6 +1,11 @@
 
 
-{- Joel Svensson 2012-} 
+{- Joel Svensson 2012, 2013
+
+   notes:
+     added case for SeqFor  Jan-21-2013
+
+-} 
 module Obsidian.CodeGen.Liveness where
 
 import qualified Data.Set as Set
@@ -29,7 +34,12 @@ liveness' (Allocate name size t _) s =
   (Allocate name size t alive,alive)
   where 
     alive = name `Set.delete` s
-  
+-- Added Jan 2013 
+liveness' (SeqFor nom n ixfToPrg) s = (SeqFor nom n (fst . ixf'),living)
+  where
+    ixf' = ((flip liveness') Set.empty) . ixfToPrg
+    aliveInside = snd$ ixf' (variable "X")
+    living = s `Set.union` aliveInside 
 liveness' (ForAll n ixfToPrg) s = (ForAll n (fst . ixf'),living)    
   where 
     ixf' = ((flip liveness') Set.empty) . ixfToPrg

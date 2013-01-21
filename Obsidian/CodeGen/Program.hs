@@ -34,11 +34,10 @@ data Program extra
      | forall a. Scalar a =>
        AtomicOp Name Name (Exp Word32) (Atomic a)
 
-     | SeqFor (Exp Word32) (Exp Word32 -> Program extra) 
+     | SeqFor String (Exp Word32) (Exp Word32 -> Program extra) 
      | ForAll (Maybe Word32) (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
      | ForAllBlocks (Exp Word32 -> Program extra)
-     -- | ForAllG (Exp Word32 -> Program extra)
      | Allocate Name Word32 Type extra
        -- Not Present in old Program datatype 
      | Output Name Type 
@@ -65,7 +64,8 @@ runPrg' i (P.AtomicOp name ix at) =
   in  (variable nom,AtomicOp nom name ix at)
 runPrg' i (P.SeqFor n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
-  in ((),SeqFor n newf) 
+      nom = "i" ++ show (supplyValue i) 
+  in ((),SeqFor nom n newf) 
 runPrg' i (P.ForAll n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in  ((),ForAll n newf)
@@ -101,9 +101,9 @@ printPrg (Assign name ix e) =
 printPrg (AtomicOp res arr ix op) =
   res ++ " = " ++
   printAtomic op ++ "(" ++ arr ++ "[" ++ printExp ix ++ "]);\n"
-printPrg (SeqFor n f) =
-  "seqFor i in [0.."++show n++"] do\n" ++
-  printPrg (f (variable "i")) ++ "\ndone;\n"
+printPrg (SeqFor nom n f) =
+  "seqFor "++ nom ++ " in [0.."++show n++"] do\n" ++
+  printPrg (f (variable nom)) ++ "\ndone;\n"
 printPrg (ForAll n f) =
   "forAll i in [0.."++show n ++"] do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
@@ -128,7 +128,7 @@ printPrg (ProgramSeq p1 p2) =
 ---------------------------------------------------------------------------
 
 threadsPerBlock :: Program e -> Word32
-threadsPerBlock (SeqFor n f) = 1 
+threadsPerBlock (SeqFor _ _ _) = 1 
 threadsPerBlock (ForAll (Just n) f) = n
 threadsPerBlock (ForAll Nothing f) = 0 -- really the answer is "Any number of threads" 
 threadsPerBlock (ForAllBlocks f) = threadsPerBlock (f (variable "X"))
@@ -141,7 +141,7 @@ collectOutputs :: Program e -> [(Name,Type)]
 collectOutputs (Output nom t) = [(nom,t)]
 collectOutputs (p1 `ProgramSeq` p2) = collectOutputs p1 ++
                                       collectOutputs p2
-collectOutputs (SeqFor n f) = collectOutputs (f (variable "X"))
+collectOutputs (SeqFor _ _ f) = collectOutputs (f (variable "X"))
 -- collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
 collectOutputs (ForAllBlocks f) = collectOutputs (f (variable "X"))
 --collectOutputs (ForAllG f) = collectOutputs (f (variable "X"))

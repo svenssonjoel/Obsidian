@@ -1,5 +1,10 @@
 
-{- Joel Svensson 2012 -} 
+{- Joel Svensson 2012, 2013
+ 
+   notes:
+     Added a SeqFor case Jan-21-2013
+  
+ -} 
 module Obsidian.CodeGen.Memory 
        (MemMap,
         Memory,
@@ -106,7 +111,9 @@ mapMemory = mapMemoryProgram
 
 mapMemoryProgram :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap)    
 mapMemoryProgram Skip m mm = (m,mm) 
-mapMemoryProgram (Assign name i a) m mm = (m,mm) 
+mapMemoryProgram (Assign name i a) m mm = (m,mm)
+-- Added Jan-21-2013
+mapMemoryProgram (SeqFor nom n f) m mm = mapMemoryProgram (f (variable "X")) m mm 
 mapMemoryProgram (ForAll n f) m mm = mapMemoryProgram (f (variable "X")) m mm       
 -- mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
 mapMemoryProgram (Synchronize _) m mm = (m,mm)

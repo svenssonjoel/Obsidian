@@ -193,7 +193,7 @@ atomicForce atop indices dat = Final $
          
     return $ GlobPull (\gix -> index global gix)
 
-                    
+      
 
 -- Possible answers:
 -- #1: I think I adapted the code to answer this.
@@ -211,6 +211,8 @@ fullReconstruct (GlobPull ixf) = GlobPush f
                    let startIx = ixf gix in
                    SeqFor (ixf (gix + 1) - startIx) $ \ix ->
                       k gix (ix + startIx)
+
+getFullReconstr = quickPrint (forceG . fullReconstruct) undefinedGlobal
 
 ---------------------------------------------------------------------------
 -- Scan
