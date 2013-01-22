@@ -101,7 +101,12 @@ instance Resizeable Push where
 ---------------------------------------------------------------------------
 class Pushable a where 
   push  :: a e -> Push e
-  pushN :: Word32 -> a e -> Push e 
+  -- Push using m threads
+  --  m must be a divisor of nm  (TODO: error otherwise) 
+  pushN :: Word32 -> a e -> Push e
+
+  -- push grouped elements to adjacent indices using
+  -- one thread per group. 
   pushF :: a [e] -> Push e 
  
 instance Pushable Push where 
@@ -112,27 +117,42 @@ instance Pushable Push where
 instance Pushable Pull where   
   push (Pull n ixf) =
     Push n $ \wf -> ForAll (Just n) $ \i -> wf (ixf i) i
-                                            
-  pushN m (Pull n ixf) =
-    Push n $ \wf ->
-    ForAll (Just nP) $ \i ->
-    -- Probably something off in the indexing here. 
-    sequence_ [wf (ixf (i + fromIntegral (j * nP))) (i + (fromIntegral (j * nP)))
-              | j <- [0..nS]] 
+
+  pushN m (Pull nm ixf) =
+    Push nm -- There are still nm elements (info for alloc) 
+    $ \wf ->
+    ForAll (Just m) 
+    $ \i ->
+    sequence_ [wf (ixf (i + fromIntegral (j * n))) (i + (fromIntegral (j * n)))
+              | j <- [0..n]] 
     -- Force can still Allocate n elements for this Push array.
-    --Push n $ \wf -> ForAll (Just nP)
-    --                $ \i -> SeqFor nS $ \j -> wf (ixf (i*nS + j)) (i*nS + j)
     where
-      nS = fromIntegral m
-      nP = fromIntegral (n `div` m)
-      
+      n = fromIntegral (nm `div` m)
+
   pushF (Pull n ixf) =
     Push (n * m) $ \wf ->
     ForAll (Just n) $ \i ->
-    sequence_ [wf ((ixf i) !! fromIntegral j)  (i * fromIntegral (m + j))
+    sequence_ [wf ((ixf i) !! fromIntegral j)  (i * fromIntegral m + fromIntegral j)
               | j <- [0..m]]
     where 
-      m = fromIntegral$ length $ ixf 0 
+      m = fromIntegral$ length $ ixf 0
+
+{- ------------------------------------------------------------------------
+
+     m     m     m     m     m 
+  |-----|-----|-----|-----|-----| (n * m)
+
+   01234 01234 01234 01234 01234  k 
+
+  0     1     2     3     4       j
+
+  m threads, each writing n elements:
+  [(tid + (j*m) | j <- [0..n]] 
+
+  n threads, each writing m elements:
+  [(tid * m + k | k <- [0..m]] 
+
+------------------------------------------------------------------------ -} 
 
 ---------------------------------------------------------------------------
 -- Global Pushable
@@ -143,7 +163,8 @@ class PushableGlobal a where
   -- Push Global and Flatten
   pushGF :: a [e] -> GlobPush e
 
-  pushGN :: Word32 -> a e -> GlobPush e
+  -- Push using m threads per block and n elements per thread
+  pushGN :: Word32 -> Word32 -> a e -> GlobPush e
   
 instance PushableGlobal GlobPull where
   pushG (GlobPull ixf) =
@@ -153,7 +174,21 @@ instance PushableGlobal GlobPull where
                            
   pushGF (GlobPull ixf) = undefined
 
-  pushGN n (GlobPull ixf) = undefined 
+  -- Implementing this will set a fixed blocksize.
+  -- But then again, if exact control over number of threads
+  -- is wanted then that is neccessary. 
+  pushGN m n (GlobPull ixf) =
+    GlobPush 
+    $ \wf ->
+    ForAllBlocks $ \bid ->
+    ForAll (Just m) 
+    $ \tid ->
+    let i = bid * (fromIntegral m) + tid in     
+    sequence_ [wf (ixf (i + fromIntegral (j * n))) (i + fromIntegral (j * n))
+              | j <- [0..n]] 
+    
+
+
   
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
