@@ -2,3 +2,6 @@
 * pushS, pushN: Look at ways to push more than one element per thread.
   Do not push adjacent elements!     
 * Get all example files up to date with current implementation.
+* See if there is something awkward with mapG and number of threads 
+  when it comes to writing the global array. 
+
