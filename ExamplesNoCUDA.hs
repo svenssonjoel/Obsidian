@@ -310,19 +310,6 @@ getSklansky = quickPrint (forceG . sklanskyAllBlocks 8)
                
 
 
-mapG :: (Pull a -> BProgram (Pull b))
-        -> Word32 -- BlockSize ! 
-        -> GlobPull a
-        -> GlobPush b
-mapG f n (GlobPull ixf)  =
-  GlobPush 
-        $ \wf ->
-          ForAllBlocks 
-           $ \bix ->
-             do -- BProgram do block 
-               let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
-               res <- f pully
-               ForAll (Just n) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
 
 {- 
 ---------------------------------------------------------------------------

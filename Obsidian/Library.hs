@@ -17,6 +17,9 @@ import Obsidian.Array
 import Obsidian.Exp 
 import Obsidian.Program
 
+-- needed for threadsPerBlock analysis 
+import qualified Obsidian.CodeGen.Program as P 
+
 import Data.Bits 
 import Data.Word
 
@@ -252,6 +255,49 @@ zipP arr1 arr2 =
 ---------------------------------------------------------------------------
 -- ***                          GLOBAL ARRAYS                        *** --
 ---------------------------------------------------------------------------
+
+-- A very experimenental instance of mapG 
+mapG :: (Pull a -> BProgram (Pull b))
+        -> Word32 -- BlockSize ! 
+        -> GlobPull a
+        -> GlobPush b
+mapG f n (GlobPull ixf)  =
+  GlobPush 
+        $ \wf ->
+          ForAllBlocks 
+           $ \bix ->
+             do -- BProgram do block 
+               let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+
+               let res' = f pully 
+               res <- res' 
+               let numThreads = P.threadsPerBlock $ P.convPrg res'
+                   elemsPerThread = len res `div` numThreads
+
+               if (numThreads == 0 || len res `mod` numThreads /= 0)
+                 then 
+                 ForAll (Just n) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
+                 else
+                 ForAll (Just n) $ \ix ->
+                 sequence_ [wf (res ! (ix + fromIntegral (numThreads * j)))
+                               (bix * fromIntegral n + (ix + fromIntegral (numThreads * j )))
+                            | j <- [0..elemsPerThread]]
+
+
+-- Old fasioned mapG
+mapG' :: (Pull a -> BProgram (Pull b))
+        -> Word32 -- BlockSize ! 
+        -> GlobPull a
+        -> GlobPush b
+mapG' f n (GlobPull ixf)  =
+  GlobPush 
+        $ \wf ->
+          ForAllBlocks 
+           $ \bix ->
+             do -- BProgram do block 
+               let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+               res <- f pully
+               ForAll (Just n) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
 
 ---------------------------------------------------------------------------
 -- From Distributed array of blocks to a global push array

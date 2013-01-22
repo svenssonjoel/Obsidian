@@ -96,7 +96,7 @@ compose (f:fs) arr =
     let arr1 = f arr
     arr2 <- force arr1
     compose fs arr2
-    
+      
 
 
 

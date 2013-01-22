@@ -53,7 +53,7 @@ data Program t a where
           -> Program Thread ()
           -> Program Thread ()
   
-  -- TODO: Code generation for this.            
+  -- DONE: Code generation for this.            
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
 
@@ -187,12 +187,4 @@ printPrg' i (Bind m f) =
       (a2,str2,i2) = printPrg' i1 (f a1)
   in (a2,str1 ++ str2, i2)
 printPrg' i Sync = ((),"Sync;\n",i)
-
----------------------------------------------------------------------------
---
----------------------------------------------------------------------------
-
-
-
-
 
