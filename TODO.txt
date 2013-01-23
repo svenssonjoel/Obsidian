@@ -4,4 +4,5 @@
 * Get all example files up to date with current implementation.
 * See if there is something awkward with mapG and number of threads 
   when it comes to writing the global array. 
-
+* See what the state of the CSE is. Does it work in this new setting? 
+  Or is a lot of coding needed? 
