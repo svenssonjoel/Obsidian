@@ -34,6 +34,12 @@ liveness' (Allocate name size t _) s =
   (Allocate name size t alive,alive)
   where 
     alive = name `Set.delete` s
+
+-- Added Jan 2013
+liveness' (AtomicOp n1 n2 ix op) s = (AtomicOp n1 n2 ix op, s)
+ -- Is this correct. It would help if I remembered exactly what
+ -- this does.                                      
+  
 -- Added Jan 2013 
 liveness' (SeqFor nom n ixfToPrg) s = (SeqFor nom n (fst . ixf'),living)
   where

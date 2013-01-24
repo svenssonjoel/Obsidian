@@ -226,6 +226,9 @@ genProg mm nt (Assign name ix a) =
 --- *** ATOMIC OP CASE 
 genProg mm nt (AtomicOp resname name ix AtomicInc) = 
   case Map.lookup name mm of
+
+    -- This case expects an array in shared memory.
+    -- atomic ops on shared memory is only allowed on some architectures. 
     Just (addr,t) ->
       do
         -- TODO: Declare a variable with name resname
@@ -233,7 +236,14 @@ genProg mm nt (AtomicOp resname name ix AtomicInc) =
         line$  "atomicInc(&(" ++ sbaseStr addr t ++ ")" ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
-    Nothing -> error "genProg: AtomicOp. Think about this case"       
+    -- Lets assume that if name is not in the memory map, then
+    -- it is a global memory array. (The problem is that it could
+    -- also not be in the memory map because in a bug of generating that map) 
+    Nothing ->
+      do
+        line$  "atomicInc(&"++ name ++ "+"
+          ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
+        newline
                 
 genProg mm nt (ForAll (Just n) f) = potentialCond gc mm n nt $ 
                                     genProgNoForAll mm nt (f (ThreadIdx X)  ) 
@@ -271,7 +281,16 @@ genProgNoForAll mm nt (AtomicOp resname name ix AtomicInc) =
         line$  "atomicInc(&(" ++ sbaseStr addr t ++ ")" ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
-    Nothing -> error "genProg: AtomicOp. Think about this case"       
+    -- Lets assume that if name is not in the memory map, then
+    -- it is a global memory array. (The problem is that it could
+    -- also not be in the memory map because in a bug of generating that map) 
+    Nothing ->
+      do
+        line$  "atomicInc(&"++ name ++ "+"
+          ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
+        newline
+    
+    
 
 genProgNoForAll mm nt (SeqFor nom n f) =
   do

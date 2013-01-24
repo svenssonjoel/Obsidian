@@ -178,6 +178,8 @@ fullHistogram (GlobPull ixf) = Final $
                          return ()
                     return (GlobPull (\i -> index global i))
 
+getFullHistogram = quickPrint (fullHistogram) undefinedGlobal
+
 atomicForce :: forall a. Scalar a => Atomic a
                -> GlobPull (Exp Word32)
                -> GlobPull (Exp a)
