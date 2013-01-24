@@ -10,10 +10,10 @@
 * See what the state of the CSE is. Does it work in this new setting? 
   Or is a lot of coding needed? 
 
-* DONE: Investigate why __attribute__ might fail (on windows) 
+* <DONE>: Investigate why __attribute__ might fail (on windows) 
   you need to do __declspec(align(16))
 
-* DONE: Investigate why a size is needed on shared memory array declarations (on windows) 
+* <DONE>: Investigate why a size is needed on shared memory array declarations (on windows) 
   The programmers manual specifies that you should not be required to 
   specify a size if you do: 
    extern __shared__ type name[]; 
