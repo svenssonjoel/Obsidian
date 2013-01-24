@@ -33,4 +33,6 @@
   and they directly outputs to global memory can be implemented in 
   a way that does not require a __syncthreads(); 
  
-
+* __threadfence and __threadfence_block: Look at what powers these 
+  two functions may bring to our new global kernels. 
+  
