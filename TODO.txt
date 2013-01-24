@@ -20,7 +20,17 @@
   The size is given later in the execution configuration:
   func<<<blocks, threads, sharedBytes>>>(parameters); 
 
+
+* See what needs to be done to implement global kernels that use 
+  shared memory for caching. This does not as I can see be easily 
+  fit into how I manage memory currently. 
+  One big difference is that this kernel will not "know" how much 
+  shared memory it needs. It will depend on its execution configuration. 
+  Currently kernels that use shared memory are of fixed sizes and 
+  know how much memory to use.
+
 * See if special global kernels that cache in shared memory once 
   and they directly outputs to global memory can be implemented in 
   a way that does not require a __syncthreads(); 
+ 
 
