@@ -6,3 +6,5 @@
   when it comes to writing the global array. 
 * See what the state of the CSE is. Does it work in this new setting? 
   Or is a lot of coding needed? 
+* Investigate why __attribute__ might fail (on windows) 
+* Investigate why a size is needed on shared memory array declarations (on windows) 
