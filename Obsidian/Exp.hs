@@ -137,6 +137,8 @@ data Exp a where
     can be translated into the CUDA/OpenCL specific 
     concept later in the codegeneration 
   -}
+  WarpSize :: Exp Word32
+  
   BlockDim :: DimSpec -> Exp Word32
   
   BlockIdx :: DimSpec 
