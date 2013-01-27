@@ -35,4 +35,17 @@
  
 * __threadfence and __threadfence_block: Look at what powers these 
   two functions may bring to our new global kernels. 
+
+* May need to use __threadfence and __syncthreads in some combination 
+  to make atomicForce really work as it should. 
+
+  - threadfence: 
+    The thread that calls threadfence is stalled until all its 
+    prior writes to global and local memory is visible to all(globally) 
+    other threads.  
+
+  - syncthreads:    
+    waits until all threads in a block reaches this point and 
+    also until all writes to memory is visible by all those threads. 
+
   
