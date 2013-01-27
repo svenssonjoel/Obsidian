@@ -71,7 +71,7 @@ data CExprP e  = CVar Name CType
                | CThreadIdx DimSpec
                | CBlockDim  DimSpec
                | CGridDim   DimSpec
-               
+                 
                | CLiteral Value CType
                | CIndex (e,[e]) CType
                | CCond e e e CType
@@ -106,6 +106,12 @@ data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign
            | CDeclAssign CType Name CExpr -- declare variable and assign a value 
            | CFunc   Name  [CExpr]                    
            | CSync                  -- CUDA: "__syncthreads()" OpenCL: "barrier(CLK_LOCAL_MEM_FENCE)"
+           | CThreadFence
+           | CThreadFenceBlock      -- these could be taken care of with a simple
+                                    -- application of the CFunc constructor
+                                    -- but since sync,threadfence etc are special
+                                    -- and might need attention during code gen
+                                    -- I give them specific constructors. 
 
            | CIf     CExpr [SPMDC] [SPMDC]
            deriving (Eq,Ord,Show)
@@ -133,6 +139,7 @@ cexpr2 exp a b     = CExpr $ exp a b
 cexpr3 exp a b c   = CExpr $ exp a b c 
 cexpr4 exp a b c d = CExpr $ exp a b c d  
 
+cWarpSize  = CExpr $ CVar "warpSize" CWord32 
 cBlockIdx  = cexpr1 CBlockIdx
 cThreadIdx = cexpr1 CThreadIdx
 cBlockDim  = cexpr1 CBlockDim
@@ -149,7 +156,9 @@ cCast      = cexpr2 CCast
 cAssign     = CAssign 
 cFunc       = CFunc  
 cDecl       = CDecl
-cSync       = CSync 
+cSync       = CSync
+cThreadFence = CThreadFence
+cThreadFenceBlock = CThreadFenceBlock
 cDeclAssign = CDeclAssign 
 cIf         = CIf 
 

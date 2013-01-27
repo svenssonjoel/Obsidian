@@ -246,7 +246,9 @@ data Op a where
 variable name = Index (name,[])
 index name ix = Index (name,[ix])
 
- 
+warpSize :: Exp Word32
+warpSize = WarpSize
+
 ---------------------------------------------------------------------------
 -- Collect array names
 
@@ -707,8 +709,9 @@ instance ExpToCExp Word64 where
   expToCExp a = expToCExpGeneral a 
 
   
-expToCExpGeneral :: ExpToCExp a  => Exp a -> CExpr 
-expToCExpGeneral (BlockIdx d) = cBlockIdx d
+expToCExpGeneral :: ExpToCExp a  => Exp a -> CExpr
+expToCExpGeneral WarpSize      = cWarpSize 
+expToCExpGeneral (BlockIdx d)  = cBlockIdx d
 expToCExpGeneral (ThreadIdx d) = cThreadIdx d
 
 expToCExpGeneral e@(Index (name,[])) = cVar name (typeToCType (typeOf e))

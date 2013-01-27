@@ -180,6 +180,8 @@ fullHistogram (GlobPull ixf) = Final $
 
 getFullHistogram = quickPrint (fullHistogram) undefinedGlobal
 
+
+-- Now this one will break code generation ! 
 atomicForce :: forall a. Scalar a => Atomic a
                -> GlobPull (Exp Word32)
                -> GlobPull (Exp a)
@@ -189,9 +191,12 @@ atomicForce atop indices dat = Final $
     global <- Output $ Pointer (typeOf (undefined :: Exp a))
 
     forAllT $ \gix ->
-      do Assign   global gix (dat ! gix)
-         AtomicOp global (indices ! gix) atop
-         return ()
+      Assign   global gix (dat ! gix)
+    ThreadFence
+    forAllT $ \gix ->
+      do 
+        AtomicOp global (indices ! gix) atop
+        return ()
          
     return $ GlobPull (\gix -> index global gix)
 
