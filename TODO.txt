@@ -49,3 +49,4 @@
     also until all writes to memory is visible by all those threads. 
 
   
+  I think threadfence is too weak to implement atomicForce.
