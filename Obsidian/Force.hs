@@ -20,7 +20,7 @@
 -}
 
 --  write_ should be internal use only
-module Obsidian.Force (Forceable, Forced, force,write_, forceG) where
+module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2) where
 
 
 import Obsidian.Program
@@ -122,5 +122,22 @@ forceG (GlobPush pbt) = Final $
       return $ GlobPull (\gix -> index global gix) 
     where 
       assignTo name e i = Assign name i e
+
+
+forceG2 :: forall a b. (Scalar a, Scalar b) => (GlobPush (Exp a), GlobPush (Exp b))
+           -> Final (GProgram (GlobPull (Exp a),GlobPull (Exp b)))
+forceG2 (GlobPush pbt1,
+         GlobPush pbt2) = Final $ 
+  do
+      global1 <- Output $ Pointer (typeOf (undefined :: Exp a))
+      global2 <- Output $ Pointer (typeOf (undefined :: Exp b))
+      
+      pbt1 (assignTo global1) *||* pbt2 (assignTo global2)
+        
+      return (GlobPull (\gix -> index global1 gix),
+              GlobPull (\gix -> index global2 gix) )
+    where 
+      assignTo name e i = Assign name i e
+
 
 

@@ -58,6 +58,22 @@ data GlobPush a =
 ---------------------------------------------------------------------------
 data GlobPull a = GlobPull (Exp Word32 -> a)
 
+
+-- Takes a block id and gives you what that block computes. 
+data DistPull a = DistPull (Exp Word32 -> BProgram a)
+
+undist :: DistPull (Pull a) -> GlobPush a
+undist (DistPull bixf) =
+  GlobPush $ \wf ->
+  ForAllBlocks $ \bix ->
+  do
+    pully <- bixf bix
+    let n = len pully 
+    ForAll (Just n) $ \tix ->
+      wf (pully ! (bix * fromIntegral n + tix))
+         (bix * fromIntegral n + tix) 
+                          
+
 -- replaces Distrib ? 
 -- data GlobPull2 a = GlobPull2 Word32 (Exp Word32 -> Exp Word32 -> a)
 

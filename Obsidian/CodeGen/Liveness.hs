@@ -38,7 +38,13 @@ liveness' (Allocate name size t _) s =
 -- Added Jan 2013
 liveness' (AtomicOp n1 n2 ix op) s = (AtomicOp n1 n2 ix op, s)
  -- Is this correct. It would help if I remembered exactly what
- -- this does.                                      
+ -- this does.
+
+-- Added Jan 2013
+liveness' (Cond bexp p) s = (Cond bexp p',living)
+  where
+    (p',aliveInside) = liveness' p Set.empty
+    living = s `Set.union` aliveInside
   
 -- Added Jan 2013 
 liveness' (SeqFor nom n ixfToPrg) s = (SeqFor nom n (fst . ixf'),living)

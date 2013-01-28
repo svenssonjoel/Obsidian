@@ -169,7 +169,7 @@ genKernel' doCSE name kernel a = proto ++  cuda
 ---------------------------------------------------------------------------
 -- put together all the parts that make a CUDA kernel.
 ---------------------------------------------------------------------------
-getCUDA :: Config 
+getCUDA :: Show a => Config 
           -- -> Code Syncthreads 
            -> Program a 
            -> Name 
@@ -197,7 +197,7 @@ getProto name ins outs =
 
 ----------------------------------------------------------------------------
 -- Code to a CUDA kernel Body
-genCUDABody :: Config 
+genCUDABody :: Show a=> Config 
               -- -> Code Syncthreads 
                -> Program a 
                -> PP () 
@@ -210,7 +210,7 @@ genCUDABody conf prg = genProg mm nt prg
 ---------------------------------------------------------------------------
 -- pretty print a "Program", CUDA STYLE!
 ---------------------------------------------------------------------------
-genProg :: MemMap -> Word32 ->  Program a -> PP () 
+genProg :: Show a => MemMap -> Word32 ->  Program a -> PP () 
 genProg mm nt (Assign name ix a) = 
   case Map.lookup name mm of 
     Just (addr,t) -> 
@@ -244,6 +244,14 @@ genProg mm nt (AtomicOp resname name ix AtomicInc) =
         line$  "atomicInc(&"++ name ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
+genProg mm nt (Cond bexp p) =
+  do
+    line $ "if " ++ concat (genExp gc mm bexp) ++ "{\n"
+    newline
+    genProg mm nt p
+    newline
+    line $ "}\n"
+  
                 
 genProg mm nt (ForAll (Just n) f) = potentialCond gc mm n nt $ 
                                     genProgNoForAll mm nt (f (ThreadIdx X)  ) 
@@ -258,7 +266,7 @@ genProg mm nt (ProgramSeq p1 p2) =
     genProg mm nt p2
 
 -- HACK 
-genProgNoForAll :: MemMap -> Word32 ->  Program a -> PP () 
+genProgNoForAll :: Show a => MemMap -> Word32 ->  Program a -> PP () 
 genProgNoForAll mm nt (Assign name ix a) = 
   case Map.lookup name mm of 
     Just (addr,t) -> 
@@ -289,6 +297,15 @@ genProgNoForAll mm nt (AtomicOp resname name ix AtomicInc) =
         line$  "atomicInc(&"++ name ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
+
+genProgNoForAll mm nt (Cond bexp p) =
+  do
+   -- error $  printPrg p 
+    line $ "if " ++ concat (genExp gc mm bexp) ++ "{\n"
+    newline
+    genProg mm nt p
+    newline
+    line $ "}\n"
     
     
 
@@ -309,7 +326,7 @@ genProgNoForAll mm nt (ProgramSeq p1 p2) =
   do 
     genProgNoForAll mm nt p1
     genProgNoForAll mm nt p2
-
+genProgNoForAll mm nt p = error $ printPrg p
 
 
 ---------------------------------------------------------------------------

@@ -77,6 +77,7 @@ halve arr = splitAt n2 arr
 ---------------------------------------------------------------------------
 replicate n a = mkPullArray n (\ix -> a)
 
+singleton a = replicate 1 a 
 
 
 ---------------------------------------------------------------------------
@@ -257,11 +258,11 @@ zipP arr1 arr2 =
 ---------------------------------------------------------------------------
 
 -- A very experimenental instance of mapG 
-mapG :: (Pull a -> BProgram (Pull b))
-        -> Word32 -- BlockSize ! 
+mapG' :: (Pull a -> BProgram (Pull b))
+        -> Word32
         -> GlobPull a
         -> GlobPush b
-mapG f n (GlobPull ixf)  =
+mapG' f n (GlobPull ixf)  =
   GlobPush 
         $ \wf ->
           ForAllBlocks 
@@ -285,11 +286,11 @@ mapG f n (GlobPull ixf)  =
 
 
 -- Old fasioned mapG
-mapG' :: (Pull a -> BProgram (Pull b))
+mapG :: (Pull a -> BProgram (Pull b))
         -> Word32 -- BlockSize ! 
         -> GlobPull a
         -> GlobPush b
-mapG' f n (GlobPull ixf)  =
+mapG f n (GlobPull ixf)  =
   GlobPush 
         $ \wf ->
           ForAllBlocks 
@@ -297,7 +298,40 @@ mapG' f n (GlobPull ixf)  =
              do -- BProgram do block 
                let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
                res <- f pully
-               ForAll (Just n) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
+               ForAll (Just (len res)) $ \ix -> wf (res ! ix) (bix * fromIntegral n + ix)
+
+
+-- I Think this one has more potential for generalisations. 
+mapD :: (Pull a -> BProgram (Pull b))
+        -> Word32
+        -> GlobPull a
+        -> DistPull (Pull b)
+mapD f n (GlobPull ixf) =
+  DistPull $ \bix ->
+    do
+      let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+      f pully 
+
+
+
+
+
+-- mapG2 is really hard to get right. 
+{- 
+mapG2 :: (Pull a -> BProgram (Pull b, Pull c))
+         -> Word32
+         -> GlobPull a
+         -> (GlobPush b, GlobPush c) -- hard to get this right!
+                                     -- without repeating computations. 
+mapG2 f n (GlobPull ixf) =
+  (GlobPush
+   $ \wf -> ForAllBlock
+            $ \bix ->
+            do
+              let pully = Pull n (\ixf (bix * fromIntegral n + ix))
+                  res = f pully 
+   , GlobPush 
+-} 
 
 ---------------------------------------------------------------------------
 -- From Distributed array of blocks to a global push array

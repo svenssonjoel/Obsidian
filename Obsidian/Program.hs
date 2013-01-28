@@ -95,6 +95,12 @@ data Program t a where
   ThreadFence :: Program Grid ()
   ThreadFenceBlock :: Program Block () 
 
+  -- Parallel composition of Programs
+  Par :: Program p () ->
+         Program p () ->
+         Program p () 
+
+  -- Monad
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
 
@@ -107,6 +113,7 @@ forAll f = ForAll Nothing f
 forAllN :: Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
 forAllN n f = ForAll (Just n) f
 
+(*||*) = Par
 
 ---------------------------------------------------------------------------
 -- forAllT
