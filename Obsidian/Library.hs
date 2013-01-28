@@ -302,10 +302,10 @@ mapG f n (GlobPull ixf)  =
 
 
 -- I Think this one has more potential for generalisations. 
-mapD :: (Pull a -> BProgram (Pull b))
+mapD :: (Pull a -> BProgram b)
         -> Word32
         -> GlobPull a
-        -> DistPull (Pull b)
+        -> DistPull b
 mapD f n (GlobPull ixf) =
   DistPull $ \bix ->
     do
