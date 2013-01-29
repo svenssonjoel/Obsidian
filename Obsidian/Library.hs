@@ -313,6 +313,20 @@ mapD f n (GlobPull ixf) =
       f pully 
 
 
+-- The Problem is that I cannot share computations that
+-- take place on the gridlevel (I think). 
+-- Experiment
+--mapE :: (Pull a -> BProgram (Pull b))
+--        -> Word32
+--        -> GlobPull a
+--        -> GProgram (GlobPull b) 
+--mapE f n (GlobPull ixf) =
+--  do
+--    
+--    ForAllBlocks $ \bix -> 
+--    let pully = Pull n (\ix -> (bix * fromIntegral n + ix))
+--         
+--    f pully
 
 
 
