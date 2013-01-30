@@ -70,7 +70,7 @@ undist (DistPull bixf) =
     pully <- bixf bix
     let n = len pully 
     ForAll (Just n) $ \tix ->
-      wf (pully ! (bix * fromIntegral n + tix))
+      wf (pully ! tix)
          (bix * fromIntegral n + tix) 
                           
 
