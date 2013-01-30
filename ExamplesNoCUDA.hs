@@ -237,15 +237,25 @@ sklansky n op arr =
     sklansky (n-1) op arr2
 
 
-sklanskyMax n op arr = do
-  res <- sklansky n op arr
-  let m = fromIntegral $ (2^n) - 1
-  return (res,res ! m) 
+--sklanskyMax n op arr = do
+--  res <- sklansky n op arr
+--  let m = fromIntegral $ (2^n) - 1
+--  return (res,res ! m)
+
+sklanskyMax logbsize arr = 
+  let distr = mapDist (sklansky logbsize (+)) (2^logbsize) arr
+  in  \bix -> do
+          d1 <- distr bix
+          return (d1, singleton (d1 ! (2^logbsize-1)))     
+  
+    
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))
+
+
 
 
 sklanskyAllBlocks :: Int

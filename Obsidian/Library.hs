@@ -19,6 +19,8 @@ import Obsidian.Exp
 import Obsidian.Program
 import Obsidian.Types
 
+import Obsidian.Force
+
 -- needed for threadsPerBlock analysis 
 import qualified Obsidian.CodeGen.Program as P 
 
@@ -314,6 +316,15 @@ mapD f n (GlobPull ixf) =
       let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
       f pully 
 
+mapDist :: (Pull a -> BProgram b)
+           -> Word32
+           -> GlobPull a
+           -> (Exp Word32 -> BProgram b)
+mapDist f n (GlobPull ixf) bix =
+  let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+  in  f pully 
+
+
 
 -- The Problem is that I cannot share computations that
 -- take place on the gridlevel (I think). 
@@ -322,7 +333,7 @@ mapE :: forall a b . (Scalar a, Scalar b)
         => (Pull (Exp a) -> BProgram (Pull (Exp b)))
         -> Word32
         -> GlobPull (Exp a)
-        -> GProgram (GlobPull (Exp b)) 
+        -> GProgram (Pull (Exp b)) 
 mapE f n (GlobPull ixf) =
   do
 
@@ -337,8 +348,31 @@ mapE f n (GlobPull ixf) =
         ForAll (Just n) $ \ tid ->        
           do 
             Assign shared tid (res ! tid)
+        
+    return $ Pull 32 $ \ix -> (index shared (ix `mod` (fromIntegral n)))
 
-    return $ GlobPull $ \ gix -> (index shared (gix `mod` (fromIntegral n))) 
+  
+ -- Assume Pull a here is one the special distributed pulls from above
+pushBlocks :: Pull a -> GlobPush a
+pushBlocks (Pull n ixf) =
+  GlobPush $ \wf ->
+     ForAllBlocks $ \bix ->
+       ForAll (Just n) $ \tix -> wf (ixf tix) (bix * fromIntegral n + tix) 
+
+
+experiment :: GlobPull (Exp Int) -> GProgram (Pull (Exp Int), Pull (Exp Int))
+experiment input =
+  do 
+    arr <- mapE force 32 input
+    return (arr, singleton (arr ! 31))
+
+experiment2 :: GlobPull (Exp Int) -> GProgram (GlobPush (Exp Int), GlobPush (Exp Int))
+experiment2 input =
+  do
+    (arr1,arr2) <- experiment input
+    return (pushBlocks arr1, pushBlocks arr2)
+
+                                 
 {-
   I think something like mapE above is needed to expressed shared computations.
   Bad things about mapE is its very specific type and

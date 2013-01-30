@@ -43,7 +43,7 @@ data GlobPull a = GlobPull (Exp Word32 -> a)
 -- Takes a block id and gives you what that block computes. 
 data DistPull a = DistPull (Exp Word32 -> BProgram a)
 
--- Desired type. 
+-- Desired type (not sure). 
 --undist :: DistPull (Pull a) -> GProgram (GlobPush a)
 undist :: DistPull (Pull a) -> GlobPush a
 undist (DistPull bixf) =
@@ -57,17 +57,10 @@ undist (DistPull bixf) =
          (bix * fromIntegral n + tix) 
                           
 
--- replaces Distrib ? 
--- data GlobPull2 a = GlobPull2 Word32 (Exp Word32 -> Exp Word32 -> a)
-
 -- Create global pull arrays 
 undefinedGlobal = GlobPull $ \gix -> undefined
 namedGlobal name = GlobPull $ \gix -> index name gix
 
-
---sizedGlobal2 bs = GlobPull2 bs $ \bix tix -> undefined
---namedGlobal2 name bs = GlobPull2 bs
---                       $ \gix tix -> index name (gix * fromIntegral bs + tix) 
 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
