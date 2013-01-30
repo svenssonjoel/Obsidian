@@ -9,13 +9,15 @@
 -}
 
 {-# LANGUAGE FlexibleInstances,
-             TypeSynonymInstances #-}
+             TypeSynonymInstances,
+             ScopedTypeVariables  #-}
 
 module Obsidian.Library where 
 
 import Obsidian.Array 
 import Obsidian.Exp 
 import Obsidian.Program
+import Obsidian.Types
 
 -- needed for threadsPerBlock analysis 
 import qualified Obsidian.CodeGen.Program as P 
@@ -302,10 +304,10 @@ mapG f n (GlobPull ixf)  =
 
 
 -- I Think this one has more potential for generalisations. 
-mapD :: (Pull a -> BProgram (Pull b))
+mapD :: (Pull a -> BProgram b)
         -> Word32
         -> GlobPull a
-        -> DistPull (Pull b)
+        -> DistPull b
 mapD f n (GlobPull ixf) =
   DistPull $ \bix ->
     do
@@ -313,6 +315,68 @@ mapD f n (GlobPull ixf) =
       f pully 
 
 
+-- The Problem is that I cannot share computations that
+-- take place on the gridlevel (I think). 
+-- Experiment
+mapE :: forall a b . (Scalar a, Scalar b)
+        => (Pull (Exp a) -> BProgram (Pull (Exp b)))
+        -> Word32
+        -> GlobPull (Exp a)
+        -> GProgram (GlobPull (Exp b)) 
+mapE f n (GlobPull ixf) =
+  do
+
+    -- Allocate bytes in all shared memories and obtain a name
+    shared <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
+                       (Pointer (typeOf (undefined :: Exp b)) )
+    --return undefined 
+    ForAllBlocks $ \bix ->
+      do 
+        let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
+        res <- f pully
+        ForAll (Just n) $ \ tid ->        
+          do 
+            Assign shared tid (res ! tid)
+
+    return $ GlobPull $ \ gix -> (index shared (gix `mod` (fromIntegral n))) 
+{-
+  I think something like mapE above is needed to expressed shared computations.
+  Bad things about mapE is its very specific type and
+  that it allocates a new shared memory array and potentially performs a
+  completely unnecessary copy from the old shared memory array.
+
+  To generalise mapE typeclasses are probably needed.
+
+  A way to skip the unnecessary copy would be if it was possible
+  to hand the name over to the local computation. "compute this and
+  store the result here".
+  This sounds like some notion of a mutable array...
+  What would it mean if we could express such local computations ?
+
+  sklansky :: Int -> (Exp a -> Exp a -> Exp a) -> Pull (Exp a) -> Name -> BProgram (Pull (Exp a) 
+  sklansky 0 op arr res =
+    forAllN (len arr) $ \ix ->
+      Assign res ix (arr ! ix)
+  sklansky n op arr res =
+    let arr1 = twoK (n-1) (fan op) arr
+    arr2 <- force arr1
+    sklansky (n-1) op arr2 
+
+  Not pure... But then, who says our dsl must be ? (isn't that part of the beauty
+  of Haskell and embedded languages?). We are already in a wierd Program Monad
+  and allow really dangerous push arrays... 
+
+  Going even further then maybe force should take a mutable array and a
+  push/pull array and they push the elements into the mutable array..
+  This means that creation of mutable arrays must also be in the hands of
+  the programmer.
+  If array creation and force targets are in the hand of the programmer then
+  in-placeness is also in the hands of the programmer + about a trillion
+  new ways to shoot ones foot off. 
+
+  I imagine that a mutable array could be simply a:
+  data MArray a = MArray Word32 Name -- length and identifier.
+-} 
 
 
 

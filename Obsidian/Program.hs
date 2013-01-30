@@ -72,8 +72,9 @@ data Program t a where
   -} 
   ForAllBlocks :: (Exp Word32 -> Program Block ()) 
                   -> Program Grid () 
-  
-  Allocate :: Word32 -> Type -> Program Block Name
+
+  -- Allocate shared memory in each MP
+  Allocate :: Word32 -> Type -> Program t Name
   
   -- Very experimental AllocateG (Add CodeGen support)
   AllocateG :: Exp Word32 -> Type -> Program Grid Name 
