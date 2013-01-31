@@ -27,8 +27,50 @@ import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Types
+import Obsidian.Globs
 
 import Data.Word
+---------------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------------
+data Names = Single Name
+           | Tuple [Names]
+
+class StoreOps a where
+  names    :: a -> Program t Names 
+  allocate :: Names -> a -> Word32 -> Program t ()
+  assign   :: Names -> a -> Exp Word32 -> TProgram ()
+  pullFrom :: Names -> Word32 -> Pull a
+
+
+instance Scalar a => StoreOps (Exp a) where
+  names a = do {i <- uniqueSM; return (Single i)}
+  allocate (Single name) a n = 
+      Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+                      (Pointer (typeOf (undefined :: (Exp a))))
+  assign (Single name) a ix = Assign name ix a  
+  pullFrom (Single name) n = Pull n (\i -> index name i) 
+
+instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
+  names (a,b) =
+    do
+      a' <- names a
+      b' <- names b
+      return $ Tuple [a', b']
+  allocate (Tuple [ns1,ns2]) (a,b) n =
+    do 
+      allocate ns1 a n
+      allocate ns2 b n
+  assign (Tuple [ns1,ns2]) (a,b) ix =
+    do
+      assign ns1 a ix
+      assign ns2 b ix
+  pullFrom (Tuple [ns1,ns2]) n =
+    let p1 = pullFrom ns1 n
+        p2 = pullFrom ns2 n
+    -- just a zip
+    in Pull n (\ix -> (p1 ! ix, p2 ! ix))
+
 ---------------------------------------------------------------------------
 -- New Approach to Forceable. 
 ---------------------------------------------------------------------------
