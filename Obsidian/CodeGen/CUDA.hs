@@ -96,7 +96,7 @@ genKernel name kernel a = proto ++ cuda
 
     -- collect outputs and extract the "actual" kernel
     outs = collectOutputs prg
-    kern = extract prg 
+    kern = flatten prg -- extract prg 
     
     lc  = liveness kern -- tmpc
     
@@ -264,6 +264,7 @@ genProg mm nt (ProgramSeq p1 p2) =
   do 
     genProg mm nt p1
     genProg mm nt p2
+genProg mm nt (Output n t) = return () 
 
 -- HACK 
 genProgNoForAll :: Show a => MemMap -> Word32 ->  Program a -> PP () 
@@ -326,7 +327,8 @@ genProgNoForAll mm nt (ProgramSeq p1 p2) =
   do 
     genProgNoForAll mm nt p1
     genProgNoForAll mm nt p2
-genProgNoForAll mm nt p = error $ printPrg p
+genProgNoForAll mm nt (Output n t) = return () 
+-- genProgNoForAll mm nt p = error $ printPrg 
 
 
 ---------------------------------------------------------------------------

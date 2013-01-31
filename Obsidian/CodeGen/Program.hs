@@ -64,6 +64,7 @@ runPrg p = snd$ runPrg' ns p
   where ns = unsafePerformIO$ newEnumSupply
 
 runPrg' :: Supply Int -> P.Program t a -> (a,Program ())
+runPrg' i P.Identifier = (supplyValue i,Skip) 
 runPrg' i (P.Assign name ix e) = ((),Assign name ix e)
 runPrg' i (P.AtomicOp name ix at) =
   let nom = "a" ++ show (supplyValue i)
@@ -96,9 +97,9 @@ runPrg' i (P.Bind p f) =
       (b,prg2) = runPrg' s2 (f a)
   in (b,prg1 `ProgramSeq` prg2)
 runPrg' i (P.Return a) = (a,Skip)
-runPrg' i (P.Allocate n t) =
-  let nom = "arr" ++ show (supplyValue i)
-  in (nom, Allocate nom n t ()) 
+runPrg' i (P.Allocate id n t) = ((), Allocate id n t ()) 
+  -- let nom = "arr" ++ show id -- (supplyValue i)
+  
 runPrg' i (P.Output t) =
   let nom = "output" ++ show (supplyValue i)
   in  (nom, Output nom t)
@@ -212,3 +213,12 @@ extract prg = case extract' prg of
           -- compared to the original ProgramPar
         (Just p1,Just p2) -> Just $ p1 `ProgramSeq` p2 
     extract' p = Nothing
+
+
+-- Assumes that program does not do anything
+-- strange with regards to global arrays. 
+flatten :: Program e -> Program e
+flatten (ForAllBlocks f) = f (BlockIdx X)
+flatten (p1 `ProgramSeq` p2) = flatten p1 `ProgramSeq` flatten p2
+flatten (p1 `ProgramPar` p2) = flatten p1 `ProgramSeq` flatten p2 -- ALERT! 
+flatten p = p  

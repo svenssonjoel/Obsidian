@@ -229,17 +229,19 @@ sklansky :: (Num (Exp a), Scalar a)
             -> (Exp a -> Exp a -> Exp a)
             -> Pull (Exp a)
             -> BProgram (Pull (Exp a))
-sklansky 0 op arr = return (shiftRight 1 0 arr)
+sklansky 0 op arr = return (0 `cons` arr)
 sklansky n op arr =
   do 
     let arr1 = twoK (n-1) (fan op) arr
     arr2 <- force arr1
     sklansky (n-1) op arr2
 
+cons :: Choice a => a -> Pull a -> Pull a
+cons a p = singleton a `conc` p 
 
 sklanskyMax n op arr = do
   res <- sklansky n op arr
-  let m = fromIntegral $ (2^n) - 1
+  let m = fromIntegral $ len res -1 
   return (res,singleton (res ! m))
 
 
@@ -258,7 +260,15 @@ sklanskyG :: (Num (Exp a), Scalar a)
 sklanskyG logbsize input =
   toGProgram (mapDist (sklanskyMax logbsize (+)) (2^logbsize) input)
 
-    
+sklanskyGP logbsize input =
+  do
+    (r1,r2) <- sklanskyG logbsize input
+    forceGP r1
+    forceGP r2
+    return (r1, r2)
+
+getSklanskyG = quickPrint (sklanskyG 8) (undefinedGlobal :: GlobPull (Exp Int))
+getSklanskyGP = quickPrint (sklanskyGP 8) (undefinedGlobal :: GlobPull (Exp Int))
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 

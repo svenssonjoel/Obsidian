@@ -343,25 +343,32 @@ instance Scalar a => ToGProgram (Pull (Exp a)) where
     do      
       let (pulla,_) = runPrg 0 $ f (BlockIdx X)
       let n = len pulla 
-          
-      shared <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
-                          (Pointer (typeOf (undefined :: Exp a)))
+
+      shared <- uniqueSM
 
       ForAllBlocks $ \bix ->
         do
           res <- f bix -- compute res.
+
+          -- Sync
+  
+          Allocate shared (n * fromIntegral (sizeOf (undefined :: Exp a)))
+                          (Pointer (typeOf (undefined :: Exp a)))
+
           ForAll (Just n) $ \tix ->
             -- potentially unnessecary assignment...
             -- if the last thing the local computation does is force. 
-            Assign shared (bix * fromIntegral n + tix) (res ! tix)
-            
+            Assign shared tix (res ! tix)
+
+
+          Sync
           
       return $
         GlobPush $ \wf ->
         do
           ForAllBlocks $ \bix-> 
             ForAll (Just n) $ \tix ->
-              wf (index shared (bix * fromIntegral n + tix))
+              wf (index shared tix)
                  (bix * fromIntegral n + tix)
         
                 
@@ -374,34 +381,45 @@ instance (Scalar a, Scalar b) => ToGProgram (Pull (Exp a), Pull (Exp b)) where
       let ((pulla,pullb),_) = runPrg 0 $ f (BlockIdx X)
       let n1 = len pulla 
       let n2 = len pullb  
-          
-      shared1 <- Allocate (n1 * fromIntegral (sizeOf (undefined :: Exp a)))
-                          (Pointer (typeOf (undefined :: Exp a)))
 
-      shared2 <- Allocate (n2 * fromIntegral (sizeOf (undefined :: Exp b)))
-                          (Pointer (typeOf (undefined :: Exp b)))
+
+      shared1 <- uniqueSM
+      shared2 <- uniqueSM 
 
       ForAllBlocks $ \bix ->
         do
           -- This is the heart of the matter. I want the f bix Program 
-          --  to only occur once in the generated complete Program. 
+          --  to only occur once in the generated complete Program.
           (res1,res2) <- f bix -- compute results.
+
+          --  Sync
+      
+          ------------------------------------------------------------------
+          Allocate shared1 (n1 * fromIntegral (sizeOf (undefined :: Exp a)))
+                           (Pointer (typeOf (undefined :: Exp a)))
+                         
           ForAll (Just n1) $ \tix ->
             -- potentially unnessecary assignment...
             -- if the last thing the local computation does is force. 
-            Assign shared1 (bix * fromIntegral n1 + tix) (res1 ! tix)
+            Assign shared1 tix (res1 ! tix)
+
+          ------------------------------------------------------------------
+          Allocate shared2 (n2 * fromIntegral (sizeOf (undefined :: Exp b)))
+                   (Pointer (typeOf (undefined :: Exp b)))
+  
           ForAll (Just n2) $ \tix ->
             -- potentially unnessecary assignment...
             -- if the last thing the local computation does is force. 
-            Assign shared2 (bix * fromIntegral n2 + tix) (res2 ! tix)
-              
+            Assign shared2 tix (res2 ! tix)
+
+          Sync
             
       let gp1 = 
             GlobPush $ \wf ->
               do
                 ForAllBlocks $ \bix-> 
                   ForAll (Just n1) $ \tix ->
-                  wf (index shared1 (bix * fromIntegral n1 + tix))
+                  wf (index shared1 tix)
                   (bix * fromIntegral n1 + tix) 
 
       let gp2 =
@@ -409,7 +427,7 @@ instance (Scalar a, Scalar b) => ToGProgram (Pull (Exp a), Pull (Exp b)) where
             do
               ForAllBlocks $ \bix-> 
                 ForAll (Just n2) $ \tix ->
-                wf (index shared2 (bix * fromIntegral n2 + tix))
+                wf (index shared2 tix)
                    (bix * fromIntegral n2 + tix)
 
           
@@ -421,6 +439,7 @@ instance (Scalar a, Scalar b) => ToGProgram (Pull (Exp a), Pull (Exp b)) where
 -- The Problem is that I cannot share computations that
 -- take place on the gridlevel (I think). 
 -- Experiment
+{- 
 mapE :: forall a b . (Scalar a, Scalar b)
         => (Pull (Exp a) -> BProgram (Pull (Exp b)))
         -> Word32
@@ -429,22 +448,27 @@ mapE :: forall a b . (Scalar a, Scalar b)
 mapE f n (GlobPull ixf) =
   do
 
+
+    shared <- uniqueSM 
     -- Allocate bytes in all shared memories and obtain a name
-    shared <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
-                       (Pointer (typeOf (undefined :: Exp b)) )
+    
     --return undefined 
     ForAllBlocks $ \bix ->
       do 
         let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
         res <- f pully
+
+        Allocate shared (n * fromIntegral (sizeOf (undefined :: Exp b)))
+                       (Pointer (typeOf (undefined :: Exp b)) )
         ForAll (Just n) $ \ tid ->        
           do 
             Assign shared tid (res ! tid)
         
     return $ Pull 32 $ \ix -> (index shared (ix `mod` (fromIntegral n)))
-
+-} 
   
  -- Assume Pull a here is one the special distributed pulls from above
+{- 
 pushBlocks :: Pull a -> GlobPush a
 pushBlocks (Pull n ixf) =
   GlobPush $ \wf ->
@@ -463,7 +487,7 @@ experiment2 input =
   do
     (arr1,arr2) <- experiment input
     return (pushBlocks arr1, pushBlocks arr2)
-
+-} 
                                  
 {-
   I think something like mapE above is needed to expressed shared computations.

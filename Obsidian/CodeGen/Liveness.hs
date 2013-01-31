@@ -21,10 +21,10 @@ import Obsidian.CodeGen.Program
 
 type Liveness = Set.Set Name
 
-liveness :: Program e -> Program Liveness
+liveness :: Show e => Program e -> Program Liveness
 liveness p = fst$ liveness' p Set.empty 
 
-liveness' :: Program e -> Liveness -> (Program Liveness,Liveness) 
+liveness' :: Show e => Program e -> Liveness -> (Program Liveness,Liveness) 
 liveness' (Assign name ix exp ) s = (Assign name ix exp, living)
   where 
     arrays = collectArrays exp 
@@ -73,7 +73,7 @@ liveness' (p1 `ProgramSeq` p2) s =
   where 
     (p2',l2) = liveness' p2 s
     (p1',l1) = liveness' p1 l2
-
+liveness' (Output n t) s = (Output n t,s) -- error $ printPrg p 
 
  
 

@@ -20,7 +20,7 @@
 -}
 
 --  write_ should be internal use only
-module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2) where
+module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2, forceGP) where
 
 
 import Obsidian.Program
@@ -50,12 +50,13 @@ instance Scalar a => Forceable (Push (Exp a)) where
   write_ (Push n p) =
     do
       -- Allocate is a bit strange since
-      -- it wants the n in bytes! But also knows the type. 
-      name <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+      -- it wants the n in bytes! But also knows the type.
+      shared <- uniqueSM -- id <- Identifier 
+      Allocate shared (n * fromIntegral (sizeOf (undefined :: Exp a)))
                         (Pointer (typeOf (undefined :: (Exp a))))
-      p (targetArr name)
+      p (targetArr shared)
       -- BSync
-      return $ Pull n (\i -> index name i)
+      return $ Pull n (\i -> index shared i)
     where
       targetArr name e i = Assign name i e
 
@@ -71,15 +72,17 @@ instance (Scalar a,Scalar b) => Forceable (Push (Exp a,Exp b)) where
   write_ (Push n p) =
     do
       -- Allocate is a bit strange since
-      -- it wants the n in bytes! But also knows the type. 
-      name1 <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+      -- it wants the n in bytes! But also knows the type.
+      shared1 <- uniqueSM
+      shared2 <- uniqueSM 
+      Allocate shared1 (n * fromIntegral (sizeOf (undefined :: Exp a)))
                          (Pointer (typeOf (undefined :: (Exp a))))
-      name2 <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp b)))
+      Allocate shared2 (n * fromIntegral (sizeOf (undefined :: Exp b)))
                          (Pointer (typeOf (undefined :: (Exp b))))
-      p (targetArr (name1,name2))
+      p (targetArr (shared1,shared2))
       -- Sync
-      return $  Pull n (\i -> (index name1 i,
-                               index name2 i))
+      return $  Pull n (\i -> (index shared1 i,
+                               index shared2 i))
                      
     where
       targetArr (name1,name2) (e1,e2) i = Assign name1 i e1 >>
@@ -140,4 +143,15 @@ forceG2 (GlobPush pbt1,
       assignTo name e i = Assign name i e
 
 
+forceGP :: forall a. Scalar a => GlobPush (Exp a) -> GProgram ()
+forceGP (GlobPush pbt) =
+  do
+    global <- Output $ Pointer (typeOf (undefined :: Exp a))
+
+    pbt (assignTo global)
+
+    return ()
+  
+    where
+      assignTo name e i = Assign name i e 
 
