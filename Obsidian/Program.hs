@@ -193,7 +193,7 @@ printPrg' i (ForAll n f) =
        i')
 printPrg' i (ForAllBlocks f) =
   let (d,prg2,i') = printPrg' i (f (variable "BIX"))
-  in ((), 
+  in (d, 
       "blocks (i)" ++
       "{\n" ++ prg2 ++ "\n}",
       i')

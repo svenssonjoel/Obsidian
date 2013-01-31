@@ -10,7 +10,9 @@
 
 {-# LANGUAGE FlexibleInstances,
              TypeSynonymInstances,
-             ScopedTypeVariables  #-}
+             ScopedTypeVariables,
+             TypeFamilies,
+             GADTs #-}
 
 module Obsidian.Library where 
 
@@ -324,7 +326,97 @@ mapDist f n (GlobPull ixf) bix =
   let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
   in  f pully 
 
+---------------------------------------------------------------------------
+-- See if having an Assignable/Allocable class is enough to generalise
+-- the code below to pairs etc of Exp
+---------------------------------------------------------------------------
+-- Experimental (Improve upon this if it works)
+-- I think this code looks quite horrific right now.
+-- The potentially unnecessary assignments are pretty bad. 
+class ToGProgram a where
+  type Global a
+  toGProgram :: (Exp Word32 -> BProgram a) -> GProgram (Global a)
 
+instance Scalar a => ToGProgram (Pull (Exp a)) where
+  type Global (Pull (Exp a)) = GlobPush (Exp a)
+  toGProgram f =
+    do      
+      let (pulla,_) = runPrg 0 $ f (BlockIdx X)
+      let n = len pulla 
+          
+      shared <- Allocate (n * fromIntegral (sizeOf (undefined :: Exp a)))
+                          (Pointer (typeOf (undefined :: Exp a)))
+
+      ForAllBlocks $ \bix ->
+        do
+          res <- f bix -- compute res.
+          ForAll (Just n) $ \tix ->
+            -- potentially unnessecary assignment...
+            -- if the last thing the local computation does is force. 
+            Assign shared (bix * fromIntegral n + tix) (res ! tix)
+            
+          
+      return $
+        GlobPush $ \wf ->
+        do
+          ForAllBlocks $ \bix-> 
+            ForAll (Just n) $ \tix ->
+              wf (index shared (bix * fromIntegral n + tix))
+                 (bix * fromIntegral n + tix)
+        
+                
+                        
+      
+instance (Scalar a, Scalar b) => ToGProgram (Pull (Exp a), Pull (Exp b)) where
+  type Global (Pull (Exp a),Pull (Exp b)) = (GlobPush (Exp a), GlobPush (Exp b))
+  toGProgram f = 
+    do      
+      let ((pulla,pullb),_) = runPrg 0 $ f (BlockIdx X)
+      let n1 = len pulla 
+      let n2 = len pullb  
+          
+      shared1 <- Allocate (n1 * fromIntegral (sizeOf (undefined :: Exp a)))
+                          (Pointer (typeOf (undefined :: Exp a)))
+
+      shared2 <- Allocate (n2 * fromIntegral (sizeOf (undefined :: Exp b)))
+                          (Pointer (typeOf (undefined :: Exp b)))
+
+      ForAllBlocks $ \bix ->
+        do
+          -- This is the heart of the matter. I want the f bix Program 
+          --  to only occur once in the generated complete Program. 
+          (res1,res2) <- f bix -- compute results.
+          ForAll (Just n1) $ \tix ->
+            -- potentially unnessecary assignment...
+            -- if the last thing the local computation does is force. 
+            Assign shared1 (bix * fromIntegral n1 + tix) (res1 ! tix)
+          ForAll (Just n2) $ \tix ->
+            -- potentially unnessecary assignment...
+            -- if the last thing the local computation does is force. 
+            Assign shared2 (bix * fromIntegral n2 + tix) (res2 ! tix)
+              
+            
+      let gp1 = 
+            GlobPush $ \wf ->
+              do
+                ForAllBlocks $ \bix-> 
+                  ForAll (Just n1) $ \tix ->
+                  wf (index shared1 (bix * fromIntegral n1 + tix))
+                  (bix * fromIntegral n1 + tix) 
+
+      let gp2 =
+            GlobPush $ \wf ->
+            do
+              ForAllBlocks $ \bix-> 
+                ForAll (Just n2) $ \tix ->
+                wf (index shared2 (bix * fromIntegral n2 + tix))
+                   (bix * fromIntegral n2 + tix)
+
+          
+      return (gp1,gp2)
+
+--------------------------------------------------------------------------- 
+        
 
 -- The Problem is that I cannot share computations that
 -- take place on the gridlevel (I think). 

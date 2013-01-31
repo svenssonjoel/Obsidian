@@ -237,17 +237,27 @@ sklansky n op arr =
     sklansky (n-1) op arr2
 
 
---sklanskyMax n op arr = do
---  res <- sklansky n op arr
---  let m = fromIntegral $ (2^n) - 1
---  return (res,res ! m)
+sklanskyMax n op arr = do
+  res <- sklansky n op arr
+  let m = fromIntegral $ (2^n) - 1
+  return (res,singleton (res ! m))
 
-sklanskyMax logbsize arr = 
-  let distr = mapDist (sklansky logbsize (+)) (2^logbsize) arr
-  in  \bix -> do
-          d1 <- distr bix
-          return (d1, singleton (d1 ! (2^logbsize-1)))     
-  
+
+-- Need to add codegen support form
+-- functions returning GPrograms !
+-- Codegeneration now also may need to support
+-- certain cases of sequences of ForAllBlock..
+-- I Think the important distinction there is if
+-- its used as a case of forAllT or not. Maybe this
+-- indicates that there should be a separate ForAllT
+-- constructor in the Program type. 
+sklanskyG :: (Num (Exp a), Scalar a)
+             => Int
+             -> GlobPull (Exp a)
+             -> GProgram (GlobPush  (Exp a), GlobPush (Exp a))
+sklanskyG logbsize input =
+  toGProgram (mapDist (sklanskyMax logbsize (+)) (2^logbsize) input)
+
     
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
