@@ -82,8 +82,10 @@ halve arr = splitAt n2 arr
 -- replicate 
 ---------------------------------------------------------------------------
 replicate n a = mkPullArray n (\ix -> a)
+replicateG a = GlobPull $ \ix -> a 
 
 singleton a = replicate 1 a 
+
 
 
 ---------------------------------------------------------------------------
@@ -152,7 +154,9 @@ zipWith op a1 a2 =
   mkPullArray (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))
                    
-    
+
+zipWithG :: (a -> b -> c) -> GlobPull a -> GlobPull b -> GlobPull c
+zipWithG op a1 a2 = GlobPull $ \ix -> (a1 ! ix) `op` (a2 ! ix) 
                    
 ---------------------------------------------------------------------------
 -- pair 
