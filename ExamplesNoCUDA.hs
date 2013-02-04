@@ -229,7 +229,7 @@ sklansky :: (Num (Exp a), Scalar a)
             -> (Exp a -> Exp a -> Exp a)
             -> Pull (Exp a)
             -> BProgram (Pull (Exp a))
-sklansky 0 op arr = return (0 `cons` arr)
+sklansky 0 op arr = return arr
 sklansky n op arr =
   do 
     let arr1 = twoK (n-1) (fan op) arr

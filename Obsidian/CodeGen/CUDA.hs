@@ -241,7 +241,7 @@ genProg mm nt (AtomicOp resname name ix AtomicInc) =
     -- also not be in the memory map because in a bug of generating that map) 
     Nothing ->
       do
-        line$  "atomicInc(&"++ name ++ "+"
+        line$  "atomicInc("++ name ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
 genProg mm nt (Cond bexp p) =
@@ -295,7 +295,7 @@ genProgNoForAll mm nt (AtomicOp resname name ix AtomicInc) =
     -- also not be in the memory map because in a bug of generating that map) 
     Nothing ->
       do
-        line$  "atomicInc(&"++ name ++ "+"
+        line$  "atomicInc("++ name ++ "+"
           ++ concat (genExp gc mm ix) ++ ",0xFFFFFFFF)" ++ ";"
         newline
 

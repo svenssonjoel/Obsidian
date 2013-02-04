@@ -280,7 +280,7 @@ collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++
 -- Typecasts
 ---------------------------------------------------------------------------
 int32ToWord32 = UnOp Int32ToWord32
-
+word32ToInt32 = UnOp Word32ToInt32
 
 ---------------------------------------------------------------------------
 -- 
