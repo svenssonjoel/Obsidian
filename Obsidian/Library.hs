@@ -212,9 +212,10 @@ instance IxMap Push where
 instance IxMap Pull where 
   ixMap f (Pull n ixf) =  Pull n (ixf . f) 
 
-instance IxMap GlobPull where
-  ixMap f (GlobPull ixf) =  GlobPull (ixf . f)
-  
+
+instance IxMap GlobPull where 
+  ixMap f (GlobPull ixf) =  GlobPull (ixf . f) 
+
 -- like fmap but the function is applied to indices.. 
 ixMap' :: (Exp Word32 -> Exp Word32) 
           -> ((a -> Exp Word32 -> TProgram ()) -> BProgram ()) 
