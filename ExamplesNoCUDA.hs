@@ -236,11 +236,30 @@ sklansky n op arr =
     arr2 <- force arr1
     sklansky (n-1) op arr2
 
+
+sklanskyT :: (Choice a, Num a, StoreOps a)
+            => Int
+            -> (a -> a -> a)
+            -> Pull a
+            -> BProgram (Pull a)
+sklanskyT 0 op arr = return arr
+sklanskyT n op arr =
+  do 
+    let arr1 = twoK (n-1) (fan op) arr
+    arr2 <- force arr1
+    sklanskyT (n-1) op arr2
+
+
 cons :: Choice a => a -> Pull a -> Pull a
 cons a p = singleton a `conc` p 
 
 sklanskyMax n op arr = do
   res <- sklansky n op arr
+  let m = fromIntegral $ len res -1 
+  return (res,singleton (res ! m))
+
+sklanskyMaxT n op arr = do
+  res <- sklanskyT n op arr
   let m = fromIntegral $ len res -1 
   return (res,singleton (res ! m))
 
@@ -259,6 +278,12 @@ sklanskyG :: (Num (Exp a), Scalar a)
              -> GProgram (GlobPush  (Exp a), GlobPush (Exp a))
 sklanskyG logbsize input =
   toGProgram (mapDist (sklanskyMax logbsize (+)) (2^logbsize) input)
+
+sklanskyGT ::Int -> GlobPull (Exp Word32)
+             -> GProgram (GlobPush (Exp Word32), GlobPush (Exp Word32))
+sklanskyGT logbsize input =
+  toGProgram (mapDist (sklanskyMaxT logbsize (+)) (2^logbsize) input)
+
 
 sklanskyGP logbsize input =
   do

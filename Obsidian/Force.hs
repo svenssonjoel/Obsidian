@@ -3,7 +3,9 @@
              FlexibleInstances,
              ScopedTypeVariables,
              TypeFamilies,
-             GADTs #-} 
+             GADTs,
+             OverlappingInstances,   -- REMOVE 
+             IncoherentInstances #-} -- REMOVE 
 
 {- Joel Svensson 2012, 2013 
 
@@ -20,7 +22,7 @@
 -}
 
 --  write_ should be internal use only
-module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2, forceGP) where
+module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2, forceGP, StoreOps) where
 
 
 import Obsidian.Program
@@ -46,8 +48,8 @@ class StoreOps a where
 instance Scalar a => StoreOps (Exp a) where
   names a = do {i <- uniqueSM; return (Single i)}
   allocate (Single name) a n = 
-      Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
-                      (Pointer (typeOf (undefined :: (Exp a))))
+      Allocate name (n * fromIntegral (sizeOf a))
+                      (Pointer (typeOf a))
   assign (Single name) a ix = Assign name ix a  
   pullFrom (Single name) n = Pull n (\i -> index name i) 
 
@@ -82,6 +84,30 @@ class Forceable a where
 ---------------------------------------------------------------------------
 -- Force local
 ---------------------------------------------------------------------------
+
+instance StoreOps a => Forceable (Pull a) where
+  type Forced (Pull a) = Pull a
+  write_ arr =
+    do
+
+      snames <- names (undefined :: a)
+
+      allocate snames (undefined :: a) (len arr) 
+
+      let (Push m p) = push arr
+
+      p (assign snames) 
+      
+      return $ pullFrom snames (len arr) 
+    
+
+  force p = 
+    do
+      rval <- write_ p
+      Sync
+      return rval
+
+  
 instance Scalar a => Forceable (Pull (Exp a)) where
   type Forced (Pull (Exp a)) = Pull (Exp a)
   write_ arr = write_ (push arr) 
