@@ -22,7 +22,16 @@
 -}
 
 --  write_ should be internal use only
-module Obsidian.Force (Forceable, Forced, force,write_, forceG,forceG2, forceGP, StoreOps) where
+module Obsidian.Force (write,
+                       force,
+                       --Forceable,
+                       --Forced,
+                       --force,
+                       --write_,
+                       forceG,
+                       forceG2,
+                       forceGP,
+                       StoreOps) where
 
 
 import Obsidian.Program
@@ -76,15 +85,35 @@ instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
 ---------------------------------------------------------------------------
 -- New Approach to Forceable. 
 ---------------------------------------------------------------------------
-class Forceable a where
-  type Forced a 
-  write_ :: a -> BProgram (Forced a)
-  force  :: a -> BProgram (Forced a)  
+--class Forceable a where
+--  type Forced a 
+--  write_ :: a -> BProgram (Forced a)
+--  force  :: a -> BProgram (Forced a)  
   
 ---------------------------------------------------------------------------
 -- Force local
 ---------------------------------------------------------------------------
 
+write :: forall p a. (Len p, Pushable p, StoreOps a) => p a -> BProgram (Pull a)
+write arr = do 
+  snames <- names (undefined :: a)
+  
+  allocate snames (undefined :: a) (len arr) 
+
+  let (Push m p) = push arr
+
+  p (assign snames) 
+      
+  return $ pullFrom snames (len arr) 
+
+  
+force :: forall p a. (Len p, Pushable p, StoreOps a) =>  p a -> BProgram (Pull a)
+force arr = do
+  rval <- write arr
+  Sync
+  return rval
+  
+{- 
 instance StoreOps a => Forceable (Pull a) where
   type Forced (Pull a) = Pull a
   write_ arr =
@@ -175,7 +204,7 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
       rval <- force p
       Sync
       return rval
-
+-}
 
 ---------------------------------------------------------------------------
 -- Global

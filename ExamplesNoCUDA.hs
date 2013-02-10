@@ -76,7 +76,7 @@ input3 = namedGlobal "apa"
 -- Small experiments 
 ---------------------------------------------------------------------------
 
-sync :: Forceable a => a -> BProgram (Forced a)
+sync :: (Len p, Pushable p, StoreOps a) => p a -> BProgram (Pull a)
 sync = force 
 
 prg0 = putStrLn$ printPrg$  mapFusion input1
@@ -292,8 +292,18 @@ sklanskyGP logbsize input =
     forceGP r2
     return (r1, r2)
 
+sklanskyGPT logbsize input =
+  do
+    (r1,r2) <- sklanskyGT logbsize input
+    forceGP r1
+    forceGP r2
+    return (r1, r2)
+
+
 getSklanskyG = quickPrint (sklanskyG 8) (undefinedGlobal :: GlobPull (Exp Int))
 getSklanskyGP = quickPrint (sklanskyGP 8) (undefinedGlobal :: GlobPull (Exp Int))
+
+getSklanskyGPT = quickPrint (sklanskyGPT 8) (undefinedGlobal :: GlobPull EWord32)
 
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
