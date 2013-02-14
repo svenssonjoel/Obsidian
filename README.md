@@ -1,5 +1,11 @@
 # Obsidian
 
+## Shapely branch. 
+   Experiment with multidimensionality.
+   Try to move towards Stencil ops and Image Manipulation. 
+
+   
+
 ## Next version of Obsidian
 * Features: 
     * Local Push and Pull arrays.
