@@ -1,13 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses,  
              FlexibleInstances, FlexibleContexts,
-             GADTs, 
-             TypeFamilies #-} 
+             GADTs  #-} 
 
 {- Joel Svensson 2012
 
    Notes:
-    2013-01-08: Removed number-of-blocks field from Distribs
-    2012-12-10: Drastically shortened. 
+    2013-02-14 : Complete rewrite
+      Adding shapes and investigating some ideas put forward by Niklas Ulvinge.
+
 -}
 
 module Obsidian.Array  where
@@ -17,15 +17,63 @@ import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
 
-
 import Data.List
 import Data.Word
 
+import Obsidian.Shape
+
+---------------------------------------------------------------------------
+-- Push and Pull arrays 
+--------------------------------------------------------------------------- 
+
+data Pull pt sh a = Pull sh (sh -> a)
+data Push pt sh a = Push sh (((sh, a) -> Program Thread ()) -> Program pt ())
+
+-- Accessing is only cheap on pull arrays! 
+class Access arr pt sh where
+  access :: arr pt sh e -> sh -> e 
+
+instance Access Pull pt sh where
+  access (Pull _ shf) ix = shf ix
+
+-- Monadic Access functionality (very costly in push array case) 
+class AccessP arr pt sh where
+  accessM :: arr pt sh e -> sh -> Program pt e 
+
+instance AccessP Pull pt sh where
+  accessM (Pull _ shf) ix = return $ shf ix 
+
+instance AccessP Push pt sh where
+  accessM push = error "accessM: TODO - needs the force" 
+
+class Array arr pt sh where
+  len :: arr pt sh e -> sh 
+  resize :: arr pt sh e -> sh -> arr pt sh e 
+  aMap :: arr pt sh e -> (e -> e') -> arr pt sh e' 
+  ixMap :: arr pt sh e -> (sh -> sh) -> arr pt sh e 
+
+
+instance Array Pull pt sh where 
+  len    (Pull sh _) = sh
+  resize (Pull _ shf) sh = Pull sh shf
+  aMap   (Pull sh shf) f = Pull sh (f . shf)
+  ixMap  (Pull sh shf) f = Pull sh (shf . f) 
+
+
+instance Array Push pt sh where
+  len    (Push sh _) = sh
+  resize (Push _ shf) sh = Push sh shf
+  aMap   (Push sh pushf) f = 
+   Push sh $ \wf -> pushf (\(ix, a) -> wf (ix, f a))
+  ixMap  (Push sh pushf) f = 
+   Push sh $ \wf -> pushf (\(ix, a) -> wf (f ix, a)) 
+   
+
+{- 
 ---------------------------------------------------------------------------
 -- A value that can not be used in further computations
 --------------------------------------------------------------------------- 
-data Final a = Final {cheat :: a} -- cheat should not be exposed. 
-
+data Final a = Final {cheat :: a} -- cheat should not be exposed.
 
 ---------------------------------------------------------------------------
 -- Global result array. 
@@ -43,6 +91,7 @@ data GlobPull a = GlobPull (Exp Word32 -> a)
 -- Takes a block id and gives you what that block computes. 
 data DistPull a = DistPull (Exp Word32 -> BProgram a)
 
+ 
 -- Desired type (not sure). 
 --undist :: DistPull (Pull a) -> GProgram (GlobPush a)
 undist :: DistPull (Pull a) -> GlobPush a
@@ -79,18 +128,19 @@ mkPushArray :: Word32 -> ((a -> Exp Word32 -> TProgram ())
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 
-class Resizeable a where
-  resize :: Word32 -> a e -> a e 
+--class Resizeable a where
+--  resize :: Word32 -> a e -> a e 
 
-instance Resizeable Pull where 
-  resize m (Pull _ ixf) = Pull m ixf
+--instance Resizeable Pull where 
+--  resize m (Pull _ ixf) = Pull m ixf
   
-instance Resizeable Push where 
-  resize m (Push _ p) = Push m p  
+--instance Resizeable Push where 
+--  resize m (Push _ p) = Push m p  
 
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
+ 
 class Pushable a where 
   push  :: a e -> Push e
   -- Push using m threads
@@ -188,32 +238,33 @@ instance PushableGlobal GlobPull where
 namedArray name n = mkPullArray n (\ix -> index name ix)
 indexArray n      = mkPullArray n (\ix -> ix)
 
-class Indexible a e where 
-  access :: a e -> Exp Word32 -> e 
+--class Indexible a e where 
+--  access :: a e -> Exp Word32 -> e 
   
-instance Indexible Pull a where
-  access p ix = pullFun p ix
+--instance Indexible Pull a where
+--  access p ix = pullFun p ix
 
-instance Indexible GlobPull a where
-  access (GlobPull ixf) ix = ixf ix 
+--instance Indexible GlobPull a where
+--  access (GlobPull ixf) ix = ixf ix 
 
 --instance Indexible Distrib a where
 --  access p ix = getBlock p ix 
 
 pushApp (Push _ p) a = p a 
 
-class Len a where 
-  len :: a e -> Word32
+--class Len a where 
+--  len :: a e -> Word32
 
-instance Len Pull where 
-  len (Pull n _) = n
+--instance Len Pull where 
+--  len (Pull n _) = n
 
-instance Len Push where
-  len (Push n _) = n
+--instance Len Push where
+--  len (Push n _) = n
 
 
 
 
 infixl 9 ! 
-(!) :: Indexible a e => a e -> Exp Word32 -> e 
+(!) :: Array arr pt sh  => arr pt sh e -> sh -> e 
 (!) = access
+-}
