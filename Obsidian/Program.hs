@@ -60,31 +60,27 @@ data Program t a where
           -> Program Thread ()
   
   -- DONE: Code generation for this.            
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
+  SeqFor :: Exp Word32
+            -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
 
-  ForAll :: (Maybe (Exp Word32)) 
+  ForAll :: Exp Word32
             -> (Exp Word32 -> Program Thread ())
             -> Program Block () 
 
-  {-
-     I'm not sure about this constructor.
-     As I see it programs from which we generate a kernel
-     must be wrapped in one of these ForAllBlocks.
-     Programs with sequences of 'ForAllBlocks' are problematic.
+  ForAllBlocks :: Exp Word32
+                  -> (Exp Word32 -> Program Block ()) 
+                  -> Program Grid ()
 
-     Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
-     should be split into two kernels. 
-  -} 
-  ForAllBlocks :: (Exp Word32 -> Program Block ()) 
-                  -> Program Grid () 
+  -- a special case while we are experimenting
+  ForAllGlobal :: Exp Word32
+                   -> (Exp Word32 -> Program Thread ())
+                   -> Program Grid () 
 
   -- Allocate shared memory in each MP
+  -- Only available in Block and Grid programs. (LIMIT IT) 
   Allocate :: Name -> Word32 -> Type -> Program t () 
   
-  -- Very experimental AllocateG (Add CodeGen support)
-  AllocateG :: Exp Word32 -> Type -> Program Grid Name 
-  -- I'm not sure exactly what scope AllocateG should have. 
 
   {- About Output (Creates a named output array). 
      This is similar to Allocate but concerning global arrays.
@@ -121,11 +117,11 @@ uniqueSM = do
 ---------------------------------------------------------------------------
 -- forAll and forAllN
 ---------------------------------------------------------------------------
-forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
-forAll f = ForAll Nothing f
+--forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
+--forAll f = ForAll Nothing f
 
 forAllN :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
-forAllN n f = ForAll (Just n) f
+forAllN n f = ForAll n f
 
 (*||*) = Par
 
@@ -139,11 +135,12 @@ forAllN n f = ForAll (Just n) f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32 -> Program Thread ())
-           -> Program Grid ()
-forAllT f = ForAllBlocks
-            $ \bid -> ForAll Nothing
-                      $ \tid -> f (bid * BlockDim X + tid) 
+
+--forAllT :: (Exp Word32 -> Program Thread ())
+--           -> Program Grid ()
+--forAllT f = ForAllBlocks
+--            $ \bid -> ForAll Nothing
+--                      $ \tid -> f (bid * BlockDim X + tid) 
 
 
 

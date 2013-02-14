@@ -80,13 +80,23 @@ class Pushable a pt sh where
 
 instance Shapely sh => Pushable Pull Block sh where
    push (Pull sh ixf) = 
-     let n' = Just $ size sh 
-     in  Push sh $ \wf -> ForAll n' $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+     let n = size sh 
+     in  Push sh $ \wf -> ForAll n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
--- instance Dynamic sh => Pushable Pull Block sh where
---   push (Pull sh ixf) =
---     let n' = Just $ dynamicSize sh
---     in  Push sh $ \wf -> ForAll n' $ \i -> wf (fromIndexDyn sh i, ixf (fromIndexDyn sh i))
+instance Shapely sh => Pushable Pull Thread sh where
+   push (Pull sh ixf) = 
+     let n = size sh 
+     in  Push sh $ \wf -> SeqFor n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+
+instance Shapely sh => Pushable Pull Grid sh where
+   push (Pull sh ixf) = 
+     let n = size sh
+         -- Im not sure about the number of threads to use here.
+      in  Push sh $ \wf -> undefined 
+     -- forAllT n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+
+
+
       
                        
 
