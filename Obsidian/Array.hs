@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses,  
-             FlexibleInstances, FlexibleContexts,
+             FlexibleInstances,
+             FlexibleContexts,
+             UndecidableInstances,
              GADTs  #-} 
 
 {- Joel Svensson 2012
@@ -26,19 +28,19 @@ import Obsidian.Shape
 -- Push and Pull arrays 
 --------------------------------------------------------------------------- 
 
-data Pull pt sh a = Pull sh (sh -> a)
-data Push pt sh a = Push sh (((sh, a) -> Program Thread ()) -> Program pt ())
+data Pull pt sh a = Pull sh (E sh -> a)
+data Push pt sh a = Push sh (((E sh, a) -> Program Thread ()) -> Program pt ())
 
 -- Accessing is only cheap on pull arrays! 
 class Access arr pt sh where
-  access :: arr pt sh e -> sh -> e 
+  access :: arr pt sh e -> E sh -> e 
 
 instance Access Pull pt sh where
   access (Pull _ shf) ix = shf ix
 
 -- Monadic Access functionality (very costly in push array case) 
-class AccessP arr pt sh where
-  accessM :: arr pt sh e -> sh -> Program pt e 
+class AccessP arr pt sh  where
+  accessM :: arr pt sh  e -> E sh -> Program pt e 
 
 instance AccessP Pull pt sh where
   accessM (Pull _ shf) ix = return $ shf ix 
@@ -50,7 +52,7 @@ class Array arr pt sh where
   len :: arr pt sh e -> sh 
   resize :: arr pt sh e -> sh -> arr pt sh e 
   aMap :: arr pt sh e -> (e -> e') -> arr pt sh e' 
-  ixMap :: arr pt sh e -> (sh -> sh) -> arr pt sh e 
+  ixMap :: arr pt sh e -> (E sh -> E sh) -> arr pt sh e 
 
 
 instance Array Pull pt sh where 
@@ -67,7 +69,26 @@ instance Array Push pt sh where
    Push sh $ \wf -> pushf (\(ix, a) -> wf (ix, f a))
   ixMap  (Push sh pushf) f = 
    Push sh $ \wf -> pushf (\(ix, a) -> wf (f ix, a)) 
-   
+
+
+---------------------------------------------------------------------------
+-- Lets see how pushable works out in this setting. 
+--------------------------------------------------------------------------- 
+
+class Pushable a pt sh where
+  push :: a pt sh e -> Push pt sh e  
+
+instance Shapely sh => Pushable Pull Block sh where
+   push (Pull sh ixf) = 
+     let n' = Just $ size sh 
+     in  Push sh $ \wf -> ForAll n' $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+
+-- instance Dynamic sh => Pushable Pull Block sh where
+--   push (Pull sh ixf) =
+--     let n' = Just $ dynamicSize sh
+--     in  Push sh $ \wf -> ForAll n' $ \i -> wf (fromIndexDyn sh i, ixf (fromIndexDyn sh i))
+      
+                       
 
 {- 
 ---------------------------------------------------------------------------

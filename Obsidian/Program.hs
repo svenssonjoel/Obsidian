@@ -63,7 +63,7 @@ data Program t a where
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
 
-  ForAll :: (Maybe Word32) 
+  ForAll :: (Maybe (Exp Word32)) 
             -> (Exp Word32 -> Program Thread ())
             -> Program Block () 
 
@@ -124,7 +124,7 @@ uniqueSM = do
 forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 forAll f = ForAll Nothing f
 
-forAllN :: Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
+forAllN :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
 forAllN n f = ForAll (Just n) f
 
 (*||*) = Par
