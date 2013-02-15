@@ -102,7 +102,7 @@ instance Shapely sh => Pushable Pull Grid sh where
 --
 -- The interesting interactions between Grid, Block and Thread arrays 
 -- are when a grid is split up into blocks, and blocks divided over threads.
--- These things are not captured by the "push" functions abot.
+-- These things are not captured by the "push" functions above.
 
 
 blocks :: (Static sh1, Blockable sh1 sh2 sh3)
@@ -116,7 +116,7 @@ blocks f sh1 (Pull sh2 shf) bix =
   let pullb = Pull sh1 (\ix -> shf (block sh1 sh2 bix ix))
   in  f pullb
 
-sliceTrans = undefined 
+
 
 {- 
 ---------------------------------------------------------------------------
