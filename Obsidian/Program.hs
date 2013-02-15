@@ -204,7 +204,7 @@ printPrg' i (ForAll n f) =
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
-printPrg' i (ForAllBlocks f) =
+printPrg' i (ForAllBlocks n f) =
   let (d,prg2,i') = printPrg' i (f (variable "BIX"))
   in (d, 
       "blocks (i)" ++

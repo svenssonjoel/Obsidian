@@ -92,13 +92,31 @@ instance Shapely sh => Pushable Pull Grid sh where
    push (Pull sh ixf) = 
      let n = size sh
          -- Im not sure about the number of threads to use here.
-      in  Push sh $ \wf -> undefined 
-     -- forAllT n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+     in  Push sh $ \wf -> ForAllGlobal n
+                          $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
 
+---------------------------------------------------------------------------
+-- Running local computations over global arrays 
+---------------------------------------------------------------------------
+--
+-- The interesting interactions between Grid, Block and Thread arrays 
+-- are when a grid is split up into blocks, and blocks divided over threads.
+-- These things are not captured by the "push" functions abot.
 
-      
-                       
+
+blocks :: (Static sh1, Blockable sh1 sh2 sh3)
+          => (Pull Block sh1 a -> BProgram b)
+          -> sh1
+          -> Pull Grid sh2 a  -- these shapes needs to be "compatible" 
+          -> (sh3 -> BProgram b)
+blocks f sh1 (Pull sh2 shf) bix =
+  -- would now want to "SLICE" out sh1 shaped things
+  -- from the array shaped as sh2.
+  let pullb = Pull sh1 (\ix -> shf (block sh1 sh2 bix ix))
+  in  f pullb
+
+sliceTrans = undefined 
 
 {- 
 ---------------------------------------------------------------------------
