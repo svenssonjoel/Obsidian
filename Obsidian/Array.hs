@@ -49,21 +49,21 @@ instance AccessP Push pt sh where
   accessM push = error "accessM: TODO - needs the force" 
 
 class Array arr pt sh where
-  len :: arr pt sh e -> sh 
+  shape  :: arr pt sh e -> sh 
   resize :: arr pt sh e -> sh -> arr pt sh e 
-  aMap :: (e -> e') -> arr pt sh e ->  arr pt sh e' 
-  ixMap :: (E sh -> E sh) -> arr pt sh e ->  arr pt sh e 
+  aMap   :: (e -> e') -> arr pt sh e ->  arr pt sh e' 
+  ixMap  :: (E sh -> E sh) -> arr pt sh e ->  arr pt sh e 
 
 
 instance Array Pull pt sh where 
-  len    (Pull sh _) = sh
+  shape  (Pull sh _) = sh
   resize (Pull _ shf) sh = Pull sh shf
   aMap   f (Pull sh shf)  = Pull sh (f . shf)
   ixMap  f (Pull sh shf)  = Pull sh (shf . f) 
 
 
 instance Array Push pt sh where
-  len    (Push sh _) = sh
+  shape  (Push sh _) = sh
   resize (Push _ shf) sh = Push sh shf
   aMap   f (Push sh pushf) = 
    Push sh $ \wf -> pushf (\(ix, a) -> wf (ix, f a))
@@ -122,6 +122,9 @@ blocks f sh1 (Pull sh2 shf) bix =
 -- Helpers
 ---------------------------------------------------------------------------
 namedGlobal sh name = Pull sh $ \gix -> index name (toIndex sh gix)
+
+(!) :: Access arr pt sh => arr pt sh a -> E sh -> a 
+(!) = access 
 
 
 {- 
