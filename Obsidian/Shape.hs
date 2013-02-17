@@ -71,7 +71,7 @@ instance Shapely (Shape Z e) where
 instance Shapely (Shape s Word32)
          => Shapely (Shape (s :. Word32) Word32) where
   size (s :. n) = size s * fromIntegral n
-  fromIndex (s :. n)  ix = fromIndex s (ix `quot` n') :. (ix `rem` n')  
+  fromIndex (s :. n)  ix = fromIndex s (ix `div` n') :. (ix `mod` n')  
     where n' = fromIntegral n
   toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * (fromIntegral sh2) + i2 
 
@@ -81,7 +81,7 @@ instance Shapely (Shape s Word32)
 instance Shapely (Shape s (Exp Word32))
          => Shapely (Shape (s :. (Exp Word32)) (Exp Word32)) where
   size (s :. n) = size s *  n
-  fromIndex (s :. n)  ix = fromIndex s (ix `quot` n) :. (ix `rem` n)  
+  fromIndex (s :. n)  ix = fromIndex s (ix `div` n) :. (ix `mod` n)  
   toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * sh2 + i2
   
 ---------------------------------------------------------------------------
@@ -142,4 +142,9 @@ instance Blockable (Shape Z Word32)
 -- Maybe the best move for Obsidian is to add
 -- 1D, 2D and 3D Arrays and be happy with that.
 
+---------------------------------------------------------------------------
+-- Combining shapes (or the oposite of Carving) 
+--------------------------------------------------------------------------- 
+
+-- extend :: (Shape sh1 (Word32)) -> (Shape sh2 (Word32))  
 

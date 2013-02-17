@@ -492,7 +492,7 @@ instance Enum (Exp Word32) where
 instance Integral (Exp Word32) where
   mod a b = BinOp Mod a b 
   div a b = BinOp Div a b
-  quotRem = error "quotRem: not implemented for Exp Word32" 
+  quotRem = (error "quotRem: not implemented for Exp Word32" 
   toInteger = error "toInteger: not implemented for Exp Word32"
   
 instance Num (Exp Float) where

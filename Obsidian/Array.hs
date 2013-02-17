@@ -127,6 +127,9 @@ namedGlobal sh name = Pull sh $ \gix -> index name (toIndex sh gix)
 (!) = access 
 
 
+
+
+
 {- 
 ---------------------------------------------------------------------------
 -- A value that can not be used in further computations

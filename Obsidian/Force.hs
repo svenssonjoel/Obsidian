@@ -4,9 +4,7 @@
              FlexibleContexts,
              ScopedTypeVariables,
              TypeFamilies,
-             GADTs,
-             OverlappingInstances,   -- REMOVE 
-             IncoherentInstances #-} -- REMOVE 
+             GADTs  #-}
 
 {- Joel Svensson 2012, 2013 
 
@@ -25,10 +23,6 @@
 --  write_ should be internal use only
 module Obsidian.Force (write,
                        force,
-                       --Forceable,
-                       --Forced,
-                       --force,
-                       --write_,
 --                       forceG,
  --                      forceG2,
   --                     forceGP,
