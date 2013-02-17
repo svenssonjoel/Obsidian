@@ -51,23 +51,23 @@ instance AccessP Push pt sh where
 class Array arr pt sh where
   len :: arr pt sh e -> sh 
   resize :: arr pt sh e -> sh -> arr pt sh e 
-  aMap :: arr pt sh e -> (e -> e') -> arr pt sh e' 
-  ixMap :: arr pt sh e -> (E sh -> E sh) -> arr pt sh e 
+  aMap :: (e -> e') -> arr pt sh e ->  arr pt sh e' 
+  ixMap :: (E sh -> E sh) -> arr pt sh e ->  arr pt sh e 
 
 
 instance Array Pull pt sh where 
   len    (Pull sh _) = sh
   resize (Pull _ shf) sh = Pull sh shf
-  aMap   (Pull sh shf) f = Pull sh (f . shf)
-  ixMap  (Pull sh shf) f = Pull sh (shf . f) 
+  aMap   f (Pull sh shf)  = Pull sh (f . shf)
+  ixMap  f (Pull sh shf)  = Pull sh (shf . f) 
 
 
 instance Array Push pt sh where
   len    (Push sh _) = sh
   resize (Push _ shf) sh = Push sh shf
-  aMap   (Push sh pushf) f = 
+  aMap   f (Push sh pushf) = 
    Push sh $ \wf -> pushf (\(ix, a) -> wf (ix, f a))
-  ixMap  (Push sh pushf) f = 
+  ixMap  f (Push sh pushf) = 
    Push sh $ \wf -> pushf (\(ix, a) -> wf (f ix, a)) 
 
 
@@ -116,6 +116,12 @@ blocks f sh1 (Pull sh2 shf) bix =
   let pullb = Pull sh1 (\ix -> shf (block sh1 sh2 bix ix))
   in  f pullb
 
+
+
+---------------------------------------------------------------------------
+-- Helpers
+---------------------------------------------------------------------------
+namedGlobal sh name = Pull sh $ \gix -> index name (toIndex sh gix)
 
 
 {- 

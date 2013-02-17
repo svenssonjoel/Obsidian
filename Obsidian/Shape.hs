@@ -35,10 +35,22 @@ type instance E (Exp Word32) = Exp Word32
 type instance E (a :. b) = E a :. E b
 type instance E (Shape sh e) = Shape (E sh) (E e) 
 
-type DIM0 e = Z
-type DIM1 e = DIM0 e :. e 
-type DIM2 e = DIM1 e :. e 
-type DIM3 e = DIM2 e :. e 
+-- It feels a bit awkward.. 
+type CDIM0 e = Z 
+type CDIM1 e = CDIM0 e :. e
+type CDIM2 e = CDIM1 e :. e
+type CDIM3 e = CDIM2 e :. e
+
+type DynDim0 = Shape (CDIM0 (Exp Word32)) (Exp Word32)
+type DynDim1 = Shape (CDIM1 (Exp Word32)) (Exp Word32)
+type DynDim2 = Shape (CDIM2 (Exp Word32)) (Exp Word32)
+type DynDim3 = Shape (CDIM3 (Exp Word32)) (Exp Word32)
+
+type Dim0 = Shape (CDIM0 Word32) Word32
+type Dim1 = Shape (CDIM1 Word32) Word32
+type Dim2 = Shape (CDIM2 Word32) Word32
+type Dim3 = Shape (CDIM3 Word32) Word32
+
 
 
 ---------------------------------------------------------------------------

@@ -1,18 +1,20 @@
 {-# LANGUAGE ScopedTypeVariables,
-             FlexibleContexts #-} 
+             FlexibleContexts,
+             TypeOperators#-} 
 
 module Examples where
 
-import qualified Obsidian.CodeGen.CUDA as CUDA
+--import qualified Obsidian.CodeGen.CUDA as CUDA
 
 import Obsidian.Program
-import Obsidian.Exp
+import Obsidian.Exp hiding (Z) 
 import Obsidian.Types
 import Obsidian.Array
-import Obsidian.Library
-import Obsidian.Force
-import Obsidian.CodeGen.InOut
-import Obsidian.Atomic
+import Obsidian.Shape
+--import Obsidian.Library
+--import Obsidian.Force
+--import Obsidian.CodeGen.InOut
+--import Obsidian.Atomic
 
 import Data.Word
 import Data.Int
@@ -38,35 +40,38 @@ import qualified Prelude as P
 ---------------------------------------------------------------------------
 -- Util 
 ---------------------------------------------------------------------------
-quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
-quickPrint prg input =
-  putStrLn $ CUDA.genKernel "kernel" prg input 
+-- quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
+-- quickPrint prg input =
+--   putStrLn $ CUDA.genKernel "kernel" prg input 
 
 ---------------------------------------------------------------------------
 -- MapFusion example
 ---------------------------------------------------------------------------
 
-mapFusion :: Pull EInt -> BProgram (Pull EInt)
-mapFusion arr =
-  do
-    imm <- force $ (fmap (+1) . fmap (*2)) arr
-    force $ (fmap (+3) . fmap (*4)) imm 
+mapFusion :: Shapely sh =>  Pull Block sh EInt -> Pull Block sh EInt
+mapFusion = aMap (+1) . aMap (*2)
 
-input1 :: Pull EInt 
-input1 = namedArray "apa" 32
+input1 :: Pull Grid DynDim1 EInt 
+input1 = namedGlobal (Z:.(variable "X")) "apa" 
 
-input2 :: GlobPull EInt
-input2 = namedGlobal "apa" 
 
-input3 :: GlobPull (Exp Int32)
-input3 = namedGlobal "apa" 
+concreteExample :: Pull Grid DynDim1 EInt -> Pull Grid DynDim1 EInt
+concreteExample = aMap (+1)
+
+
+
+--input2 :: GlobPull EInt
+--input2 = namedGlobal "apa" 
+
+--input3 :: GlobPull (Exp Int32)e
+--input3 = namedGlobal "apa" 
 
 
 ---------------------------------------------------------------------------
 -- Hacking
 ---------------------------------------------------------------------------
-forAllT' :: GlobPull (Program Thread ()) -> Program Grid ()
-forAllT' (GlobPull gixf) = forAllT gixf
+--forAllT' :: GlobPull (Program Thread ()) -> Program Grid ()
+--forAllT' (GlobPull gixf) = forAllT gixf
 
-forAllLocal :: Pull (Program Thread ()) -> Program Block ()
-forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
+--forAllLocal :: Pull (Program Thread ()) -> Program Block ()
+--forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
