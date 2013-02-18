@@ -28,19 +28,19 @@ import Obsidian.Shape
 -- Push and Pull arrays 
 --------------------------------------------------------------------------- 
 
-data Pull pt sh a = Pull sh (E sh -> a)
-data Push pt sh a = Push sh (((E sh, a) -> Program Thread ()) -> Program pt ())
+data Pull pt sh a = Pull sh (IxTy sh -> a)
+data Push pt sh a = Push sh (((IxTy sh, a) -> Program Thread ()) -> Program pt ())
 
 -- Accessing is only cheap on pull arrays! 
 class Access arr pt sh where
-  access :: arr pt sh e -> E sh -> e 
+  access :: arr pt sh e -> IxTy sh -> e 
 
 instance Access Pull pt sh where
   access (Pull _ shf) ix = shf ix
 
 -- Monadic Access functionality (very costly in push array case) 
 class AccessP arr pt sh  where
-  accessM :: arr pt sh  e -> E sh -> Program pt e 
+  accessM :: arr pt sh  e -> IxTy sh -> Program pt e 
 
 instance AccessP Pull pt sh where
   accessM (Pull _ shf) ix = return $ shf ix 
@@ -52,7 +52,7 @@ class Array arr pt sh where
   shape  :: arr pt sh e -> sh 
   resize :: arr pt sh e -> sh -> arr pt sh e 
   aMap   :: (e -> e') -> arr pt sh e ->  arr pt sh e' 
-  ixMap  :: (E sh -> E sh) -> arr pt sh e ->  arr pt sh e 
+  ixMap  :: (IxTy sh -> IxTy sh) -> arr pt sh e ->  arr pt sh e 
 
 
 instance Array Pull pt sh where 
@@ -78,19 +78,19 @@ instance Array Push pt sh where
 class Pushable a pt sh where
   push :: a pt sh e -> Push pt sh e  
 
-instance Shapely sh => Pushable Pull Block sh where
+instance Shape sh Word32 => Pushable Pull Block (sh Word32) where
    push (Pull sh ixf) = 
-     let n = size sh 
+     let n = fromIntegral $ size sh 
      in  Push sh $ \wf -> ForAll n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
-instance Shapely sh => Pushable Pull Thread sh where
+instance Shape sh Word32 => Pushable Pull Thread (sh Word32) where
    push (Pull sh ixf) = 
-     let n = size sh 
+     let n = fromIntegral $ size sh 
      in  Push sh $ \wf -> SeqFor n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
-instance Shapely sh => Pushable Pull Grid sh where
+instance Shape sh Word32 => Pushable Pull Grid (sh Word32) where
    push (Pull sh ixf) = 
-     let n = size sh
+     let n = fromIntegral $ size sh
          -- Im not sure about the number of threads to use here.
      in  Push sh $ \wf -> ForAllGlobal n
                           $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
@@ -104,7 +104,7 @@ instance Shapely sh => Pushable Pull Grid sh where
 -- are when a grid is split up into blocks, and blocks divided over threads.
 -- These things are not captured by the "push" functions above.
 
-
+{- 
 blocks :: (Static sh1, Blockable sh1 sh2 sh3)
           => (Pull Block sh1 a -> BProgram b)
           -> sh1
@@ -115,7 +115,7 @@ blocks f sh1 (Pull sh2 shf) bix =
   -- from the array shaped as sh2.
   let pullb = Pull sh1 (\ix -> shf (block sh1 sh2 bix ix))
   in  f pullb
-
+-}
 
 
 ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ blocks f sh1 (Pull sh2 shf) bix =
 ---------------------------------------------------------------------------
 namedGlobal sh name = Pull sh $ \gix -> index name (toIndex sh gix)
 
-(!) :: Access arr pt sh => arr pt sh a -> E sh -> a 
+(!) :: Access arr pt sh => arr pt sh a -> IxTy sh -> a 
 (!) = access 
 
 

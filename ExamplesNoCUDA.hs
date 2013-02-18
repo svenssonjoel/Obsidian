@@ -15,7 +15,7 @@ import Obsidian.Types
 import Obsidian.Array
 import Obsidian.Shape
 --import Obsidian.Library
-import Obsidian.Force
+-- import Obsidian.Force
 --import Obsidian.CodeGen.InOut
 --import Obsidian.Atomic
 
@@ -41,13 +41,19 @@ import qualified Prelude as P
 -- MapFusion example
 ---------------------------------------------------------------------------
 
-mapFusion :: Shapely sh =>  Pull Block sh EInt -> Pull Block sh EInt
+mapFusion :: Shape sh e => Pull Block (sh e) EInt -> Pull Block (sh e) EInt
 mapFusion = aMap (+1) . aMap (*2)
 
-input1 :: Pull Grid DynDim1 EInt 
-input1 = namedGlobal (Z:.(variable "X")) "apa" 
 
 
+input1 :: Pull Grid (Dim1 (Exp Word32))  EInt 
+input1 = namedGlobal (Dim1 (variable "X")) "apa"
+
+
+
+
+
+{- 
 -- splitUp + blockify should be one thing 
 splitUp :: Word32 -> Pull Grid (Shape (Z:.EWord32) EWord32) a -> 
            Pull Grid (Shape (Z:.EWord32:.EWord32) EWord32)  a
@@ -66,9 +72,6 @@ unBlockify :: Pull Grid (Shape (Z:.EWord32) EWord32) (BProgram (Pull Block (Shap
               -> GProgram (Pull Grid (Shape (Z:.EWord32) EWord32) a)
 unBlockify (Pull (Z:.s) bxf) =
   do
-
-    
-    
     ForAllBlocks s $ \bix ->
       do 
         let arr = fst $ runPrg 0 $ bxf (Z:.0) 
@@ -162,3 +165,4 @@ globalKern2 = unBlockify . globalKern
 
 --forAllLocal :: Pull (Program Thread ()) -> Program Block ()
 --forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
+-} 

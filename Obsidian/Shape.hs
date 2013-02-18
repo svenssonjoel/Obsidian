@@ -13,97 +13,132 @@ import Data.Word
 import Obsidian.Exp hiding (Z) 
 
 ---------------------------------------------------------------------------
--- Shape module 
+-- Shape module  (SIMPLE VERSION) 
 ---------------------------------------------------------------------------
 
-data Z
-data tail :. head
-
-infixl 3  :.
-
-data Shape sh e where   
-  Z :: Shape Z e
-  (:.) :: Shape sh e -> e -> Shape (sh :. e) e
-
----------------------------------------------------------------------------
--- Type function
----------------------------------------------------------------------------
-type family E x
-type instance E Z = Z 
-type instance E Word32 = Exp Word32
-type instance E (Exp Word32) = Exp Word32
-type instance E (a :. b) = E a :. E b
-type instance E (Shape sh e) = Shape (E sh) (E e) 
-
--- It feels a bit awkward.. 
-type CDIM0 e = Z 
-type CDIM1 e = CDIM0 e :. e
-type CDIM2 e = CDIM1 e :. e
-type CDIM3 e = CDIM2 e :. e
-
-type DynDim0 = Shape (CDIM0 (Exp Word32)) (Exp Word32)
-type DynDim1 = Shape (CDIM1 (Exp Word32)) (Exp Word32)
-type DynDim2 = Shape (CDIM2 (Exp Word32)) (Exp Word32)
-type DynDim3 = Shape (CDIM3 (Exp Word32)) (Exp Word32)
-
-type Dim0 = Shape (CDIM0 Word32) Word32
-type Dim1 = Shape (CDIM1 Word32) Word32
-type Dim2 = Shape (CDIM2 Word32) Word32
-type Dim3 = Shape (CDIM3 Word32) Word32
+data Dim3 e = Dim3 e e e
+data Dim2 e = Dim2 e e
+data Dim1 e = Dim1 e 
+data Dim0 e = Dim0 
 
 
----------------------------------------------------------------------------
--- Attempt at a shapely class !
----------------------------------------------------------------------------
-class Shapely sh where
-  size :: sh -> Exp Word32
-  toIndex :: sh -> E sh -> Exp Word32  
-  fromIndex :: sh -> Exp Word32 -> E sh
+--data Ix0    = Ix0 
+--data Ix1    = Ix1 (Exp Word32)
+--data Ix2    = Ix2 (Exp Word32) (Exp Word32)
+--data Ix3    = Ix3 (Exp Word32) (Exp Word32) (Exp Word32) 
 
-instance Shapely (Shape Z e) where
-  size _ = 1
-  toIndex Z _ = 0
-  fromIndex Z _ = Z
+--data Ix d = Ix (d (Exp Word32))
+
+--type Test = Ix Dim3
+
+type family IxTy a
+type instance IxTy Word32 = Exp Word32
+type instance IxTy (Exp Word32) = Exp Word32
+type instance IxTy (Dim0 e) = Dim0 (Exp Word32)
+type instance IxTy (Dim1 e) = Dim1 (Exp Word32)
+type instance IxTy (Dim2 e) = Dim2 (Exp Word32) 
+type instance IxTy (Dim3 e) = Dim3 (Exp Word32) 
+ 
+
+class Shape d e where
+  dimensions :: d e -> Int
+  size       :: d e -> e  
+  toIndex    :: d e -> IxTy (d e) -> Exp Word32
+  fromIndex  :: d e -> IxTy e -> IxTy (d e)
+
+
+instance Num e => Shape Dim0 e where
+  dimensions _ = 0
+  size _ = 1 
+  toIndex _ _ = 0
+  fromIndex _ _ = Dim0  
+
+instance Shape Dim1 Word32 where
+  dimensions _ = 1
+  size (Dim1 n) = n
+  toIndex (Dim1 n) (Dim1 m) = m
+  fromIndex (Dim1 n) ix = Dim1 ix
+
+instance Shape Dim1 (Exp Word32) where
+  dimensions _ = 1
+  size (Dim1 n) = n
+  toIndex (Dim1 n) (Dim1 m) = m
+  fromIndex (Dim1 n) ix = Dim1 ix 
+
+
+
+-- Make sure these are correct! 
+instance Shape Dim2 Word32 where
+  dimensions _ = 2
+  size (Dim2 n m) = n * m
+  toIndex (Dim2 n1 n2) (Dim2 ix1 ix2) = ix2 * fromIntegral n1 + ix1
+  fromIndex (Dim2 n1 n2) ix = Dim2 (ix `mod` fromIntegral n1)
+                                   (ix `div` fromIntegral n1)
+
+instance Shape Dim2 (Exp Word32) where
+  dimensions _ = 2
+  size (Dim2 n m) = n * m
+  toIndex (Dim2 w h) (Dim2 x y) = y * w + x
+  fromIndex (Dim2 w h) ix = Dim2 (ix `mod` w)
+                                 (ix `div` w)
+
+
+-- TODO: Draw some pictures and implement this one: 
+instance Shape Dim3 Word32 where
+  dimensions _ = 3
+  size (Dim3 w h d) = w * h * d
+  toIndex (Dim3 w h d) (Dim3 x y z) = undefined
+  fromIndex (Dim3 w h d) ix = undefined 
+    
+instance Shape Dim3 (Exp Word32) where
+  dimensions _ = 3
+  size (Dim3 w h d) = w * h * d
+  toIndex (Dim3 w h d) (Dim3 x y z) = undefined
+  fromIndex (Dim3 w h d) ix = undefined 
+ 
+
+  
+
 
 ------------------------------------------------------------
 -- Static case
 ------------------------------------------------------------
-instance Shapely (Shape s Word32)
-         => Shapely (Shape (s :. Word32) Word32) where
-  size (s :. n) = size s * fromIntegral n
-  fromIndex (s :. n)  ix = fromIndex s (ix `div` n') :. (ix `mod` n')  
-    where n' = fromIntegral n
-  toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * (fromIntegral sh2) + i2 
+--instance Shapely (Shape s Word32)
+--         => Shapely (Shape (s :. Word32) Word32) where
+--  size (s :. n) = size s * fromIntegral n
+--  fromIndex (s :. n)  ix = fromIndex s (ix `div` n') :. (ix `mod` n')  
+--    where n' = fromIntegral n
+--  toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * (fromIntegral sh2) + i2 
 
 ------------------------------------------------------------
 -- Dynamic case
 ------------------------------------------------------------
-instance Shapely (Shape s (Exp Word32))
-         => Shapely (Shape (s :. (Exp Word32)) (Exp Word32)) where
-  size (s :. n) = size s *  n
-  fromIndex (s :. n)  ix = fromIndex s (ix `div` n) :. (ix `mod` n)  
-  toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * sh2 + i2
+--instance Shapely (Shape s (Exp Word32))
+--         => Shapely (Shape (s :. (Exp Word32)) (Exp Word32)) where
+--  size (s :. n) = size s *  n
+--  fromIndex (s :. n)  ix = fromIndex s (ix `div` n) :. (ix `mod` n)  
+--  toIndex (sh1 :. sh2) (i1 :. i2) = toIndex sh1 i1 * sh2 + i2
   
 ---------------------------------------------------------------------------
 -- Dim
 ---------------------------------------------------------------------------
-dim :: Shape sh e -> Int
-dim Z = 0
-dim (sh :. _) = dim sh + 1
+--dim :: Shape sh e -> Int
+--dim Z = 0
+--dim (sh :. _) = dim sh + 1
 
 
 ---------------------------------------------------------------------------
 -- Static 
 ---------------------------------------------------------------------------
 
-class Static sh where
-  sizeS :: sh -> Word32
+--class Static sh where
+--  sizeS :: sh -> Word32
 
-instance Static (Shape Z Word32) where
-  sizeS Z = 1
-instance Static (Shape s Word32)
-         => Static (Shape (s :. Word32) Word32) where 
-  sizeS (s :. n) = sizeS s * n 
+--instance Static (Shape Z Word32) where
+--  sizeS Z = 1
+--instance Static (Shape s Word32)
+--         => Static (Shape (s :. Word32) Word32) where 
+--  sizeS (s :. n) = sizeS s * n 
 
 -- I want to be able to use Static as a requirement for certain operations.
 -- Storing the array into shared memory is one such operation.
@@ -111,7 +146,7 @@ instance Static (Shape s Word32)
 ---------------------------------------------------------------------------
 -- Carving in Shapes 
 --------------------------------------------------------------------------- 
-
+{- 
 class Blockable sh1 sh2 sh3 where
   -- block takes a static "small" shape
   -- and a dynamic large shape
@@ -148,3 +183,4 @@ instance Blockable (Shape Z Word32)
 
 -- extend :: (Shape sh1 (Word32)) -> (Shape sh2 (Word32))  
 
+-}
