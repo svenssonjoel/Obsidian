@@ -47,8 +47,8 @@ data Names = Single Name
 class StoreOps a where
   names    :: a -> Program t Names 
   allocate :: Names -> a -> Word32 -> Program t ()
-  assign   :: Shapely sh => Names -> sh -> (E sh ,a) -> TProgram ()
-  pullFrom :: Shapely sh => Names -> sh -> Pull b sh a
+  assign   :: Shape sh => Names -> sh -> (E sh ,a) -> TProgram ()
+  pullFrom :: Shape sh => Names -> sh -> Pull b sh a
 
 
 instance Scalar a => StoreOps (Exp a) where
@@ -84,7 +84,7 @@ instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
 ---------------------------------------------------------------------------
 
 write :: forall p sh a. (Static  sh,    -- clean up these lists! 
-                         Shapely sh, 
+                         Shape sh, 
                          StoreOps a,
                          Pushable p Block sh,
                          Array p Block sh)
@@ -103,7 +103,7 @@ write arr = do
   
 
 force :: forall p sh a. (Static  sh, -- clean up these lists! 
-                         Shapely sh,
+                         Shape sh,
                          StoreOps a,
                          Pushable p Block sh,
                          Array p Block sh)

@@ -15,7 +15,7 @@ import Obsidian.Types
 import Obsidian.Array
 import Obsidian.Shape
 --import Obsidian.Library
--- import Obsidian.Force
+--import Obsidian.Force
 --import Obsidian.CodeGen.InOut
 --import Obsidian.Atomic
 
@@ -41,13 +41,25 @@ import qualified Prelude as P
 -- MapFusion example
 ---------------------------------------------------------------------------
 
-mapFusion :: Shape sh e => Pull Block (sh e) EInt -> Pull Block (sh e) EInt
+mapFusion :: Shape sh e => Pull (sh e) EInt -> Pull (sh e) EInt
 mapFusion = aMap (+1) . aMap (*2)
 
 
 
-input1 :: Pull Grid (Dim1 (Exp Word32))  EInt 
+input1 :: Pull (Dim1 (Exp Word32))  EInt 
 input1 = namedGlobal (Dim1 (variable "X")) "apa"
+
+
+-- Imposes a fixed size 
+splitUp :: Word32 -> Pull (Dim1 (Exp Word32)) a 
+           ->  Pull (Dim1 (Exp Word32)) (Pull (Dim1 Word32) a)
+
+           -- Clean up 
+splitUp n (Pull (Dim1 m) ixf) =
+  Pull (Dim1 (m `div` fromIntegral n)) $ \(Dim1 ix0) ->
+  Pull (Dim1 n) $ \(Dim1 ix1) -> ixf (Dim1 (ix0 * fromIntegral n + ix1))
+           
+
 
 
 
