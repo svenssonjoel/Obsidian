@@ -42,20 +42,28 @@ type instance IxTy (Dim3 e) = Dim3 (Exp Word32)
 
 class Shape d e where
   dimensions :: d e -> Int
-  size       :: d e -> e  
+  size       :: d e -> IxTy e  
   toIndex    :: d e -> IxTy (d e) -> Exp Word32
   fromIndex  :: d e -> IxTy e -> IxTy (d e)
 
 
-instance Num e => Shape Dim0 e where
+-- TODO: Clean this mess upp 
+instance Shape Dim0 Word32 where
   dimensions _ = 0
-  size _ = 1 
+  size _ =  1 
   toIndex _ _ = 0
-  fromIndex _ _ = Dim0  
+  fromIndex _ _ = Dim0
+
+instance Shape Dim0 (Exp Word32) where
+  dimensions _ = 0
+  size _ =  1 
+  toIndex _ _ = 0
+  fromIndex _ _ = Dim0
+
 
 instance Shape Dim1 Word32 where
   dimensions _ = 1
-  size (Dim1 n) = n
+  size (Dim1 n) = fromIntegral n
   toIndex (Dim1 n) (Dim1 m) = m
   fromIndex (Dim1 n) ix = Dim1 ix
 
@@ -70,7 +78,7 @@ instance Shape Dim1 (Exp Word32) where
 -- Make sure these are correct! 
 instance Shape Dim2 Word32 where
   dimensions _ = 2
-  size (Dim2 n m) = n * m
+  size (Dim2 n m) = fromIntegral (n * m)
   toIndex (Dim2 n1 n2) (Dim2 ix1 ix2) = ix2 * fromIntegral n1 + ix1
   fromIndex (Dim2 n1 n2) ix = Dim2 (ix `mod` fromIntegral n1)
                                    (ix `div` fromIntegral n1)
@@ -86,7 +94,7 @@ instance Shape Dim2 (Exp Word32) where
 -- TODO: Draw some pictures and implement this one: 
 instance Shape Dim3 Word32 where
   dimensions _ = 3
-  size (Dim3 w h d) = w * h * d
+  size (Dim3 w h d) = fromIntegral (w * h * d)
   toIndex (Dim3 w h d) (Dim3 x y z) = undefined
   fromIndex (Dim3 w h d) ix = undefined 
     

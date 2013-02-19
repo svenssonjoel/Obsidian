@@ -47,8 +47,12 @@ data Names = Single Name
 class StoreOps a where
   names    :: a -> Program t Names 
   allocate :: Names -> a -> Word32 -> Program t ()
-  assign   :: Shape sh => Names -> sh -> (E sh ,a) -> TProgram ()
-  pullFrom :: Shape sh => Names -> sh -> Pull b sh a
+  assign   :: Shape sh Word32
+              => Names
+              -> (sh Word32)
+              -> (sh (Exp Word32) ,a)
+              -> TProgram ()
+  pullFrom :: Shape sh Word32 => Names -> (sh Word32) -> Pull b (sh Word32) a
 
 
 instance Scalar a => StoreOps (Exp a) where
@@ -83,12 +87,11 @@ instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
 -- Force local
 ---------------------------------------------------------------------------
 
-write :: forall p sh a. (Static  sh,    -- clean up these lists! 
-                         Shape sh, 
+write :: forall p sh a. (Shape sh Word32, 
                          StoreOps a,
-                         Pushable p Block sh,
-                         Array p Block sh)
-         => p Block sh a -> BProgram (Pull Block sh a)
+                         Pushable p (sh Word32),
+                         Array p (sh Word32))
+         => p sh a -> BProgram (Pull sh a)
 write arr = do 
   snames <- names (undefined :: a)
   
@@ -102,12 +105,11 @@ write arr = do
 
   
 
-force :: forall p sh a. (Static  sh, -- clean up these lists! 
-                         Shape sh,
+force :: forall p sh a. (Shape sh Word32, 
                          StoreOps a,
-                         Pushable p Block sh,
-                         Array p Block sh)
-         => p Block sh a -> BProgram (Pull Block sh a)
+                         Pushable p (sh Word32),
+                         Array p (sh Word32))
+         => p Block sh a -> BProgram (Pull  sh a)
 force arr = do
   rval <- write arr
   Sync

@@ -26,9 +26,16 @@ import System.IO.Unsafe
 ---------------------------------------------------------------------------
 -- Thread/Block/Grid 
 ---------------------------------------------------------------------------
-data Thread
-data Block
-data Grid 
+data Thread 
+data Block  
+data Grid   
+
+data PT a where
+  Thread :: PT Thread 
+  Block  :: PT Block
+  Grid   :: PT Grid 
+
+  
 
 type Identifier = Int 
 

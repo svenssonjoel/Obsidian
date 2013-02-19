@@ -2,7 +2,8 @@
              FlexibleInstances,
              FlexibleContexts,
              UndecidableInstances,
-             GADTs  #-} 
+             GADTs,
+             ScopedTypeVariables #-} 
 
 {- Joel Svensson 2012
 
@@ -75,31 +76,51 @@ instance Array (Push pt) sh where
 -- Lets see how pushable works out in this setting. 
 --------------------------------------------------------------------------- 
 
-push (Pull sh ixf) =
-  let n = fromIntegral $ size sh
-  in  Push sh $ \wf -> ForAll n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+--push (Pull sh ixf) =
+--  let n = fromIntegral $ size sh
+--  in  Push sh $ \wf -> ForAll n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
-{- 
-class Pushable sh where
-  push :: Pull sh e -> Push pt sh e  
 
-instance Shape sh Word32 => Pushable Pull Block (sh Word32) where
-   push (Pull sh ixf) = 
-     let n = fromIntegral $ size sh 
+class Pushable p where
+  push :: (IxTy i ~ Exp Word32, Shape sh i)
+          => PT t -> p (sh i) e -> Push t (sh i) e  
+
+instance Pushable Pull  where
+   push Grid (Pull sh ixf) = 
+     let n = size sh 
+     in  Push sh $ \wf -> ForAllGlobal n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+   push Block (Pull sh ixf) = 
+     let n = size sh 
      in  Push sh $ \wf -> ForAll n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
-
-instance Shape sh Word32 => Pushable Pull Thread (sh Word32) where
-   push (Pull sh ixf) = 
-     let n = fromIntegral $ size sh 
+   push Thread (Pull sh ixf) =
+     let n = size sh 
      in  Push sh $ \wf -> SeqFor n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+                                           
+   
+instance Pushable (Push Block) where
+   push Block p = p
 
-instance Shape sh Word32 => Pushable Pull Grid (sh Word32) where
-   push (Pull sh ixf) = 
-     let n = fromIntegral $ size sh
-         -- Im not sure about the number of threads to use here.
-     in  Push sh $ \wf -> ForAllGlobal n
-                          $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
--}
+instance Pushable (Push Thread) where
+   push Thread p = p
+
+instance Pushable (Push Grid) where
+   push Grid p = p
+
+
+
+
+
+--instance Shape sh Word32 => Pushable Pull Thread (sh Word32) where
+--   push (Pull sh ixf) = 
+--     let n = fromIntegral $ size sh 
+--     in  Push sh $ \wf -> SeqFor n $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
+
+--instance Shape sh Word32 => Pushable Pull Grid (sh Word32) where
+--   push (Pull sh ixf) = 
+--     let n = fromIntegral $ size sh
+--         -- Im not sure about the number of threads to use here.
+--     in  Push sh $ \wf -> ForAllGlobal n
+--                          $ \i -> wf (fromIndex sh i,ixf (fromIndex sh i))
 
 
 
