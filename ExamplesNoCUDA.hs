@@ -15,7 +15,7 @@ import Obsidian.Types
 import Obsidian.Array
 import Obsidian.Shape
 --import Obsidian.Library
--- import Obsidian.Force
+import Obsidian.Force
 --import Obsidian.CodeGen.InOut
 --import Obsidian.Atomic
 
@@ -68,8 +68,8 @@ segment1D (Dim1 n) (Pull (Dim1 m) shf) =
 
 
   
---localKern :: Pull (Dim1 Word32) EInt -> BProgram (Pull (Dim1 Word32) EInt)
---localKern = force . aMap (+1)
+localKern :: Pull (Dim1 Word32) EInt -> BProgram (Pull (Dim1 Word32) EInt)
+localKern = force . aMap (+1)
 
 
 --globalKern :: (Num a, StoreOps a)

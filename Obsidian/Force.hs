@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses,
              FlexibleInstances,
              FlexibleContexts,
+             UndecidableInstances,
              ScopedTypeVariables,
              TypeFamilies,
              GADTs  #-}
@@ -43,16 +44,19 @@ import Data.Word
 data Names = Single Name
            | Tuple [Names]
 
-
+{- Really take a look at all constraints
+   that occur from the use of the shapes.
+   Is there any way to simplify this code? -} 
 class StoreOps a where
   names    :: a -> Program t Names 
   allocate :: Names -> a -> Word32 -> Program t ()
-  assign   :: Shape sh Word32
+  assign   :: (Shape sh Word32,
+               (IxTy (sh Word32) ~ sh (Exp Word32)))
               => Names
               -> (sh Word32)
               -> (sh (Exp Word32) ,a)
               -> TProgram ()
-  pullFrom :: Shape sh Word32 => Names -> (sh Word32) -> Pull b (sh Word32) a
+  pullFrom :: Shape sh Word32 => Names -> (sh Word32) -> Pull (sh Word32) a
 
 
 instance Scalar a => StoreOps (Exp a) where
@@ -87,29 +91,34 @@ instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
 -- Force local
 ---------------------------------------------------------------------------
 
-write :: forall p sh a. (Shape sh Word32, 
+write :: forall p sh a. (Shape sh Word32,
+                         (IxTy (sh Word32) ~ sh (Exp Word32)),
                          StoreOps a,
-                         Pushable p (sh Word32),
+                         Pushable p ,
                          Array p (sh Word32))
-         => p sh a -> BProgram (Pull sh a)
+         => p (sh Word32) a -> BProgram (Pull (sh Word32) a)
 write arr = do 
   snames <- names (undefined :: a)
-  
-  allocate snames (undefined :: a) (sizeS (shape arr)) 
 
-  let (Push m p) = push arr
+  -- I know that the result of size
+  -- will match this pattern
+  let (Literal n) = size (shape arr)
+            
+  allocate snames (undefined :: a) n
+
+  let (Push m p) = push Block arr
       
   p (assign snames (shape arr)) 
       
   return $ pullFrom snames (shape arr) 
 
-  
 
-force :: forall p sh a. (Shape sh Word32, 
+force :: forall p sh a. (Shape sh Word32,
+                         (IxTy (sh Word32) ~ sh (Exp Word32)),
                          StoreOps a,
-                         Pushable p (sh Word32),
+                         Pushable p ,
                          Array p (sh Word32))
-         => p Block sh a -> BProgram (Pull  sh a)
+         => p (sh Word32) a -> BProgram (Pull (sh Word32) a)
 force arr = do
   rval <- write arr
   Sync
