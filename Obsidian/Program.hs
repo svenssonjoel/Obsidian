@@ -30,14 +30,18 @@ data Thread
 data Block
 data Grid 
 
+data PT a where
+  Thread :: PT Thread
+  Block  :: PT Block
+  Grid   :: PT Grid 
+
 type Identifier = Int 
 
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
 data Program t a where
-
-  -- Time to talk to Josef about all the changes I make here. 
+  
   Identifier :: Program t Identifier 
   
   Assign :: Scalar a

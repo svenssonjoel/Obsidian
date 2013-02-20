@@ -28,9 +28,9 @@ module Obsidian.Force (write,
                        --Forced,
                        --force,
                        --write_,
-                       forceG,
-                       forceG2,
-                       forceGP,
+                 --      forceG,
+                 --      forceG2,
+                 --      forceGP,
                        StoreOps) where
 
 
@@ -51,7 +51,7 @@ class StoreOps a where
   names    :: a -> Program t Names 
   allocate :: Names -> a -> Word32 -> Program t ()
   assign   :: Names -> a -> Exp Word32 -> TProgram ()
-  pullFrom :: Names -> Word32 -> Pull a
+  pullFrom :: Names -> Word32 -> Pull Word32 a
 
 
 instance Scalar a => StoreOps (Exp a) where
@@ -91,23 +91,26 @@ instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
 --  force  :: a -> BProgram (Forced a)  
   
 ---------------------------------------------------------------------------
--- Force local
+-- Force local (requires static lengths!) 
 ---------------------------------------------------------------------------
 
-write :: forall p a. (Len p, Pushable p, StoreOps a) => p a -> BProgram (Pull a)
+write :: forall p a. (Array p, Pushable p, StoreOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
   snames <- names (undefined :: a)
-  
-  allocate snames (undefined :: a) (len arr) 
 
-  let (Push m p) = push arr
+  -- Here i know that this pattern match will succeed
+  let (Literal n) = len arr
+  
+  allocate snames (undefined :: a) n
+
+  let (Push m p) = push Block arr
 
   p (assign snames) 
       
-  return $ pullFrom snames (len arr) 
+  return $ pullFrom snames n
 
   
-force :: forall p a. (Len p, Pushable p, StoreOps a) =>  p a -> BProgram (Pull a)
+force :: forall p a. (Array p, Pushable p, StoreOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
 force arr = do
   rval <- write arr
   Sync
@@ -210,7 +213,8 @@ instance (Forceable a, Forceable b) => Forceable (a,b) where
 -- Global
 ---------------------------------------------------------------------------
 
--- TODO: Make typeclass! 
+-- TODO: Make typeclass!
+{-   
 forceG :: forall a. Scalar a => GlobPush (Exp a)
            -> Final (GProgram (GlobPull (Exp a)))
 forceG (GlobPush pbt) = Final $ 
@@ -252,3 +256,5 @@ forceGP (GlobPush pbt) =
     where
       assignTo name e i = Assign name i e 
 
+
+-}
