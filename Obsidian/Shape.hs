@@ -22,15 +22,6 @@ data Dim1 e = Dim1 e
 data Dim0 e = Dim0 
 
 
---data Ix0    = Ix0 
---data Ix1    = Ix1 (Exp Word32)
---data Ix2    = Ix2 (Exp Word32) (Exp Word32)
---data Ix3    = Ix3 (Exp Word32) (Exp Word32) (Exp Word32) 
-
---data Ix d = Ix (d (Exp Word32))
-
---type Test = Ix Dim3
-
 type family IxTy a
 type instance IxTy Word32 = Exp Word32
 type instance IxTy (Exp Word32) = Exp Word32

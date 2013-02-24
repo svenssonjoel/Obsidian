@@ -72,11 +72,11 @@ localKern :: Pull (Dim1 Word32) EInt -> BProgram (Pull (Dim1 Word32) EInt)
 localKern = force . aMap (+1)
 
 
---globalKern :: (Num a, StoreOps a)
---              => Pull (Dim1 EWord32) a
---              -> Pull (Dim1 EWord32)
---                      (BProgram (Pull (Dim1 Word32) a))
---globalKern input =  aMap (force . aMap (+1)) (segment1D 256 input)
+globalKern :: (Num a, StoreOps a)
+              => Pull (Dim1 EWord32) a
+              -> Pull (Dim1 EWord32)
+                      (BProgram (Pull (Dim1 Word32) a))
+globalKern input =  aMap (force . aMap (+1)) (segment1D (Dim1 256) input)
 
 --globalKern2 :: (Num a, StoreOps a)
 --              => Pull Grid (Shape (Z :. EWord32) EWord32) a
