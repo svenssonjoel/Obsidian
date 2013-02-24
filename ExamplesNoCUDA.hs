@@ -25,16 +25,6 @@ import Control.Monad.State
 import Prelude hiding (zipWith,sum,replicate)
 import qualified Prelude as P 
 
-{-
-   -- TODO: Cond finns i Program. Fixa codegen.
-   -- TODO: SeqFor finns i Program. Fixa codegen.
-   -- Force: bry inte om generalisera nu (eller ngnsin). 
-   -- Countingsort: generera kod, se att funkar.
-   -- Riktig Countingsort: TODO!
-   -- Genererade kernels behöver ibland ta längden av globala arrayer (antal block)
-   --     som input. 
--} 
-
 ---------------------------------------------------------------------------
 -- Util 
 ---------------------------------------------------------------------------
@@ -61,6 +51,30 @@ mapFusion arr =
     imm <- force $ (fmap (+1) . fmap (*2)) arr
     force $ (fmap (+3) . fmap (*4)) imm 
 
+splitUp :: Word32 -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull Word32 a)
+splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
+                          \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
+
+--test1 :: Pull (Exp Word32) EInt
+--         -> Pull (Exp Word32) (BProgram (Pull Word32 EInt))
+test1 :: Pull (Exp Word32) EInt -> GProgram (Pull (Exp Word32) EInt)
+test1 input = computeBlocks $ fmap mapFusion (splitUp 256 input) 
+
+input1 :: Pull (Exp Word32) EInt 
+input1 = namedGlobal "apa" (variable "X")
+
+
+computeBlocks :: Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+                 GProgram (Pull (Exp Word32) a) 
+computeBlocks (Pull bs bxf) =
+  do
+    ForAllBlocks bs $ \bix ->
+      do
+        let arr = fst $ runPrg 0 $ bxf 0
+        let n = len arr
+        bxf bix
+        return ()
+    return undefined 
 
 {- 
 input1 :: Pull EInt 

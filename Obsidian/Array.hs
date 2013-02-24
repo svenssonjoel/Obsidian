@@ -146,8 +146,10 @@ instance Pushable (Push Grid) where
 instance Pushable Pull where   
   push Thread (Pull n ixf) =
     Push n $ \wf -> SeqFor (sizeConv n) $ \i -> wf (ixf i) i
-
-
+  push Block (Pull n ixf) =
+    Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i 
+  push Grid (Pull n ixf) =
+    Push n $ \wf -> ForAllThreads (sizeConv n) $ \i -> wf (ixf i) i 
 
 {-  pushN m (Pull nm ixf) =
     Push nm -- There are still nm elements (info for alloc) 

@@ -37,9 +37,9 @@ data Program extra
      | Cond (Exp Bool) (Program extra)
        
      | SeqFor String (Exp Word32) (Exp Word32 -> Program extra) 
-     | ForAll (Maybe Word32) (Exp Word32 -> Program extra)
+     | ForAll (Exp Word32) (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
-     | ForAllBlocks (Exp Word32 -> Program extra)
+     | ForAllBlocks (Exp Word32) (Exp Word32 -> Program extra)
      | Allocate Name Word32 Type extra
        -- Not Present in old Program datatype 
      | Output Name Type 
@@ -79,9 +79,9 @@ runPrg' i (P.SeqFor n f) =
 runPrg' i (P.ForAll n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in  ((),ForAll n newf)
-runPrg' i (P.ForAllBlocks f) =
+runPrg' i (P.ForAllBlocks n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
-  in ((),ForAllBlocks newf)
+  in ((),ForAllBlocks n newf)
 --runPrg' i (P.ForAllG f) =
 --  let newf = (\x -> snd (runPrg' i (f x)))
 --  in ((),ForAllG newf)
@@ -127,7 +127,7 @@ printPrg (SeqFor nom n f) =
 printPrg (ForAll n f) =
   "forAll i in [0.."++show n ++"] do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
-printPrg (ForAllBlocks f) =
+printPrg (ForAllBlocks n f) =
   "Blocks i do\n" ++
   printPrg (f (variable "i")) ++ "\ndone;\n"
 --printPrg (ForAllG f) =
@@ -156,9 +156,10 @@ printPrg (ProgramSeq p1 p2) =
 threadsPerBlock :: Program e -> Word32
 threadsPerBlock (Cond e p)     = threadsPerBlock p
 threadsPerBlock (SeqFor _ _ _) = 1
-threadsPerBlock (ForAll (Just n) f) = n
-threadsPerBlock (ForAll Nothing f) = 0 -- really the answer is "Any number of threads" 
-threadsPerBlock (ForAllBlocks f) = threadsPerBlock (f (variable "X"))
+threadsPerBlock (ForAll (Literal n) f) = n
+threadsPerBlock (ForAll _ f) = error "Not a literal" 
+-- threadsPerBlock (ForAll  f) = 0 -- really the answer is "Any number of threads" 
+threadsPerBlock (ForAllBlocks _ f) = threadsPerBlock (f (variable "X"))
 threadsPerBlock (p1 `ProgramSeq` p2) =
   max (threadsPerBlock p1)
       (threadsPerBlock p2)
@@ -176,7 +177,7 @@ collectOutputs (p1 `ProgramPar` p2) = collectOutputs p1 ++
                                       collectOutputs p2
 collectOutputs (SeqFor _ _ f) = collectOutputs (f (variable "X"))
 -- collectOutputs (ForAll n f) = collectOutputs (f (variable "X"))
-collectOutputs (ForAllBlocks f) = collectOutputs (f (variable "X"))
+collectOutputs (ForAllBlocks m f) = collectOutputs (f (variable "X"))
 --collectOutputs (ForAllG f) = collectOutputs (f (variable "X"))
 collectOutputs a = []
 
@@ -196,7 +197,7 @@ extract prg = case extract' prg of
   Nothing -> error "extract: unsupported program structure"
   
   where
-    extract' (ForAllBlocks f) = Just (f (BlockIdx X))
+    extract' (ForAllBlocks m f) = Just (f (BlockIdx X))
     extract' (p1 `ProgramSeq` p2) =
       case (extract' p1, extract' p2) of
         (Nothing, Nothing) -> Nothing
@@ -218,7 +219,7 @@ extract prg = case extract' prg of
 -- Assumes that program does not do anything
 -- strange with regards to global arrays. 
 flatten :: Program e -> Program e
-flatten (ForAllBlocks f) = f (BlockIdx X)
+flatten (ForAllBlocks m f) = f (BlockIdx X)
 flatten (p1 `ProgramSeq` p2) = flatten p1 `ProgramSeq` flatten p2
 flatten (p1 `ProgramPar` p2) = flatten p1 `ProgramSeq` flatten p2 -- ALERT! 
 flatten p = p  

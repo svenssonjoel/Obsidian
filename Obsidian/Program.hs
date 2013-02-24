@@ -67,7 +67,7 @@ data Program t a where
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
             -> Program Thread () 
 
-  ForAll :: (Maybe Word32) 
+  ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread ())
             -> Program Block () 
 
@@ -80,8 +80,11 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32 -> Program Block ()) 
-                  -> Program Grid () 
+  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block ()) 
+                  -> Program Grid ()
+
+  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
+                   -> Program Grid () 
 
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> Program t () 
@@ -125,11 +128,11 @@ uniqueSM = do
 ---------------------------------------------------------------------------
 -- forAll and forAllN
 ---------------------------------------------------------------------------
-forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
-forAll f = ForAll Nothing f
+--forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
+--forAll f = ForAll Nothing f
 
-forAllN :: Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
-forAllN n f = ForAll (Just n) f
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
+forAll n f = ForAll n f
 
 (*||*) = Par
 
@@ -143,11 +146,10 @@ forAllN n f = ForAll (Just n) f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32 -> Program Thread ())
+forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
            -> Program Grid ()
-forAllT f = ForAllBlocks
-            $ \bid -> ForAll Nothing
-                      $ \tid -> f (bid * BlockDim X + tid) 
+forAllT n f = ForAllThreads n 
+            $ \gtid -> f gtid 
 
 
 
@@ -211,7 +213,7 @@ printPrg' i (ForAll n f) =
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
-printPrg' i (ForAllBlocks f) =
+printPrg' i (ForAllBlocks n f) =
   let (d,prg2,i') = printPrg' i (f (variable "BIX"))
   in (d, 
       "blocks (i)" ++
