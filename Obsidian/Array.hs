@@ -59,19 +59,19 @@ data DistPull a = DistPull (Exp Word32) (Exp Word32 -> BProgram a)
 
 -- Create global pull arrays 
 undefinedGlobal n = Pull n $ \gix -> undefined
-namedGlobal name n= Pull n $ \gix -> index name gix
+namedGlobal name n = Pull n $ \gix -> index name gix
 
 ---------------------------------------------------------------------------
 -- Class ArraySize
 --------------------------------------------------------------------------- 
-class ASize a where
-  size :: a ->  Exp Word32
+class (Integral a, Num a) => ASize a where
+  sizeConv :: a ->  Exp Word32
 
 instance ASize Word32 where
-  size = fromIntegral
+  sizeConv = fromIntegral
 
 instance ASize (Exp Word32) where
-  size = id 
+  sizeConv = id 
 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
@@ -91,21 +91,21 @@ mkPushArray n p = Push n p
 mkPullArray n p = Pull n p  
 
 class Array a where
-  resize :: ASize s => s -> a s e -> a s e
-  len    :: ASize s => a s e -> Exp Word32
+  resize :: s -> a s e -> a s e
+  len    :: ASize s => a s e -> s
   aMap   :: (e -> e') -> a s e -> a s e'
   ixMap  :: (Exp Word32 -> Exp Word32)
             -> a s e -> a s e
   
 instance Array Pull where 
   resize m (Pull _ ixf) = Pull m ixf
-  len      (Pull s _)   = size s
+  len      (Pull s _)   = s
   aMap   f (Pull n ixf) = Pull n (f . ixf)
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
   
 instance Array (Push t) where 
   resize m (Push _ p) = Push m p
-  len      (Push s _) = size s
+  len      (Push s _) = s
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
   
@@ -145,7 +145,7 @@ instance Pushable (Push Grid) where
   
 instance Pushable Pull where   
   push Thread (Pull n ixf) =
-    Push n $ \wf -> SeqFor (size n) $ \i -> wf (ixf i) i
+    Push n $ \wf -> SeqFor (sizeConv n) $ \i -> wf (ixf i) i
 
 
 

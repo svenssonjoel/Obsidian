@@ -99,7 +99,7 @@ write arr = do
   snames <- names (undefined :: a)
 
   -- Here i know that this pattern match will succeed
-  let (Literal n) = len arr
+  let n = len arr
   
   allocate snames (undefined :: a) n
 

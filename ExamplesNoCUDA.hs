@@ -45,22 +45,24 @@ quickPrint prg input =
 ---------------------------------------------------------------------------
 -- Scalar argument
 ---------------------------------------------------------------------------
-scalArg :: EInt -> GlobPull EInt -> Final (GProgram (GlobPull EInt)) 
-scalArg e = forceG . mapG (force . fmap (+e)) 256
+--scalArg :: EInt -> Pull (Exp Word32) EInt -> Final (GProgram (Pull (Exp Word32) EInt)) 
+--scalArg e = forceG . mapG (force . fmap (+e)) 256
 
-getScalArg = quickPrint scalArg ((variable "X") :->
-                                 undefinedGlobal)
+--getScalArg = quickPrint scalArg ((variable "X") :->
+--                                 undefinedGlobal)
 
 ---------------------------------------------------------------------------
 -- MapFusion example
 ---------------------------------------------------------------------------
 
-mapFusion :: Pull EInt -> BProgram (Pull EInt)
+mapFusion :: Pull Word32 EInt -> BProgram (Pull Word32 EInt)
 mapFusion arr =
   do
-    imm <- sync $ (fmap (+1) . fmap (*2)) arr
-    sync $ (fmap (+3) . fmap (*4)) imm 
+    imm <- force $ (fmap (+1) . fmap (*2)) arr
+    force $ (fmap (+3) . fmap (*4)) imm 
 
+
+{- 
 input1 :: Pull EInt 
 input1 = namedArray "apa" 32
 
@@ -588,3 +590,4 @@ forAllT' (GlobPull gixf) = forAllT gixf
 
 forAllLocal :: Pull (Program Thread ()) -> Program Block ()
 forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
+-} 
