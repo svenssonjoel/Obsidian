@@ -89,7 +89,6 @@ data Program t a where
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> Program t () 
   
-  
   {- About Output (Creates a named output array). 
      This is similar to Allocate but concerning global arrays.
 

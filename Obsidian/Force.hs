@@ -31,8 +31,8 @@ module Obsidian.Force (write,
                        --write_,
                  --      forceG,
                  --      forceG2,
-                 --      forceGP,
-                       StoreOps) where
+                 --      forceGP
+                      ) where
 
 
 import Obsidian.Program

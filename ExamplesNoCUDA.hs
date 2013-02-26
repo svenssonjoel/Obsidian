@@ -66,7 +66,10 @@ input1 = namedGlobal "apa" (variable "X")
 ---------------------------------------------------------------------------
 -- WORK IN PROGRESS
 --------------------------------------------------------------------------- 
-computeBlocks :: forall a . StoreOps a => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+computeBlocks :: forall a . StoreOps a
+                 => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+                 -- GProgram enables sharing...
+                 -- If that was not need just go to Push. 
                  GProgram (Push Grid (Exp Word32) a) 
 computeBlocks (Pull bs bxf) =
   do
@@ -84,6 +87,29 @@ computeBlocks (Pull bs bxf) =
         bxf bix
         return ()
     return undefined 
+
+
+computeBlocks' :: forall a . StoreOps a
+                   => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+                   Push Grid (Exp Word32) a
+computeBlocks' (Pull bs bxf) =
+  Push (bs * (fromIntegral n)) $ \ wf -> 
+    ForAllBlocks bs $ \bix ->
+      do
+        let arr = fst $ runPrg 0 $ bxf 0
+        let n = len arr
+        bxf bix
+        -- use wf
+        return ()
+
+  where
+    arr = fst $ runPrg 0 $ bxf 0
+    n  = len arr
+
+
+
+
+
 
 {- 
 input1 :: Pull EInt 
