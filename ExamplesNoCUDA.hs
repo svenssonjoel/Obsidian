@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables,
-             FlexibleContexts #-} 
+             FlexibleContexts,
+             GADTs #-} 
 
 module Examples where
 
@@ -55,19 +56,27 @@ splitUp :: Word32 -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull Word32 a)
 splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
                           \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
 
---test1 :: Pull (Exp Word32) EInt
---         -> Pull (Exp Word32) (BProgram (Pull Word32 EInt))
-test1 :: Pull (Exp Word32) EInt -> GProgram (Pull (Exp Word32) EInt)
+test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
 test1 input = computeBlocks $ fmap mapFusion (splitUp 256 input) 
 
 input1 :: Pull (Exp Word32) EInt 
 input1 = namedGlobal "apa" (variable "X")
 
 
-computeBlocks :: Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
-                 GProgram (Pull (Exp Word32) a) 
+---------------------------------------------------------------------------
+-- WORK IN PROGRESS
+--------------------------------------------------------------------------- 
+computeBlocks :: forall a . StoreOps a => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+                 GProgram (Push Grid (Exp Word32) a) 
 computeBlocks (Pull bs bxf) =
   do
+    let arr = fst $ runPrg 0 $ bxf 0
+        n   = len arr
+
+    sm <- names (undefined :: a) 
+    allocate sm (undefined :: a) n
+                
+    
     ForAllBlocks bs $ \bix ->
       do
         let arr = fst $ runPrg 0 $ bxf 0

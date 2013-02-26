@@ -22,42 +22,8 @@ import Data.List
 import Data.Word
 
 ---------------------------------------------------------------------------
--- A value that can not be used in further computations
---------------------------------------------------------------------------- 
-data Final a = Final {cheat :: a} -- cheat should not be exposed. 
-
-
+-- Create arrats
 ---------------------------------------------------------------------------
--- Global result array. 
----------------------------------------------------------------------------
-
---data GlobPush a =
---  GlobPush (( a -> Exp Word32 -> TProgram ()) -> GProgram ())
-
----------------------------------------------------------------------------
--- Experiment
----------------------------------------------------------------------------
---data GlobPull a = GlobPull (Exp Word32 -> a)
-
-
--- Takes a block id and gives you what that block computes. 
-data DistPull a = DistPull (Exp Word32) (Exp Word32 -> BProgram a)
-
--- Desired type (not sure). 
---undist :: DistPull (Pull a) -> GProgram (GlobPush a)
---undist :: DistPull (Pull Word32 a) -> Push (PT Grid) (Exp Word32) a
---undist (DistPull nBlocks bixf) =
---  Push (nBlocks *  $ \wf ->
---  ForAllBlocks $ \bix ->
---  do
---    pully <- bixf bix
---    let n = len pully 
---    ForAll (Just n) $ \tix ->
---      wf (pully ! tix)
---         (bix * fromIntegral n + tix) 
-                          
-
--- Create global pull arrays 
 undefinedGlobal n = Pull n $ \gix -> undefined
 namedGlobal name n = Pull n $ \gix -> index name gix
 

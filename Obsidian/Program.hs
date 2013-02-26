@@ -89,10 +89,7 @@ data Program t a where
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> Program t () 
   
-  -- Very experimental AllocateG (Add CodeGen support)
-  AllocateG :: Exp Word32 -> Type -> Program Grid Name 
-  -- I'm not sure exactly what scope AllocateG should have. 
-
+  
   {- About Output (Creates a named output array). 
      This is similar to Allocate but concerning global arrays.
 

@@ -68,12 +68,12 @@ instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
             input = namedGlobal nom lengthVar
             t = typeOf_ (undefined :: t)
 
-instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (Final (GProgram a)) where
-  toProgram i f (Pull n ixf) = ([(nom,Pointer t)],CG.runPrg (cheat (f input))) 
-      where nom = "input" ++ show i
-            lengthVar = variable "DUMMY!"
-            input = namedGlobal nom lengthVar
-            t = typeOf_ (undefined :: t)
+--instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (Final (GProgram a)) where
+--  toProgram i f (Pull n ixf) = ([(nom,Pointer t)],CG.runPrg (cheat (f input))) 
+--      where nom = "input" ++ show i
+--            lengthVar = variable "DUMMY!"
+--            input = namedGlobal nom lengthVar
+--            t = typeOf_ (undefined :: t)
 
 
 --instance (Scalar t) => ToProgram (GlobPull (Exp t)) (GProgram a) where
@@ -119,14 +119,8 @@ infixr 5 :->
 type family Ips a b
  
 -- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
-type instance Ips a (Final (GProgram b)) = a 
+-- type instance Ips a (Final (GProgram b)) = a 
 type instance Ips a (GProgram b) = a
 type instance Ips a (b -> c) =  a :-> Ips b c
 
-{- TODO:
-    What about Distrib (Array p1 a1, Array p2 a2)
-     (blocks of pairs of arrays) -- limit what can live inside a block  ? 
-
-
--} 
 

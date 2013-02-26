@@ -24,6 +24,7 @@
 --  write_ should be internal use only
 module Obsidian.Force (write,
                        force,
+                       StoreOps(..),
                        --Forceable,
                        --Forced,
                        --force,
