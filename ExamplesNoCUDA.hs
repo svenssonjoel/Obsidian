@@ -34,15 +34,6 @@ quickPrint prg input =
   putStrLn $ CUDA.genKernel "kernel" prg input 
 
 ---------------------------------------------------------------------------
--- Scalar argument
----------------------------------------------------------------------------
---scalArg :: EInt -> Pull (Exp Word32) EInt -> Final (GProgram (Pull (Exp Word32) EInt)) 
---scalArg e = forceG . mapG (force . fmap (+e)) 256
-
---getScalArg = quickPrint scalArg ((variable "X") :->
---                                 undefinedGlobal)
-
----------------------------------------------------------------------------
 -- MapFusion example
 ---------------------------------------------------------------------------
 
@@ -58,6 +49,9 @@ splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $
 
 test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
 test1 input = computeBlocks $ fmap mapFusion (splitUp 256 input) 
+
+test2 :: Pull (Exp Word32) EInt -> GProgram () -- Push Grid (Exp Word32) EInt
+test2 input = forceG $ computeBlocks' $ fmap mapFusion (splitUp 256 input) 
 
 input1 :: Pull (Exp Word32) EInt 
 input1 = namedGlobal "apa" (variable "X")
@@ -96,12 +90,10 @@ computeBlocks' (Pull bs bxf) =
   Push (bs * (fromIntegral n)) $ \ wf -> 
     ForAllBlocks bs $ \bix ->
       do
-        let arr = fst $ runPrg 0 $ bxf 0
-        let n = len arr
-        bxf bix
-        -- use wf
-        return ()
-
+        arr <- bxf bix 
+        ForAll (fromIntegral n) $ \tix ->
+          wf (arr ! tix) (bix * fromIntegral (len arr) + tix) 
+      
   where
     arr = fst $ runPrg 0 $ bxf 0
     n  = len arr
