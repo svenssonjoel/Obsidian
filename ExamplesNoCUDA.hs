@@ -63,7 +63,7 @@ input1 = namedGlobal "apa" (variable "X")
 computeBlocks :: forall a . StoreOps a
                  => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
                  -- GProgram enables sharing...
-                 -- If that was not need just go to Push. 
+                 -- If that was not needed just go to Push. 
                  GProgram (Push Grid (Exp Word32) a) 
 computeBlocks (Pull bs bxf) =
   do
@@ -76,11 +76,17 @@ computeBlocks (Pull bs bxf) =
     
     ForAllBlocks bs $ \bix ->
       do
-        let arr = fst $ runPrg 0 $ bxf 0
-        let n = len arr
-        bxf bix
-        return ()
-    return undefined 
+        arr <- bxf bix -- Perform the local computation
+        let (Push n p) = push Block arr
+            
+        -- Extra - possibly unnecessary - store
+
+        p (assign sm) 
+
+    -- Create a slightly special pull array     
+    let pully = Pull (bs * sizeConv n)
+                   $ \gix -> (pullFrom sm n) ! (gix `mod` fromIntegral n) 
+    return $ push Grid pully 
 
 
 computeBlocks' :: forall a . StoreOps a
@@ -98,6 +104,36 @@ computeBlocks' (Pull bs bxf) =
     arr = fst $ runPrg 0 $ bxf 0
     n  = len arr
 
+
+---------------------------------------------------------------------------
+-- Scans 
+---------------------------------------------------------------------------
+sklansky :: (Choice a, StoreOps a)
+            => Int
+            -> (a -> a -> a)
+            -> Pull Word32 a
+            -> BProgram (Pull Word32 a)
+sklansky 0 op arr = return arr
+sklansky n op arr =
+  do 
+    let arr1 = twoK (n-1) (fan op) arr
+    arr2 <- force arr1
+    sklansky (n-1) op arr2
+
+fan :: (Choice a, ASize l) => (a -> a -> a) -> Pull l a -> Pull l a 
+fan op arr =  a1 `conc`  fmap (op c) a2 
+    where 
+      (a1,a2) = halve arr
+      c = a1 ! sizeConv (len a1 - 1)
+
+
+-- Many local Scans
+--sklanskyG :: (Choice a, StoreOps a)
+--             => Int -> (a -> a -> a)
+--             -> Pull (Exp Word32) a
+--            -> Push Grid (Exp Word32) a
+sklanskyG logbs op =
+  forceG . computeBlocks' . fmap (sklansky logbs op) . splitUp (2^logbs) 
 
 
 

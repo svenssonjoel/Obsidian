@@ -11,14 +11,10 @@
 
    Notes:
 
+   2013-01-27: globArrays nolonger exist
    2013-01-02: Added simple forceG for globArrays
    2012-12-10: Edited 
 
-
-   TODO:
-    # This is a pretty problematic module.
-      Figure out how to generalise the force functions
-      to things like Push arrays of pairs.. 
 -}
 
 --  write_ should be internal use only
