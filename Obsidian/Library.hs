@@ -81,6 +81,15 @@ last arr = arr ! fromIntegral ( len arr - 1)
 
 
 ---------------------------------------------------------------------------
+-- Take and Drop (what about strange sizes ? fix) 
+---------------------------------------------------------------------------
+take :: ASize l => l -> Pull l a -> Pull l a
+take n arr = resize n arr
+
+drop :: ASize l => l -> Pull l a -> Pull l a
+drop n arr = resize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
+
+---------------------------------------------------------------------------
 -- Shift arrays
 ---------------------------------------------------------------------------
 shiftRight :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
@@ -102,6 +111,20 @@ evenOdds arr = (mkPullArray (n-n2) (\ix -> arr ! (2*ix)) ,
   where
     n  = len arr
     n2 = div n 2
+    
+evens, odds :: ASize l => Pull l a -> Pull l a
+evens = fst . evenOdds
+odds  = snd . evenOdds
+
+-- opposite of evenOdds 
+shuffle :: ASize l => PT t -> Pull l a -> Pull l a -> Push t l a
+shuffle Block a1 a2 =
+  Push (len a1 + len a2) $
+    \ wf -> ForAll (sizeConv (len a1)) $
+            \ tid -> do
+              wf (a1 ! tid) (tid * 2) 
+              wf (a2 ! tid) (tid * 2 + 1) 
+
 
 ---------------------------------------------------------------------------
 -- Concatenate the arrays
@@ -193,18 +216,31 @@ twoK n f =  (\arr ->
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 
 ---------------------------------------------------------------------------
---concP :: (Pushable arr1,
---          Pushable arr2) => (arr1 l a, arr2 l a) -> Push l a     
---concP (arr1,arr2) = 
---  mkPushArray  (n1+n2)
---  $ \wf ->
---  do
---    parr1 wf
---    parr2 $ \a i -> wf a (fromIntegral n1 + i)
---  
---  where 
---    (Push n1 parr1) = push arr1
---    (Push n2 parr2) = push arr2
+concP :: (Array arr1, Array arr2, ASize l,
+          Pushable arr1, Pushable arr2)
+         => PT t -> arr1 l a -> arr2 l a -> Push t l a     
+concP pt arr1 arr2 = 
+  mkPushArray  (n1 + n2)
+  $ \wf ->
+  do
+    parr1 wf
+    parr2 $ \a i -> wf a (sizeConv n1 + i)
+  
+  where
+    n1 = len arr1 
+    n2 = len arr2 
+    (Push _ parr1) = push pt arr1
+    (Push _ parr2) = push pt arr2
+
+
+-- More general versions of this can be imagined 
+mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
+mergeL _ arr1 arr2 | len arr1 /= len arr2 = error "incorrect lengths" 
+mergeL f arr1 arr2 =
+  Push (len arr1) $ \wf ->
+  do
+    ForAll (sizeConv (len arr1)) $
+      \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
 
 
 ----------------------------------------------------------------------------

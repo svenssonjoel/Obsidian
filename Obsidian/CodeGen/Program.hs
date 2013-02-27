@@ -51,6 +51,17 @@ data Program extra
      | ProgramSeq (Program extra)
                   (Program extra)
 
+
+---------------------------------------------------------------------------
+-- PrgTfrm
+---------------------------------------------------------------------------
+
+prgTfrm (p1 `ProgramSeq` p2) = prgTfrm p1 `appendLast` prgTfrm p2 
+prgTfrm p = p
+
+appendLast (p1 `ProgramSeq` p2) p3 = p1 `ProgramSeq` appendLast p2 p3
+appendLast p1 p2 = p1 `ProgramSeq` p2
+
 ---------------------------------------------------------------------------
 -- Program translation from (P.Program a) to (Program ()) 
 ---------------------------------------------------------------------------
@@ -60,7 +71,7 @@ evalPrg p = runPrg' ns p
 
 convPrg = runPrg 
 
-runPrg p = snd$ runPrg' ns p 
+runPrg p = prgTfrm $ snd$ runPrg' ns p 
   where ns = unsafePerformIO$ newEnumSupply
 
 runPrg' :: Supply Int -> P.Program t a -> (a,Program ())
@@ -104,6 +115,7 @@ runPrg' i (P.Output t) =
   let nom = "output" ++ show (supplyValue i)
   in  (nom, Output nom t)
 runPrg' i (P.Sync)     = ((),Synchronize True)
+
 
 ---------------------------------------------------------------------------
 -- Printing Programs

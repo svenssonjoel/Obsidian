@@ -23,7 +23,7 @@ import qualified Data.Vector.Storable as V
 
 import Control.Monad.State
 
-import Prelude hiding (zipWith,sum,replicate)
+import Prelude hiding (zipWith,sum,replicate,take,drop)
 import qualified Prelude as P 
 
 ---------------------------------------------------------------------------
@@ -134,6 +134,95 @@ fan op arr =  a1 `conc`  fmap (op c) a2
 --            -> Push Grid (Exp Word32) a
 sklanskyG logbs op =
   forceG . computeBlocks' . fmap (sklansky logbs op) . splitUp (2^logbs) 
+
+getSklansky =
+  quickPrint (sklanskyG 8 (+))
+             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+
+---------------------------------------------------------------------------
+-- kStone (TEST THAT THIS IS REALLY A SCAN!) 
+---------------------------------------------------------------------------
+kStone :: (Choice a, StoreOps a) 
+          => Int -> (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
+kStone 0 op arr = return arr
+kStone n op arr =
+  do
+    res <- kStone (n-1) op arr 
+    let r1  = drop (2^(n-1)) res
+        r1' = take (2^(n-1)) res 
+        r2 = zipWith op res r1 
+    force (r1' `conc` r2) 
+
+-- Push array version 
+kStoneP :: (Choice a, StoreOps a) 
+          => Int -> (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
+kStoneP 0 op arr = return arr
+kStoneP n op arr =
+  do
+    res <- kStoneP (n-1) op arr 
+    let r1  = drop (2^(n-1)) res
+        r1' = take (2^(n-1)) res 
+        r2 = zipWith op res r1 
+    force (concP Block r1' r2) 
+ 
+
+
+kStoneG logbs op =
+  forceG . computeBlocks' . fmap (kStone logbs op) . splitUp (2^logbs)
+kStonePG logbs op =
+  forceG . computeBlocks' . fmap (kStoneP logbs op) . splitUp (2^logbs) 
+
+getKStone =
+  quickPrint (kStoneG 8 (+))
+             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+
+getKStoneP =
+  quickPrint (kStonePG 8 (+))
+             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+
+---------------------------------------------------------------------------
+-- Brent Kung
+--------------------------------------------------------------------------- 
+
+
+-- Incorrect! (and spots a bug somewhere)
+bKung :: (Choice a, StoreOps a) 
+         => (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
+bKung op arr | len arr == 1 = return arr
+bKung op arr =
+  do
+    r1 <- force (evens arr)
+    r2 <- force (evens arr) 
+    --r1 <- before arr
+    --r4 <- force (evens arr) 
+    --r2 <- bKung op r1
+    --r3 <- force$ shuffle Block r4 r2
+    force $ shuffle Block r1 r2
+
+  where
+    before input =
+      do 
+        let r8 = zipWith op (evens input) (odds input)
+        force$ r8 -- shuffle Block (evens arr) r1 
+
+      
+    -- after  arr = zipWith op (drop 1 arr) (drop 2 arr) 
+
+
+
+bKungG op =
+  forceG . computeBlocks' . fmap (bKung op) . splitUp 256
+
+getBKung =
+  quickPrint (bKungG (+))
+             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+
+
+---------------------------------------------------------------------------
+-- 
+--------------------------------------------------------------------------- 
+
+
 
 
 
@@ -667,4 +756,267 @@ forAllT' (GlobPull gixf) = forAllT gixf
 
 forAllLocal :: Pull (Program Thread ()) -> Program Block ()
 forAllLocal (Pull n ixf) = ForAll (Just n) ixf 
+-} 
+
+
+{- 
+__global__ void kernel(int32_t *input0,int32_t *output0){
+  
+  extern __shared__ __attribute__ ((aligned (16))) unsigned char sbase[];
+  ((int32_t *)sbase)[threadIdx.x] = ((threadIdx.x<2) ? input0[((blockIdx.x*256)+threadIdx.x)] : (input0[((blockIdx.x*256)+(threadIdx.x-2))]+input0[((blockIdx.x*256)+threadIdx.x)]));
+  __syncthreads();
+  ((int32_t *)(sbase + 1024))[threadIdx.x] = ((threadIdx.x<4) ? ((int32_t *)sbase)[threadIdx.x] : (((int32_t *)sbase)[(threadIdx.x-4)]+((int32_t *)sbase)[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)sbase)[threadIdx.x] = ((threadIdx.x<8) ? ((int32_t *)(sbase+1024))[threadIdx.x] : (((int32_t *)(sbase+1024))[(threadIdx.x-8)]+((int32_t *)(sbase+1024))[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)(sbase + 1024))[threadIdx.x] = ((threadIdx.x<16) ? ((int32_t *)sbase)[threadIdx.x] : (((int32_t *)sbase)[(threadIdx.x-16)]+((int32_t *)sbase)[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)sbase)[threadIdx.x] = ((threadIdx.x<32) ? ((int32_t *)(sbase+1024))[threadIdx.x] : (((int32_t *)(sbase+1024))[(threadIdx.x-32)]+((int32_t *)(sbase+1024))[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)(sbase + 1024))[threadIdx.x] = ((threadIdx.x<64) ? ((int32_t *)sbase)[threadIdx.x] : (((int32_t *)sbase)[(threadIdx.x-64)]+((int32_t *)sbase)[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)sbase)[threadIdx.x] = ((threadIdx.x<128) ? ((int32_t *)(sbase+1024))[threadIdx.x] : (((int32_t *)(sbase+1024))[(threadIdx.x-128)]+((int32_t *)(sbase+1024))[threadIdx.x]));
+  __syncthreads();
+  ((int32_t *)(sbase + 1024))[threadIdx.x] = ((int32_t *)sbase)[threadIdx.x];
+  if (threadIdx.x<0){
+    ((int32_t *)(sbase + 1024))[(256+threadIdx.x)] = (((int32_t *)sbase)[threadIdx.x]+((int32_t *)sbase)[(threadIdx.x+256)]);
+    
+  }
+  __syncthreads();
+  output0[((blockIdx.x*256)+threadIdx.x)] = ((int32_t *)(sbase+1024))[threadIdx.x];
+  
+}
+
+
+blocks (i){
+getId;
+MonadReturn;
+MonadReturn;
+arr1 = malloc(2040);
+par (i in 0..255){
+arr1[i] = ( +  apa[( +  ( *  BIX 256 ) i )] apa[( +  ( *  BIX 256 ) ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr3 = malloc(1016);
+par (i in 0..127){
+arr3[i] = ( +  arr1[( *  2 i )] arr1[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr5 = malloc(504);
+par (i in 0..63){
+arr5[i] = ( +  arr3[( *  2 i )] arr3[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr7 = malloc(248);
+par (i in 0..31){
+arr7[i] = ( +  arr5[( *  2 i )] arr5[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr9 = malloc(120);
+par (i in 0..15){
+arr9[i] = ( +  arr7[( *  2 i )] arr7[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr11 = malloc(56);
+par (i in 0..7){
+arr11[i] = ( +  arr9[( *  2 i )] arr9[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr13 = malloc(24);
+par (i in 0..3){
+arr13[i] = ( +  arr11[( *  2 i )] arr11[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr15 = malloc(8);
+par (i in 0..1){
+arr15[i] = ( +  arr13[( *  2 i )] arr13[( *  2 ( +  i 1 ) )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr17 = malloc(8);
+par (i in 0..0){
+arr17[( *  i 2 )] = arr15[( +  ( *  2 i ) 1 )];
+arr17[( +  ( *  i 2 ) 1 )] = arr15[( *  2 i )];
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr19 = malloc(0);
+par (i in 0..0){
+arr19[i] = ( +  arr15[( +  i 1 )] arr15[( +  i 2 )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr21 = malloc(8);
+par (i in 0..1){
+arr21[( *  i 2 )] = arr13[( +  ( *  2 i ) 1 )];
+arr21[( +  ( *  i 2 ) 1 )] = arr19[i];
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr23 = malloc(8);
+par (i in 0..1){
+arr23[i] = ( +  arr13[( +  i 1 )] arr13[( +  i 2 )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr25 = malloc(32);
+par (i in 0..3){
+arr25[( *  i 2 )] = arr11[( +  ( *  2 i ) 1 )];
+arr25[( +  ( *  i 2 ) 1 )] = arr23[i];
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr27 = malloc(40);
+par (i in 0..5){
+arr27[i] = ( +  arr11[( +  i 1 )] arr11[( +  i 2 )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr29 = malloc(96);
+par (i in 0..7){
+arr29[( *  i 2 )] = arr9[( +  ( *  2 i ) 1 )];
+arr29[( +  ( *  i 2 ) 1 )] = arr27[i];
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr31 = malloc(104);
+par (i in 0..13){
+arr31[i] = ( +  arr9[( +  i 1 )] arr9[( +  i 2 )] );
+
+}MonadReturn;
+Sync;
+MonadReturn;
+getId;
+MonadReturn;
+MonadReturn;
+arr33 = malloc(224);
+par (i in 0..15){
+arr33[( *  i 2 )] = arr7[( +  ( *  2 i ) 1 )];
+arr33[( +  ( *  i 2 ) 1 )] = arr31[i];
+}
+Sync;
+getId;
+arr35 = malloc(232);
+par (i in 0..29){
+arr35[i] = ( +  arr7[( +  i 1 )] arr7[( +  i 2 )] );
+}
+Sync;
+getId;
+arr37 = malloc(480);
+par (i in 0..31){
+arr37[( *  i 2 )] = arr5[( +  ( *  2 i ) 1 )];
+arr37[( +  ( *  i 2 ) 1 )] = arr35[i];
+}
+Sync;
+getId;
+arr39 = malloc(488);
+par (i in 0..61){
+arr39[i] = ( +  arr5[( +  i 1 )] arr5[( +  i 2 )] );
+}
+Sync;
+getId;
+arr41 = malloc(992);
+par (i in 0..63){
+arr41[( *  i 2 )] = arr3[( +  ( *  2 i ) 1 )];
+arr41[( +  ( *  i 2 ) 1 )] = arr39[i];
+}
+Sync;
+getId;
+arr43 = malloc(1000);
+par (i in 0..125){
+arr43[i] = ( +  arr3[( +  i 1 )] arr3[( +  i 2 )] );
+
+}MonadReturn;
+Sync;
+getId;
+arr45 = malloc(2016);
+par (i in 0..127){
+arr45[( *  i 2 )] = arr1[( +  ( *  2 i ) 1 )];
+arr45[( +  ( *  i 2 ) 1 )] = arr43[i];
+}
+Sync;
+getId;
+arr47 = malloc(2024);
+par (i in 0..253){
+arr47[i] = ( +  arr1[( +  i 1 )] arr1[( +  i 2 )] );
+
+}
+Sync;
+
+par (i in 0..253){
+globalOut0[( +  ( *  BIX 253 ) i )] = arr47[i];
+
+}
+}
+
+
+
 -} 

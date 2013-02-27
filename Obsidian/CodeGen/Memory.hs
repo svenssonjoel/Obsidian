@@ -42,10 +42,14 @@ type Bytes   = Word32
 data Memory = Memory {freeList  :: [(Address,Bytes)] ,
                       allocated :: [(Address,Bytes)] , 
                       size      :: Bytes} -- how much used
+            deriving Show 
               
               
 -- 48 kilobytes of smem              
 sharedMem = Memory [(0,49152)] [] 0
+-- LARGER SHARED MEM
+-- sharedMem = Memory [(0,2^32-1)] [] 0
+
 
 updateMax :: Memory -> Memory 
 updateMax mem = let m = maximum [a+b|(a,b) <- allocated mem]
@@ -75,13 +79,18 @@ free m a = mem
     where 
       bytes = lookup a (allocated m)
       al    = filter (\(addr,_) -> a /= addr) (allocated m)
+
+      -- TODO: Investigate this much closer.
+      --       Is it a bug or is freeing a non allocated memory area
+      --       OK?
       
-      merge [] = [] 
-      merge [x] = [x]
-      merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
-                                              else (x,b):merge((y,b2):xs)
       mem   = case bytes of 
-                Nothing -> error $ "error: Address " ++ show a ++ " not found in free list"
+                Nothing -> m
+                {-
+                  error $ "error: Address " ++ show a ++
+                          " not found in allocated list" ++
+                          "\n" ++ show m
+                -} 
                 Just b -> m {freeList = compress ((a,b):(freeList m)),
                              allocated = al}
 
@@ -96,6 +105,10 @@ merge [x] = [x]
 merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
                            else (x,b):merge((y,b2):xs)
 
+--      merge [] = [] 
+--      merge [x] = [x]
+--      merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
+--                                              else (x,b):merge((y,b2):xs)
 
 
 
@@ -108,7 +121,8 @@ merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs)
 mapMemory :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap) 
 mapMemory = mapMemoryProgram 
 
-
+--TODO: there is a bug in here.
+--      Shows itself when trying some more complicated programs. 
 mapMemoryProgram :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap)    
 mapMemoryProgram Skip m mm = (m,mm) 
 mapMemoryProgram (Assign name i a) m mm  = (m,mm)
