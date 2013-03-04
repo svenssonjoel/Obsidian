@@ -238,7 +238,7 @@ data Op a where
 
   Int32ToWord32 :: Op (Int32 -> Word32)
   Word32ToInt32 :: Op (Word32 -> Int32) 
-
+  
 
 ---------------------------------------------------------------------------
 -- helpers 
