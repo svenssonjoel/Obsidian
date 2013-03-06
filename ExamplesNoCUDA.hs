@@ -14,6 +14,7 @@ import Obsidian.Library
 import Obsidian.Force
 import Obsidian.CodeGen.InOut
 import Obsidian.Atomic
+import Obsidian.SeqLoop
 
 import Data.Word
 import Data.Int
