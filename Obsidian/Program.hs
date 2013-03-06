@@ -63,9 +63,10 @@ data Program t a where
           -> Program Thread ()
           -> Program Thread ()
   
-  -- DONE: Code generation for this.            
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
-            -> Program Thread () 
+  -- DONE: Code generation for this.
+  -- TODO: Generalize this loop! (Replace Thread with t) 
+  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
+            -> Program t () 
 
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread ())
@@ -107,6 +108,7 @@ data Program t a where
   ThreadFenceBlock :: Program Block () 
 
   -- Parallel composition of Programs
+  -- TODO: Will I use this ? 
   Par :: Program p () ->
          Program p () ->
          Program p () 
