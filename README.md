@@ -1,5 +1,10 @@
 # Obsidian
 
+# Fresh TODOs:  
+  TODO: Look at code generation, is there a problem with the memory management ? 
+  TODO: global arrays have sizes! make the code generation aware of this! 
+        
+
 ## Next version of Obsidian
 * Features: 
     * Local Push and Pull arrays.

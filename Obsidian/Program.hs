@@ -87,6 +87,7 @@ data Program t a where
                    -> Program Grid () 
 
   -- Allocate shared memory in each MP
+  -- Reuse same constructor for allocating automatic variables.
   Allocate :: Name -> Word32 -> Type -> Program t () 
   
   {- About Output (Creates a named output array). 
