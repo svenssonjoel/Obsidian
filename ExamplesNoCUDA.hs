@@ -281,7 +281,6 @@ computeSeq (Pull ts txf) =
        elt <- txf tix
        wf elt tix 
   
-
 inputFold :: Pull Word32 EWord32 
 inputFold = namedPull "apa" 256 
 
