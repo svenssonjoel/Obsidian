@@ -44,9 +44,17 @@ mapFusion arr =
     imm <- force $ (fmap (+1) . fmap (*2)) arr
     force $ (fmap (+3) . fmap (*4)) imm 
 
-splitUp :: Word32 -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull Word32 a)
+splitUp :: (ASize l, Num l)
+           => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)
 splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
+                          \i -> Pull n $ \j -> ixf (i * (sizeConv n) + j)
+
+
+splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
+splitUpS n (Pull m ixf) = Pull (m `div` n) $ 
                           \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
+
+
 
 test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
 test1 input = computeBlocks $ fmap mapFusion (splitUp 256 input) 
@@ -253,16 +261,31 @@ getRec =
   quickPrint (forceG . reconstruct)
              (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)
 
--- TODO: Fix codegen for the function above.
+
+---------------------------------------------------------------------------
+-- Testing some sequential loop approaches
+---------------------------------------------------------------------------
+
+testFold :: Pull Word32 EWord32 -> Pull Word32 (Program Thread EWord32)
+testFold arr = fmap (seqFold (+) 0) (splitUpS (32 :: Word32)  arr)
+
+testFold2 :: Pull Word32 EWord32 -> BProgram (Pull Word32 EWord32)
+testFold2 arr = force $ computeSeq (testFold arr)
+
+computeSeq :: (ASize l, Scalar a)
+              => Pull l (Program Thread (Exp a)) -> Push Block l (Exp a)
+computeSeq (Pull ts txf) =
+  Push ts $ \ wf ->
+   ForAll (sizeConv ts) $ \tix ->
+     do
+       elt <- txf tix
+       wf elt tix 
+  
+
+inputFold :: Pull Word32 EWord32 
+inputFold = namedPull "apa" 256 
 
 
-testFold :: Pull EWord32 EWord32 -> Pull EWord32 (Program Thread EWord32)
-testFold arr = fmap (seqFold (+) 0) (splitUp 32 arr)
-
-testFold2 arr = (testFold arr) ! (BlockIdx X)
-
-inputFold :: Pull EWord32 EWord32 
-inputFold = namedGlobal "apa" (variable "X")
 
 {- 
 ---------------------------------------------------------------------------

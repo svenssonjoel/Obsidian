@@ -26,6 +26,7 @@ import Data.Word
 ---------------------------------------------------------------------------
 undefinedGlobal n = Pull n $ \gix -> undefined
 namedGlobal name n = Pull n $ \gix -> index name gix
+namedPull name n = Pull n $ \gix -> index name gix
 
 ---------------------------------------------------------------------------
 -- Class ArraySize
