@@ -32,15 +32,22 @@ import qualified Obsidian.Program as P
 import Obsidian.CodeGen.SPMDC
 
 {- 
-   TODO:
-    + Add code generation code for the SeqFor constructor.
+   TODO: This Code needs a big rewrite to work in the new
+         setting.
 
-    + phase out the old string based codegen 
-    + Ideally there should be a Program -> SPMDC
-      and SPMDC -> CUDA
-          SPMDC -> OpenCL
-          SPMDC -> X
-      functions. 
+         new kinds of programs can occur here (programs using ForAllThreads
+         for example)
+
+         A new kind of "number of threads needed" analysis is needed too
+         it can respond with a fixed integer value or an expression
+         (something like Max [e1,e2,e3,e4], where eX is an expression also)
+
+         Since it is really impossible to mix use of forAllThreads and forAllBlocks + ForAll
+         maybe this should be made more clear.
+
+         It is also possible that ForAllThreads can be expressed using forAllBlocks and ForAll
+         but by doing so will introduce indexing arithmetic (maybe no big deal).
+   
 -} 
 
 ---------------------------------------------------------------------------
@@ -96,7 +103,11 @@ genKernel name kernel a = proto ++ cuda
 
     -- collect outputs and extract the "actual" kernel
     outs = collectOutputs prg
-    kern = flatten prg -- extract prg 
+    -- kern = flatten prg -- extract prg
+    -- Testing to this withough flattening the program
+    -- sequences of ForAllBlocks are allowed!
+    -- some instances of such sequences are not valid CUDA though! 
+    kern = prg 
     
     lc  = liveness kern -- tmpc
     
@@ -215,12 +226,14 @@ genProg mm nt (Assign name ix a) =
   case Map.lookup name mm of 
     Just (addr,t) -> 
       do
-        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
+        -- CHEATING! (look at the indexing) 
+        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";" 
         newline
     Nothing ->  --- A result array
       do
-        line$  name ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
+        -- CHEATING! (HEAD IX) 
+        line$  name ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";"
         newline
 --- *** ATOMIC OP CASE 
@@ -251,11 +264,27 @@ genProg mm nt (Cond bexp p) =
     genProg mm nt p
     newline
     line $ "}\n"
+
+
+-- TODO: Add a conditional if needed 
+genProg mm nt (ForAllThreads n f) = genProg mm nt (f (BlockIdx X * BlockDim X + ThreadIdx X))
+
+--TODO: Add a conditional if needed 
+genProg mm nt (ForAllBlocks n f) = genProg mm nt (f (BlockIdx X)) 
   
-                
 genProg mm nt (ForAll (Literal n) f) = potentialCond gc mm n nt $ 
                                     genProgNoForAll mm nt (f (ThreadIdx X)  )
 genProg mm nt (ForAll _ f) = error "genProg: Not a literal length"
+
+genProg mm nt (SeqFor nom n f) =
+  do
+    let n' = concat (genExp gc mm n) 
+    line$ "for (int "++ nom ++ " =  0;" ++ nom ++ " < " ++ n' ++ ";" ++ nom ++ "++)"
+    newline
+    begin
+    genProgNoForAll mm nt (f (variable nom)) 
+    end 
+
                                     
 -- genProg mm nt (ForAll Nothing f) = genProgNoForAll mm nt (f (ThreadIdx X)  )                                   
 genProg mm nt (Allocate name size t _) = return () 
@@ -274,12 +303,14 @@ genProgNoForAll mm nt (Assign name ix a) =
   case Map.lookup name mm of 
     Just (addr,t) -> 
       do
-        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
+        -- CHEATING (HEAD IX) 
+        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";" 
         newline
     Nothing ->  --- A result array
       do
-        line$  name ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
+        -- CHEATING (HEAD IX) 
+        line$  name ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";"
         newline
 --- *** ATOMIC OP CASE 
@@ -339,8 +370,9 @@ genProgNoForAll mm nt (Output n t) = return ()
 ctid = cVar "tid" CWord32
   
 progToSPMDC :: Word32 -> Program a -> [SPMDC] 
-progToSPMDC nt (Assign name ix a) = 
-  [cAssign (cVar name CWord8)[expToCExp ix] (expToCExp a)] 
+progToSPMDC nt (Assign name ix a) =
+  -- CHEATING (HEAD IX)
+  [cAssign (cVar name CWord8)[expToCExp (head ix)] (expToCExp a)] 
 progToSPMDC nt (ForAll (Literal n) f) =         
   if (n < nt) 
   then 

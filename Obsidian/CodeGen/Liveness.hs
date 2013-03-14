@@ -52,7 +52,21 @@ liveness' (SeqFor nom n ixfToPrg) s = (SeqFor nom n (fst . ixf'),living)
   where
     ixf' = ((flip liveness') Set.empty) . ixfToPrg
     aliveInside = snd$ ixf' (variable "X")
-    living = s `Set.union` aliveInside 
+    living = s `Set.union` aliveInside
+
+liveness' (ForAllThreads n ixfToPrg) s = (ForAllThreads n (fst . ixf'),living)    
+  where 
+    ixf' = ((flip liveness') Set.empty) . ixfToPrg
+    aliveInside = snd$ ixf' (variable "X") 
+    living = s `Set.union` aliveInside
+    
+
+liveness' (ForAllBlocks n ixfToPrg) s = (ForAllBlocks n (fst . ixf'),living)    
+  where 
+    ixf' = ((flip liveness') Set.empty) . ixfToPrg
+    aliveInside = snd$ ixf' (variable "X") 
+    living = s `Set.union` aliveInside
+    
 liveness' (ForAll n ixfToPrg) s = (ForAll n (fst . ixf'),living)    
   where 
     ixf' = ((flip liveness') Set.empty) . ixfToPrg

@@ -185,30 +185,10 @@ getKStoneP =
 -- Brent Kung
 --------------------------------------------------------------------------- 
 
-
--- Incorrect! (and spots a bug somewhere)
 bKung :: (Choice a, StoreOps a) 
          => (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
 bKung op arr | len arr == 1 = return arr
-bKung op arr =
-  do
-    r1 <- force (evens arr)
-    r2 <- force (evens arr) 
-    --r1 <- before arr
-    --r4 <- force (evens arr) 
-    --r2 <- bKung op r1
-    --r3 <- force$ shuffle Block r4 r2
-    force $ concP Block r1 r2
-
-  where
-    --before input =
-    --  do 
-    --    let r8 = zipWith op (evens input) (odds input)
-    --    force$ r8 -- shuffle Block (evens arr) r1 
-
-      
-    -- after  arr = zipWith op (drop 1 arr) (drop 2 arr) 
-
+bKung op arr = undefined 
 
 
 bKungG op =
@@ -276,8 +256,13 @@ getRec =
 -- TODO: Fix codegen for the function above.
 
 
+testFold :: Pull EWord32 EWord32 -> Pull EWord32 (Program Thread EWord32)
+testFold arr = fmap (seqFold (+) 0) (splitUp 32 arr)
 
+testFold2 arr = (testFold arr) ! (BlockIdx X)
 
+inputFold :: Pull EWord32 EWord32 
+inputFold = namedGlobal "apa" (variable "X")
 
 {- 
 ---------------------------------------------------------------------------

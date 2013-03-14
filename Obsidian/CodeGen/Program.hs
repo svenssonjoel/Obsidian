@@ -22,6 +22,7 @@ import qualified Obsidian.Program as P
 
 import Data.Word
 import Data.Supply
+import Data.List
 
 import System.IO.Unsafe
 ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ import System.IO.Unsafe
 data Program extra
      = Skip
      | forall a. Scalar a =>
-       Assign Name (Exp Word32) (Exp a) 
+       Assign Name [Exp Word32] (Exp a) 
      | forall a. Scalar a =>
        AtomicOp Name Name (Exp Word32) (Atomic a)
 
@@ -40,6 +41,8 @@ data Program extra
      | ForAll (Exp Word32) (Exp Word32 -> Program extra)
        -- Not present in old Program datatype
      | ForAllBlocks (Exp Word32) (Exp Word32 -> Program extra)
+     | ForAllThreads (Exp Word32) (Exp Word32 -> Program extra)  
+       
      | Allocate Name Word32 Type extra
        -- Not Present in old Program datatype 
      | Output Name Type 
@@ -71,7 +74,7 @@ evalPrg p = runPrg' ns p
 
 convPrg = runPrg 
 
-runPrg p = prgTfrm $ snd$ runPrg' ns p 
+runPrg p = {- prgTfrm $-}  snd$ runPrg' ns p 
   where ns = unsafePerformIO$ newEnumSupply
 
 runPrg' :: Supply Int -> P.Program t a -> (a,Program ())
@@ -93,6 +96,10 @@ runPrg' i (P.ForAll n f) =
 runPrg' i (P.ForAllBlocks n f) =
   let newf = (\x -> snd (runPrg' i (f x)))
   in ((),ForAllBlocks n newf)
+runPrg' i (P.ForAllThreads n f) =
+  let newf = (\x -> snd (runPrg' i (f x)))
+  in ((),ForAllThreads n newf)
+     
 --runPrg' i (P.ForAllG f) =
 --  let newf = (\x -> snd (runPrg' i (f x)))
 --  in ((),ForAllG newf)
@@ -124,7 +131,7 @@ runPrg' i (P.Sync)     = ((),Synchronize True)
 printPrg :: Show e => Program e -> String 
 printPrg Skip = ";\n"
 printPrg (Assign name ix e) =
-  name ++ "["++ printExp ix ++ "]" ++
+  name ++ "["++ concat (intersperse "," (map printExp ix)) ++ "]" ++
   " = " ++ printExp e ++ ";\n"
 printPrg (AtomicOp res arr ix op) =
   res ++ " = " ++

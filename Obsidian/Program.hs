@@ -37,6 +37,16 @@ data PT a where
 
 type Identifier = Int 
 
+class LoopState a where
+  allocateLS :: a -> Program t Name -- generalise 
+
+instance Scalar a => LoopState (Exp a) where
+  allocateLS a =
+    do
+      id <- Identifier
+      return $ "v" ++ show id
+      
+
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
@@ -46,7 +56,7 @@ data Program t a where
   
   Assign :: Scalar a
             => Name
-            -> (Exp Word32)
+            -> [Exp Word32]
             -> (Exp a)
             -> Program Thread ()
            
@@ -66,7 +76,14 @@ data Program t a where
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
-            -> Program t () 
+            -> Program t ()
+            
+ -- SeqWhile :: LoopState a
+ --             => Name
+ --            -> (a -> Exp Bool)
+ --             -> (a -> Program t a) -- state transformation
+ --             -> Program t ()       -- hmm
+  
 
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread ())
@@ -205,6 +222,14 @@ printPrg' i (Allocate id n t) =
 printPrg' i (Output t) =
   let newname = "globalOut" ++ show i
   in (newname,newname ++ " = new Global output;\n",i+1)
+printPrg' i (SeqFor n f) =
+  let ((),prg2,i') = printPrg' i (f (variable "i"))
+      
+  in ( (),  
+       "for (i in 0.." ++ show n ++ ")" ++
+       "{\n" ++ prg2 ++ "\n}",
+       i')
+     
 printPrg' i (ForAll n f) =
   let ((),prg2,i') = printPrg' i (f (variable "i"))
       

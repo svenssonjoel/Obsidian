@@ -50,7 +50,7 @@ instance Scalar a => StoreOps (Exp a) where
   allocate (Single name) a n = 
       Allocate name (n * fromIntegral (sizeOf a))
                       (Pointer (typeOf a))
-  assign (Single name) a ix = Assign name ix a  
+  assign (Single name) a ix = Assign name [ix] a  
   pullFrom (Single name) n = Pull n (\i -> index name i) 
 
 instance (StoreOps a, StoreOps b) => StoreOps (a, b) where
@@ -119,4 +119,4 @@ forceG (Push _ p)  =
     p (assignTo output) 
     return ()
     where
-      assignTo nom a ix = Assign nom ix a 
+      assignTo nom a ix = Assign nom [ix] a 
