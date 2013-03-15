@@ -279,9 +279,15 @@ testFold3 :: Pull EWord32 EWord32
 testFold3 arr =  fmap (testFold2) (splitUp 256 arr)
 
 testFold4 :: Pull EWord32 EWord32
-             -> GProgram (Pull EWord32 (Pull Word32 EWord32))
-testFold4 = liftB . testFold3 
+             -> GProgram (Pull EWord32 EWord32)
+testFold4 = liftM flatten . liftB . testFold3 
 
+flatten :: ASize l => Pull EWord32 (Pull l a) -> Pull EWord32 a
+flatten pp =
+  Pull (n*m) $ \ix -> (pp ! (ix `div` m)) ! (ix `mod` m)  
+  where 
+    n = len pp
+    m = sizeConv (len (pp ! 0))
 --computeSeq :: (ASize l, Scalar a)
 --              => Pull l (Program Thread (Exp a)) -> Push Block l (Exp a)
 --computeSeq (Pull ts txf) =
@@ -293,6 +299,9 @@ testFold4 = liftB . testFold3
   
 inputFold :: Pull Word32 EWord32 
 inputFold = namedPull "apa" 256 
+
+inputF :: Pull EWord32 EWord32 
+inputF = namedPull "apa" (variable "X") 
 
 
 

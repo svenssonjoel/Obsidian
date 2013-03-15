@@ -169,6 +169,7 @@ forAllT n f = ForAllThreads n
 
 
 
+forAllBlocks = ForAllBlocks
 
 ---------------------------------------------------------------------------
 -- Monad
