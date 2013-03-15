@@ -13,6 +13,7 @@
        to global, lifts sequential into local. 
      + A collection of sequential building blocks for sequential (reg->reg 
        computations). 
+       
        * Currently: 
           + Fold 
           + Scan 
