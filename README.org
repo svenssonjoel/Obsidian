@@ -16,6 +16,7 @@
        * Currently: 
           + Fold 
           + Scan 
-	  + Maybe add sort (how ?) 
-	  + Merge (todo) 
+          + Maybe add sort (how ?) 
+          + Merge (todo) 
           + Filter (todo) 
+	    
