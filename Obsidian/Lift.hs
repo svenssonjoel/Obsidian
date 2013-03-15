@@ -1,7 +1,8 @@
 {-# LANGUAGE FlexibleInstances,      -- Can we live without these ? 
              UndecidableInstances,   --
              OverlappingInstances,   -- 
-             ScopedTypeVariables #-}
+             ScopedTypeVariables,
+             TypeFamilies #-}
 
 module Obsidian.Lift where
 
@@ -20,8 +21,8 @@ class LiftT a where
   
 
 class LiftB a where
-  liftB :: ASize l => (Pull l (BProgram a)) -> GProgram (Pull l a)
-  
+  type Elt a
+  liftB :: ASize l => Pull l (BProgram a) -> GProgram (Push Grid l (Elt a)) 
 
 
 ---------------------------------------------------------------------------
@@ -53,6 +54,7 @@ instance StoreOps a => LiftT a where
 
 -- Each block computes an array
 instance StoreOps a => LiftB (Pull Word32 a) where
+  type Elt (Pull Word32 a) = a 
   liftB (Pull bs bxf) =
     do
       let tmp = fst $ runPrg 0 (bxf 0) -- get info about result  
@@ -65,10 +67,18 @@ instance StoreOps a => LiftB (Pull Word32 a) where
         let (Push _ p) = push Block arr
         p (assign snames) 
 
-      return $ Pull bs $ \bix -> pullFrom snames (len tmp) 
+      let pully = Pull bs $ \bix -> pullFrom snames (len tmp) 
 
+      return $ Push (bs * (fromIntegral (len tmp))) $
+        \wf ->
+        do
+          forAllBlocks (sizeConv bs) $ \bix ->
+            forAll (sizeConv (len tmp)) $ \tix ->
+              wf ((pully ! bix) ! tix) (bix * (sizeConv (len tmp)) + tix)
+                    
+          
 -- Each block computes a value
-instance  StoreOps a => LiftB a where
-  liftB = error "liftB: is not implemented for this type" 
+--instance  StoreOps a => LiftB a where
+--  liftB = error "liftB: is not implemented for this type" 
 
     

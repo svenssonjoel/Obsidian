@@ -221,19 +221,21 @@ genCUDABody conf prg = genProg mm nt prg
 ---------------------------------------------------------------------------
 -- pretty print a "Program", CUDA STYLE!
 ---------------------------------------------------------------------------
-genProg :: Show a => MemMap -> Word32 ->  Program a -> PP () 
-genProg mm nt (Assign name ix a) = 
+genProg :: Show a => MemMap -> Word32 ->  Program a -> PP ()
+genProg mm nt (Declare name t) =
+  line (genType gc t ++ " " ++ name ++ ";")  >> newline
+genProg mm nt (Assign name [ix] a) = 
   case Map.lookup name mm of 
     Just (addr,t) -> 
       do
         -- CHEATING! (look at the indexing) 
-        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
+        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";" 
         newline
     Nothing ->  --- A result array
       do
         -- CHEATING! (HEAD IX) 
-        line$  name ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
+        line$  name ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";"
         newline
 --- *** ATOMIC OP CASE 
@@ -298,19 +300,23 @@ genProg mm nt (ProgramSeq p1 p2) =
 genProg mm nt (Output n t) = return () 
 
 -- HACK 
-genProgNoForAll :: Show a => MemMap -> Word32 ->  Program a -> PP () 
-genProgNoForAll mm nt (Assign name ix a) = 
+genProgNoForAll :: Show a => MemMap -> Word32 ->  Program a -> PP ()
+genProgNoForAll mm nt (Declare name t) =
+  line (genType gc t ++ " " ++ name ++ ";")  >> newline
+genProgNoForAll mm nt (Assign name [] a) =
+  do 
+    line $ name ++ " = " ++ concat (genExp gc mm a) ++ ";"
+    newline 
+genProgNoForAll mm nt (Assign name [ix] a) = 
   case Map.lookup name mm of 
     Just (addr,t) -> 
       do
-        -- CHEATING (HEAD IX) 
-        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
+        line$  sbaseStr addr t ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";" 
         newline
     Nothing ->  --- A result array
       do
-        -- CHEATING (HEAD IX) 
-        line$  name ++ "[" ++ concat (genExp gc mm (head ix)) ++ "] = " ++ 
+        line$  name ++ "[" ++ concat (genExp gc mm ix) ++ "] = " ++ 
           concat (genExp gc mm a) ++ ";"
         newline
 --- *** ATOMIC OP CASE 
@@ -370,9 +376,8 @@ genProgNoForAll mm nt (Output n t) = return ()
 ctid = cVar "tid" CWord32
   
 progToSPMDC :: Word32 -> Program a -> [SPMDC] 
-progToSPMDC nt (Assign name ix a) =
-  -- CHEATING (HEAD IX)
-  [cAssign (cVar name CWord8)[expToCExp (head ix)] (expToCExp a)] 
+progToSPMDC nt (Assign name [ix] a) =
+  [cAssign (cVar name CWord8)[expToCExp ix] (expToCExp a)] 
 progToSPMDC nt (ForAll (Literal n) f) =         
   if (n < nt) 
   then 

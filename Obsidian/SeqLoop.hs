@@ -34,7 +34,7 @@ seqFold :: forall l a. (ASize l, Scalar a)
            -> Program Thread (Exp a)
 seqFold op init arr = do
   nom <- allocateLS init
-  Allocate nom 0 $ typeOf (undefined :: (Exp a))
+  Declare nom $ typeOf (undefined :: (Exp a))
   Assign nom [] init  
   SeqFor n $ (\ ix ->
       Assign nom [] (variable nom `op`  (arr ! ix)))
@@ -57,7 +57,7 @@ seqScan op (Pull n ixf)  =
   Push n $ \wf -> do
     i <- Identifier  -- allocateLS (undefined :: a)
     let nom = "v" ++ show i
-    Allocate nom 0 $ typeOf (undefined :: (Exp a))
+    Declare nom $ typeOf (undefined :: (Exp a))
     Assign nom [] (ixf 0)
     wf (variable nom) 0 
     SeqFor (sizeConv (n-1)) $ \ix -> do

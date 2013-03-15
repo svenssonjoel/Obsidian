@@ -138,6 +138,7 @@ mapMemoryProgram (ForAll n f) m mm = mapMemoryProgram (f (variable "X")) m mm
 -- Added Jan 2013
 mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
 mapMemoryProgram (Synchronize _) m mm = (m,mm)
+mapMemoryProgram (Declare _ _) m mm = (m,mm) 
 mapMemoryProgram ((Allocate name size t alive) `ProgramSeq` prg2) m mm 
   = mapMemoryProgram prg2 {-m'-} mNew mm'
   where 

@@ -105,9 +105,12 @@ data Program t a where
                    -> Program Grid () 
 
   -- Allocate shared memory in each MP
-  -- Reuse same constructor for allocating automatic variables.
-  Allocate :: Name -> Word32 -> Type -> Program t () 
   
+  Allocate :: Name -> Word32 -> Type -> Program t () 
+
+  -- Automatic Variables
+  Declare :: Name -> Type -> Program t () 
+              
   {- About Output (Creates a named output array). 
      This is similar to Allocate but concerning global arrays.
 
@@ -220,6 +223,9 @@ printPrg' i (AtomicOp n ix e) =
 printPrg' i (Allocate id n t) =
   let newname = id -- "arr" ++ show id
   in ((),newname ++ " = malloc(" ++ show n ++ ");\n",i+1)
+printPrg' i (Declare id t) =
+  let newname = id -- "arr" ++ show id
+  in ((),show t ++ " " ++ newname ++ "\n",i+1)
 printPrg' i (Output t) =
   let newname = "globalOut" ++ show i
   in (newname,newname ++ " = new Global output;\n",i+1)

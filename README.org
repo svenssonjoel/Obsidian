@@ -5,6 +5,14 @@
     + TODO: global arrays have sizes! make the code generation aware of this! 
         
 
+* IMPORTANT TODOs
+  + update the SPDMC based code outputer (cleaner, nicer) 
+  + update genProg function
+  + clean up and check for bugs in: 
+    * CodeGen.Memory.hs
+    * CodeGen.Liveness.hs 
+
+
 * Next version of Obsidian
   * Features (in progress): 
      + Only one kind of Pull array.

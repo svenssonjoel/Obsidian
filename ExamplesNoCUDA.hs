@@ -278,9 +278,10 @@ testFold3 :: Pull EWord32 EWord32
              -> Pull EWord32 (BProgram (Pull Word32 EWord32))
 testFold3 arr =  fmap (testFold2) (splitUp 256 arr)
 
-testFold4 :: Pull EWord32 EWord32
-             -> GProgram (Pull EWord32 EWord32)
-testFold4 = liftM flatten . liftB . testFold3 
+--testFold4 :: Pull EWord32 EWord32
+--             -> GProgram (Push Grid EWord32 EWord32)
+-- FIX THIS STRANGENESS
+testFold4 = join . liftM forceG . liftB . testFold3 
 
 flatten :: ASize l => Pull EWord32 (Pull l a) -> Pull EWord32 a
 flatten pp =

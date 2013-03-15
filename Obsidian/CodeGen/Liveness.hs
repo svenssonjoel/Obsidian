@@ -36,6 +36,10 @@ liveness' (Allocate name size t _) s =
   where 
     alive = name `Set.delete` s
 
+-- Added Mar 2013
+liveness' (Declare name t ) s = 
+  (Declare name t,s)
+
 -- Added Jan 2013
 liveness' (AtomicOp n1 n2 ix op) s = (AtomicOp n1 n2 ix op, s)
  -- Is this correct. It would help if I remembered exactly what
@@ -133,7 +137,8 @@ livenessProgram aliveNext (prg1 `ProgramSeq` prg2) =
 whatsAliveNext :: Program Liveness -> Liveness
 whatsAliveNext Skip = Set.empty
 whatsAliveNext (Synchronize _) = Set.empty
-whatsAliveNext (Allocate _ _ _ l) = l 
+whatsAliveNext (Allocate _ _ _ l) = l
+whatsAliveNext (Declare _ _) = Set.empty
 whatsAliveNext (Assign _ _ _) = Set.empty
 whatsAliveNext (ForAll _{-p-} _) = Set.empty 
 -- I dont think any programs we generate will 
@@ -141,12 +146,16 @@ whatsAliveNext (ForAll _{-p-} _) = Set.empty
 -- (Make this more clear in the type ?)
 -- whatsAliveNext (Cond _ _ _ p) = whatsAliveNext p
 -- Most likely Cond will not contain Alloc nodes
--- beneath it either. 
+-- beneath it either.
+whatsAliveNext (SeqFor _ _ _) = Set.empty
+whatsAliveNext (ForAllBlocks n f) = s
+  where
+     s = whatsAliveNext (f (variable "X")) 
 whatsAliveNext (p1 `ProgramSeq` p2) = 
   let s1 = whatsAliveNext p1  
       s2 = whatsAliveNext p2 
   in s1 `Set.union` s2
-
+whatsAliveNext p = error $ printPrg p 
 {-
 whatsAliveNext :: Code Liveness -> Liveness
 whatsAliveNext Skip = Set.empty
@@ -157,26 +166,3 @@ whatsAliveNext (s `Seq` _) = syncExtra s
 
 
 
-------------------------------------------------------------------------------
--- Create a memory map on CODE 
-    {- 
-mapMemory :: Code Liveness -> Memory -> MemMap -> (Memory,MemMap) 
-mapMemory Skip m mm = (m,mm) 
-mapMemory (su `Seq` code) m mm = mapMemory code m' mm' 
-  where 
-    (m'',mm') = mapMemorySyncUnit su m mm 
-    aliveNext = whatsAliveNext code
-    aliveNow  = syncExtra su 
-    diff      = aliveNow Set.\\ aliveNext
-    diffAddr  = mapM (\x -> Map.lookup x mm') (filter (not . (isPrefixOf "input")) (Set.toList diff))
-    m'        = 
-      case diffAddr of 
-        (Just addys) -> freeAll m'' (map fst addys)
-        Nothing      -> error "atleast one array does not exist in memorymap" 
-     
-    
-    
-mapMemorySyncUnit (SyncUnit nt p e) m mm  = mapMemoryProgram p m mm 
-
--} 
- 

@@ -44,6 +44,7 @@ data Program extra
      | ForAllThreads (Exp Word32) (Exp Word32 -> Program extra)  
        
      | Allocate Name Word32 Type extra
+     | Declare  Name Type 
        -- Not Present in old Program datatype 
      | Output Name Type 
      | Synchronize Bool
@@ -115,7 +116,8 @@ runPrg' i (P.Bind p f) =
       (b,prg2) = runPrg' s2 (f a)
   in (b,prg1 `ProgramSeq` prg2)
 runPrg' i (P.Return a) = (a,Skip)
-runPrg' i (P.Allocate id n t) = ((), Allocate id n t ()) 
+runPrg' i (P.Allocate id n t) = ((), Allocate id n t ())
+runPrg' i (P.Declare id t) = ((),Declare id t)
   -- let nom = "arr" ++ show id -- (supplyValue i)
   
 runPrg' i (P.Output t) =
