@@ -24,7 +24,7 @@ class LiftB a where
 
 
 ---------------------------------------------------------------------------
--- instances
+-- instances LiftT 
 ---------------------------------------------------------------------------  
 
 instance Pushable p => LiftT (p Word32 a) where
@@ -43,4 +43,12 @@ instance StoreOps a => LiftT a where
       p (assign snames)
       return $ pullFrom snames ts
       
-      
+
+
+
+---------------------------------------------------------------------------
+-- instances LiftB 
+---------------------------------------------------------------------------  
+
+instance LiftB a where
+  liftB = error "liftB: is not implemented"

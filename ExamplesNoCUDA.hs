@@ -15,6 +15,7 @@ import Obsidian.Force
 import Obsidian.CodeGen.InOut
 import Obsidian.Atomic
 import Obsidian.SeqLoop
+import Obsidian.Lift 
 
 import Data.Word
 import Data.Int
@@ -270,16 +271,25 @@ testFold :: Pull Word32 EWord32 -> Pull Word32 (Program Thread EWord32)
 testFold arr = fmap (seqFold (+) 0) (splitUpS (32 :: Word32)  arr)
 
 testFold2 :: Pull Word32 EWord32 -> BProgram (Pull Word32 EWord32)
-testFold2 arr = force $ computeSeq (testFold arr)
+testFold2 = liftT . testFold
 
-computeSeq :: (ASize l, Scalar a)
-              => Pull l (Program Thread (Exp a)) -> Push Block l (Exp a)
-computeSeq (Pull ts txf) =
-  Push ts $ \ wf ->
-   ForAll (sizeConv ts) $ \tix ->
-     do
-       elt <- txf tix
-       wf elt tix 
+-- testFold3 :: Pull EWord32 EWord32 -> Pull EWord32 (BProgram (Pull Word32 EWord32))
+testFold3 :: Pull EWord32 EWord32
+             -> Pull EWord32 (BProgram (Pull Word32 EWord32))
+testFold3 arr =  fmap (testFold2) (splitUp 256 arr)
+
+testFold4 :: Pull EWord32 EWord32
+             -> GProgram (Pull EWord32 (Pull Word32 EWord32))
+testFold4 = liftB . testFold3 
+
+--computeSeq :: (ASize l, Scalar a)
+--              => Pull l (Program Thread (Exp a)) -> Push Block l (Exp a)
+--computeSeq (Pull ts txf) =
+--  Push ts $ \ wf ->
+--   ForAll (sizeConv ts) $ \tix ->
+--     do
+--       elt <- txf tix
+--       wf elt tix 
   
 inputFold :: Pull Word32 EWord32 
 inputFold = namedPull "apa" 256 
