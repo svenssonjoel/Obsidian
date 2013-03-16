@@ -244,3 +244,102 @@ flatten (ForAllBlocks m f) = f (BlockIdx X)
 flatten (p1 `ProgramSeq` p2) = flatten p1 `ProgramSeq` flatten p2
 flatten (p1 `ProgramPar` p2) = flatten p1 `ProgramSeq` flatten p2 -- ALERT! 
 flatten p = p  
+
+
+
+---------------------------------------------------------------------------
+-- New Intermediate representation
+---------------------------------------------------------------------------
+
+type IM = [Statement] 
+
+data Statement = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
+               | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
+               | SCond (Exp Bool) IM
+               | SSeqFor String (Exp Word32) IM 
+                 -- See if it is possible to get away
+                 -- with only one kind of ForAll (plus maybe some flag) 
+               | SForAll (Exp Word32) IM
+               | SForAllBlocks (Exp Word32) IM
+                 -- a special loop over all threads..
+               | SForAllThreads (Exp Word32) IM
+
+                 -- Memory Allocation..
+               | SAllocate Name Word32 Type
+               | SDeclare  Name Type
+               | SOutput   Name Type
+
+                 -- Synchronisation
+               | SSynchronize
+
+               -- ProgramPar and ProgramSeq does not exist
+               -- at this level (the par or seq info is lost!)
+               
+
+compileStep1 :: P.Program t a -> IM
+compileStep1 p = snd $ cs1 ns p
+  where
+    ns = unsafePerformIO$ newEnumSupply
+
+cs1 :: Supply Int -> P.Program t a -> (a,IM) 
+cs1 i P.Identifier = (supplyValue i, [])
+
+cs1 i (P.Assign name ix e) = ((),[SAssign name ix e])
+
+cs1 i (P.AtomicOp name ix at) = (v,im)
+  where 
+    nom = "a" ++ show (supplyValue i)
+    v = variable nom
+    im = [SAtomicOp nom name ix at]
+      
+cs1 i (P.Cond bexp p) = ((),[SCond bexp im]) 
+  where ((),im) = cs1 i p
+
+
+cs1 i (P.SeqFor n f) = (a,[SSeqFor nom n im])
+  where
+    (i1,i2) = split2 i
+    nom = "i" ++ show (supplyValue i1)
+    v = variable nom
+    p = f v
+    (a,im) = cs1 i2 p 
+    
+
+cs1 i (P.ForAll n f) = (a,[SForAll n im])
+  where
+    p = f (ThreadIdx X)  
+    (a,im) = cs1 i p 
+
+
+cs1 i (P.ForAllBlocks n f) = (a,[SForAllBlocks n im]) 
+  where
+    p = f (BlockIdx X)
+    (a,im) = cs1 i p
+
+
+-- Warning: Every thread will ALWAYS need to perform a conditional
+--     (Only in special case is the conditional not needed) 
+-- TRY To express all library functions using ForAllBlocks + ForAll
+-- For more flexibility and probably in the end performance. 
+cs1 i (P.ForAllThreads n f) = (a,[SForAllThreads n im]) 
+  where
+    p = f (BlockIdx X * BlockDim X + ThreadIdx X)
+    (a,im) = cs1 i p
+
+
+cs1 i (P.Allocate id n t) = ((),[SAllocate id n t])
+cs1 i (P.Declare  id t)   = ((),[SDeclare id t])
+-- Output works in a different way! (FIX THIS!) 
+cs1 i (P.Output   t)      = (nom,[SOutput nom t])
+  where nom = "output" ++ show (supplyValue i) 
+cs1 i (P.Sync)            = ((),[SSynchronize])
+
+
+cs1 i (P.Bind p f) = (b,im1++im2) 
+  where
+    (s1,s2) = split2 i
+    (a,im1) = cs1 s1 p
+    (b,im2) = cs1 s2 (f a)
+
+cs1 i (P.Return a) = (a,[])
+
