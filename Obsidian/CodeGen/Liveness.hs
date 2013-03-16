@@ -11,11 +11,10 @@ module Obsidian.CodeGen.Liveness where
 import qualified Data.Set as Set
 
 import Obsidian.Exp
--- import Obsidian.Array
---import Obsidian.Memory
 import Obsidian.Globs
 import Obsidian.CodeGen.Program
 
+import Control.Monad.State
 ------------------------------------------------------------------------------
 -- LIVENESS on Programs
 
@@ -163,6 +162,71 @@ whatsAliveNext (s `Seq` _) = syncExtra s
 -}
 ------------------------------------------------------------------------------ 
 
+type IML = [(Statement Liveness,Liveness)] 
 
 
+{- Plan:
+   # Step through program from end to start
+   # as soon as a new name is encountered, add it to the living set
+   # when an "Allocate" is found, delete the name it allocated from the living set.
 
+   Requirements:
+   # All names are unique! 
+
+   TODO: Think more carefully about the ForAllBlocks case
+-} 
+
+
+-- Nice type 
+computeLiveness :: IM -> IML
+computeLiveness im = reverse $ evalState (cl (reverse im)) Set.empty
+
+computeLiveness1 :: Liveness -> IM -> IML
+computeLiveness1 l im = reverse $ evalState (cl (reverse im)) l
+
+-- cl :: IM -> State Liveness IML 
+cl im = mapM process im
+  where
+    -- TODO: Can ixs contain array names ?
+    --       (Most likely yes! think about the counting sort example)
+
+    -- Horrific type 
+    process :: (Statement (),()) -> State Liveness (Statement Liveness,Liveness)
+    process (SAssign nom ixs e,()) =
+      do
+        s <- get
+        let arrays = collectArrays e
+            living = Set.fromList (nom:arrays) `Set.union` s
+        -- Need to recreate the statement (but at a different type, Haskell is "great") 
+        return (SAssign nom ixs e,living)
+        
+    process (SAtomicOp n1 n2 ixs op,()) =
+      do
+        s <- get
+        return (SAtomicOp n1 n2 ixs op,s)
+        
+    process (SAllocate name size t,()) =
+      do
+        modify (name `Set.delete`) 
+        s <- get
+        return (SAllocate name size t,s)  
+    
+    process (SDeclare name t,()) = 
+      do 
+        s <-get 
+        return (SDeclare name t,s)
+
+
+    process (SCond bexp im,()) = 
+      do
+        -- TODO: What should really happen here ?
+        s <- get 
+        let iml = computeLiveness1 s im 
+            n = length iml 
+            l = case n of 
+                    0 -> Set.empty 
+                    _ -> snd $ head iml 
+        
+        -- Is this correct ? 
+        return (SCond bexp iml, s `Set.union` l)
+         

@@ -251,18 +251,24 @@ flatten p = p
 -- New Intermediate representation
 ---------------------------------------------------------------------------
 
-type IM = [Statement] 
+type IMList a = [(Statement a,a)]
 
-data Statement = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
+type IM = IMList ()
+
+-- out :: 
+out a = [(a,())]
+
+
+data Statement t = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
                | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
-               | SCond (Exp Bool) IM
-               | SSeqFor String (Exp Word32) IM 
+               | SCond (Exp Bool) (IMList t) 
+               | SSeqFor String (Exp Word32) (IMList t)
                  -- See if it is possible to get away
                  -- with only one kind of ForAll (plus maybe some flag) 
-               | SForAll (Exp Word32) IM
-               | SForAllBlocks (Exp Word32) IM
+               | SForAll (Exp Word32) (IMList t) 
+               | SForAllBlocks (Exp Word32) (IMList t)
                  -- a special loop over all threads..
-               | SForAllThreads (Exp Word32) IM
+               | SForAllThreads (Exp Word32) (IMList t)
 
                  -- Memory Allocation..
                | SAllocate Name Word32 Type
@@ -272,8 +278,8 @@ data Statement = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp 
                  -- Synchronisation
                | SSynchronize
 
-               -- ProgramPar and ProgramSeq does not exist
-               -- at this level (the par or seq info is lost!)
+                 -- ProgramPar and ProgramSeq does not exist
+                -- at this level (the par or seq info is lost!)
                
 
 compileStep1 :: P.Program t a -> IM
@@ -284,19 +290,19 @@ compileStep1 p = snd $ cs1 ns p
 cs1 :: Supply Int -> P.Program t a -> (a,IM) 
 cs1 i P.Identifier = (supplyValue i, [])
 
-cs1 i (P.Assign name ix e) = ((),[SAssign name ix e])
+cs1 i (P.Assign name ix e) = ((),out (SAssign name ix e))
 
-cs1 i (P.AtomicOp name ix at) = (v,im)
+cs1 i (P.AtomicOp name ix at) = (v,out im)
   where 
     nom = "a" ++ show (supplyValue i)
     v = variable nom
-    im = [SAtomicOp nom name ix at]
+    im = SAtomicOp nom name ix at
       
-cs1 i (P.Cond bexp p) = ((),[SCond bexp im]) 
+cs1 i (P.Cond bexp p) = ((),out (SCond bexp im)) 
   where ((),im) = cs1 i p
 
 
-cs1 i (P.SeqFor n f) = (a,[SSeqFor nom n im])
+cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
   where
     (i1,i2) = split2 i
     nom = "i" ++ show (supplyValue i1)
@@ -305,13 +311,13 @@ cs1 i (P.SeqFor n f) = (a,[SSeqFor nom n im])
     (a,im) = cs1 i2 p 
     
 
-cs1 i (P.ForAll n f) = (a,[SForAll n im])
+cs1 i (P.ForAll n f) = (a,out (SForAll n im))
   where
     p = f (ThreadIdx X)  
     (a,im) = cs1 i p 
 
 
-cs1 i (P.ForAllBlocks n f) = (a,[SForAllBlocks n im]) 
+cs1 i (P.ForAllBlocks n f) = (a,out (SForAllBlocks n im)) 
   where
     p = f (BlockIdx X)
     (a,im) = cs1 i p
@@ -321,21 +327,21 @@ cs1 i (P.ForAllBlocks n f) = (a,[SForAllBlocks n im])
 --     (Only in special case is the conditional not needed) 
 -- TRY To express all library functions using ForAllBlocks + ForAll
 -- For more flexibility and probably in the end performance. 
-cs1 i (P.ForAllThreads n f) = (a,[SForAllThreads n im]) 
+cs1 i (P.ForAllThreads n f) = (a,out (SForAllThreads n im)) 
   where
     p = f (BlockIdx X * BlockDim X + ThreadIdx X)
     (a,im) = cs1 i p
 
 
-cs1 i (P.Allocate id n t) = ((),[SAllocate id n t])
-cs1 i (P.Declare  id t)   = ((),[SDeclare id t])
+cs1 i (P.Allocate id n t) = ((),out (SAllocate id n t))
+cs1 i (P.Declare  id t)   = ((),out (SDeclare id t))
 -- Output works in a different way! (FIX THIS!) 
-cs1 i (P.Output   t)      = (nom,[SOutput nom t])
+cs1 i (P.Output   t)      = (nom,out (SOutput nom t))
   where nom = "output" ++ show (supplyValue i) 
-cs1 i (P.Sync)            = ((),[SSynchronize])
+cs1 i (P.Sync)            = ((),out (SSynchronize))
 
 
-cs1 i (P.Bind p f) = (b,im1++im2) 
+cs1 i (P.Bind p f) = (b,im1 ++ im2) 
   where
     (s1,s2) = split2 i
     (a,im1) = cs1 s1 p
