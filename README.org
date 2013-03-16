@@ -7,6 +7,7 @@
 
 * IMPORTANT TODOs
   + update the SPDMC based code outputer (cleaner, nicer) 
+  + Change CodeGen.Program to a completely first order representation! 
   + update genProg function
   + clean up and check for bugs in: 
     * CodeGen.Memory.hs
@@ -25,7 +26,8 @@
        * Currently: 
           + Fold 
           + Scan 
-          + Maybe add sort (how ?) 
+          + Sort (todo). How ? Which kind of sort. 
+	    I want one with known number of iterations and in-place capability. 
           + Merge (todo) 
           + Filter (todo) 
 	    
