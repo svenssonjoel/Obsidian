@@ -349,3 +349,52 @@ cs1 i (P.Bind p f) = (b,im1 ++ im2)
 
 cs1 i (P.Return a) = (a,[])
 
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
+-- Print a Statement with metadata 
+printStm :: Show a => (Statement a,a) -> String
+printStm (SAssign name [] e,m) =
+  name ++ " = " ++ printExp e ++ ";" ++ meta m
+printStm (SAssign name ix e,m) =
+  name ++ "[" ++ concat (intersperse "," (map printExp ix)) ++ "]" ++
+  " = " ++ printExp e ++ ";" ++ meta m
+printStm (SAtomicOp res arr ix op,m) =
+  res ++ " = " ++
+  printAtomic op ++ "(" ++ arr ++ "[" ++ printExp ix ++ "]);" ++ meta m
+printStm (SAllocate name n t,m) =
+  name ++ " = malloc(" ++ show n ++ ");" ++ meta m
+printStm (SDeclare name t,m) =
+  show t ++ " " ++ name ++ ";" ++ meta m
+printStm (SOutput name t,m) =
+  show t ++ " " ++ name ++ ";" ++ meta m
+printStm (SCond bexp im,m) =
+  "if " ++ show bexp ++ "{\n" ++ 
+  concatMap printStm im ++ "\n};" ++ meta m
+
+printStm (SSynchronize,m) =
+  "sync();" ++ meta m
+  
+printStm (SSeqFor name n im,m) =
+  "for " ++ name  ++ " in [0.." ++ show n ++"] do \n" ++
+  concatMap printStm im ++ "\ndone;" ++ meta m
+
+printStm (SForAll n im,m) =
+  "forAll i in [0.." ++ show n ++"] do \n" ++
+  concatMap printStm im ++ "\ndone;" ++ meta m
+
+printStm (SForAllBlocks n im,m) =
+  "forAllBlocks i in [0.." ++ show n ++"] do \n" ++
+  concatMap printStm im ++ "\ndone;" ++ meta m
+printStm (SForAllThreads n im,m) =
+  "forAllThreads i in [0.." ++ show n ++"] do \n" ++
+  concatMap printStm im ++ "\ndone;" ++ meta m
+
+
+  
+-- printStm (a,m) = error $ show m 
+
+meta :: Show a => a -> String
+meta m = "\t//" ++ show m ++ "\n" 
