@@ -3,7 +3,7 @@
  
    notes:
      Added a SeqFor case Jan-21-2013
-  
+
  -} 
 module Obsidian.CodeGen.Memory 
        (MemMap,
@@ -15,7 +15,9 @@ module Obsidian.CodeGen.Memory
         sharedMem,  
         Address,
         Bytes,
-        mapMemory) 
+        mapMemory,
+        -- NEW
+        mmIM) 
        where 
 
 import qualified Data.List as List
@@ -145,7 +147,7 @@ mapMemoryProgram ((Allocate name size t alive) `ProgramSeq` prg2) m mm
     (m'',addr) = allocate m size
     aliveNext  = whatsAliveNext prg2
     diff       = alive Set.\\ aliveNext
-    diffAddr   = mapM (\x -> Map.lookup x mm') (filter dontMap {-(not . (List.isPrefixOf "input")-} (Set.toList diff))
+    diffAddr   = mapM (\x -> Map.lookup x mm') (filter dontMap (Set.toList diff))
     dontMap name = not ((List.isPrefixOf "input" name) || 
                         (List.isPrefixOf "output" name))
     mNew       =  
@@ -175,21 +177,46 @@ mapMemoryProgram (Output n t) m mm = (m,mm)
     
 
 
-{-
-mapMemoryProgram (Assign name i a) m mm = (m,mm) 
-mapMemoryProgram (ForAll f n) m mm = mapMemoryProgram (f (variable "X")) m mm       
-mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
-mapMemoryProgram (Allocate name size t program) m mm = mapMemoryProgram program m' mm'
-  where 
-    (m'',addr) = allocate m size
-    -- TODO: maybe create Global arrays if Local memory is full.
-    -- t = Pointer$ Local$ typeOf$ getLLArray (head ws) `llIndex`  tid
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (prg1 `ProgramSeq` prg2) m mm = mapMemoryProgram prg2 m' mm'
-  where 
-    (m',mm') = mapMemoryProgram prg1 m mm 
 
--}
+---------------------------------------------------------------------------
+-- Memory map the new IM
+---------------------------------------------------------------------------
+mmIM :: IML -> Memory -> MemMap -> (Memory, MemMap)
+mmIM im memory memmap = r im (memory,memmap)
+  where
+    r [] m = m
+    r (x:xs) (m,mm) =
+      let
+          (m',mm') = process x m mm
+           
+          freeable = getFreeableSet x xs
+          freeableAddrs = mapM (flip Map.lookup mm') (filter dontMap (Set.toList freeable))
+          dontMap name = not ((List.isPrefixOf "input" name) || 
+                              (List.isPrefixOf "output" name))
+          mNew =
+            case freeableAddrs of
+              (Just as) -> freeAll m' (map fst as)
+              Nothing   -> m
+      in r xs (mNew,mm')
+         
+    process (SAllocate name size t,_) m mm = (m',mm') 
+      where (m',addr) = allocate m size
+            mm' = case Map.lookup name mm of
+                      Nothing -> Map.insert name (addr,t) mm
+                      (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
+
+    -- A tricky case.                      
+    process (SForAllBlocks n im,_) m mm = mmIM im m mm
+    -- Another tricky case. 
+    process (SSeqFor _ n im,_) m mm = mmIM im m mm
+    -- Yet another tricky case.
+    process (SForAll n im,_) m mm = mmIM im m mm 
+    -- The worst of them all.
+    process (SForAllThreads n im,_) m mm = mmIM im m mm
+
+    process (_,_) m mm = (m,mm) 
+
+getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 
+getFreeableSet (_,l) [] = l
+getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1
+

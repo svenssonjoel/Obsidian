@@ -4,7 +4,8 @@
 module Obsidian.CodeGen.CUDA 
        (genKernel
        ,genKernel_
-       ,getNThreads ) where  
+       ,getNThreads,
+        imToSPMDC) where  
 
 import Data.List
 import Data.Word 
@@ -445,5 +446,44 @@ mmCExpr mm a = a
           
   
 ---------------------------------------------------------------------------
--- 
+-- New IM to SPCMD
 ---------------------------------------------------------------------------
+
+
+imToSPMDC :: Word32 -> IMList a -> [SPMDC]
+imToSPMDC nt im = concatMap (process nt) im
+  where
+    process nt (SAssign name [] e,_) =
+      [cAssign (cVar name (typeToCType (typeOf e))) [] (expToCExp e)]
+
+    process nt (SAssign name [ix] e,_) =
+      [cAssign (cVar name (typeToCType (Pointer (typeOf e)))) [expToCExp ix] (expToCExp e)]
+
+    process nt (SAtomicOp res arr e op,_) = undefined -- SPMDC has no Atomics yet
+
+    process nt (SCond bexp im,_) =
+      [cIf (expToCExp bexp) (imToSPMDC nt im) []]
+
+    process nt (SSeqFor name e im,_) =
+      [cFor name (expToCExp e) (imToSPMDC nt im)]
+
+    process nt (SForAll (Literal n) im,_) =
+      if (n < nt) 
+      then 
+        [cIf (cBinOp CLt ctid (cLiteral (Word32Val n) CWord32) CInt)
+         code []]
+      else 
+        code 
+      where 
+        code = imToSPMDC nt im
+
+    -- This one is tricky (since no corresponding CUDA construct exists) 
+    process nt (SForAllBlocks n im,_) =
+      -- TODO: there should be "number of blocks"-related conditionals here (possibly) 
+      imToSPMDC nt im
+    process nt (SAllocate name size t,_) = []
+    process nt (SDeclare name t,_) =
+      [cDecl (typeToCType t) name]
+    process nt (SOutput name t,_) = [] -- RIGHT!
+    process nt (SSynchronize,_)   = [CSync]
+    

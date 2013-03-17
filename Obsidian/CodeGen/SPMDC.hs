@@ -1,5 +1,5 @@
 
-{- Joel Svensson 2012 -} 
+{- Joel Svensson 2012,2013 -} 
 module Obsidian.CodeGen.SPMDC where
 
 
@@ -112,7 +112,7 @@ data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign
                                     -- but since sync,threadfence etc are special
                                     -- and might need attention during code gen
                                     -- I give them specific constructors. 
-
+           | CFor    Name CExpr [SPMDC]  -- very simple loop for now.
            | CIf     CExpr [SPMDC] [SPMDC]
            deriving (Eq,Ord,Show)
                     
@@ -161,7 +161,7 @@ cThreadFence = CThreadFence
 cThreadFenceBlock = CThreadFenceBlock
 cDeclAssign = CDeclAssign 
 cIf         = CIf 
-
+cFor        = CFor 
 --------------------------------------------------------------------------
 -- Printing 
 data PPConfig = PPConfig {ppKernelQ :: String, 
@@ -298,7 +298,14 @@ ppSPMDC ppc (CIf e xs ys) = line "if " >>
                             begin >> indent >> newline >> 
                             ppSPMDCList ppc xs >>  unindent >> end >> 
                             line "else " >> begin >> indent >> newline >> 
-                            ppSPMDCList ppc ys >>  unindent >> end 
+                            ppSPMDCList ppc ys >>  unindent >> end
+-- TODO: Clean up here
+ppSPMDC ppc (CFor name e s) = line "for " >>
+                              wrap "(" ")" (line ("int " ++ name ++ " = 0;") >>
+                                            line (name ++ " < ") >> (ppCExpr ppc e) >>
+                                            line (";") >> line "name ++") >>
+                              begin >> indent >> newline >> 
+                              ppSPMDCList ppc s >> unindent >> end
                             
 ----------------------------------------------------------------------------
 --

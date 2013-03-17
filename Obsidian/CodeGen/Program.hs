@@ -1,13 +1,17 @@
 {-# LANGUAGE GADTs,
-             ExistentialQuantification #-}
+             ExistentialQuantification,
+             FlexibleInstances #-}
 
 {- CodeGen.Program.
 
-   To get somewhere at pace I will transform the new Program datatype
-   (monad) into a backend-program type that is more or less identical
-   to the old one (the one that all the code generation expects)
+   Joel Svensson 2012, 2013
 
-   Joel Svensson 2012
+   Notes:
+     2013-03-17: Codegeneration is changing
+
+
+
+
 -} 
 
 
@@ -335,7 +339,8 @@ cs1 i (P.ForAllThreads n f) = (a,out (SForAllThreads n im))
 
 cs1 i (P.Allocate id n t) = ((),out (SAllocate id n t))
 cs1 i (P.Declare  id t)   = ((),out (SDeclare id t))
--- Output works in a different way! (FIX THIS!) 
+-- Output works in a different way! (FIX THIS!)
+--  Uniformity! (Allocate Declare Output) 
 cs1 i (P.Output   t)      = (nom,out (SOutput nom t))
   where nom = "output" ++ show (supplyValue i) 
 cs1 i (P.Sync)            = ((),out (SSynchronize))
@@ -351,9 +356,43 @@ cs1 i (P.Return a) = (a,[])
 
 
 ---------------------------------------------------------------------------
---
+-- Analysis
+--------------------------------------------------------------------------- 
+numThreads :: IMList a -> Either Word32 (EWord32)
+numThreads im = foldl maxCheck (Left 0) $ map process im
+  where
+    process (SCond bexp im,_) = numThreads im
+    process (SSeqFor _ _ _,_) = Left 1
+    process (SForAll (Literal n) _,_) = Left n
+    process (SForAll n _,_) = Right n
+    process (SForAllBlocks _ im,_) = numThreads im
+    process (SForAllThreads n im,_) = Right (variable "UNKNOWN") --fix this!
+    process a = Left 0 -- ok ? 
+
+    maxCheck (Left a) (Right b)  = Right $ max (fromIntegral a) b
+    maxCheck (Right a) (Left b)  = Right $ max a (fromIntegral b)
+    maxCheck (Left a) (Left  b)  = Left  $ max a b
+    maxCheck (Right a) (Right b) = Right $ max a b
+
+
+getOutputs :: IMList a -> [Name]
+getOutputs im = concatMap process im
+  where
+    process (SOutput name _,_)      = [name]
+    process (SSeqFor _ _ im,_)      = getOutputs im
+    process (SForAll _ im,_)        = getOutputs im
+    process (SForAllBlocks _ im,_)  = getOutputs im
+    process (SForAllThreads _ im,_) = getOutputs im
+    process a = []
+    
+
+---------------------------------------------------------------------------
+-- Turning IM to strings
 ---------------------------------------------------------------------------
 
+printIM :: Show a => IMList a -> String 
+printIM im = concatMap printStm im
+  
 -- Print a Statement with metadata 
 printStm :: Show a => (Statement a,a) -> String
 printStm (SAssign name [] e,m) =
@@ -378,19 +417,19 @@ printStm (SSynchronize,m) =
   "sync();" ++ meta m
   
 printStm (SSeqFor name n im,m) =
-  "for " ++ name  ++ " in [0.." ++ show n ++"] do \n" ++
-  concatMap printStm im ++ "\ndone;" ++ meta m
+  "for " ++ name  ++ " in [0.." ++ show n ++"] do" ++ meta m ++ 
+  concatMap printStm im ++ "\ndone;\n"
 
 printStm (SForAll n im,m) =
-  "forAll i in [0.." ++ show n ++"] do \n" ++
-  concatMap printStm im ++ "\ndone;" ++ meta m
+  "forAll i in [0.." ++ show n ++"] do" ++ meta m ++
+  concatMap printStm im ++ "\ndone;\n"
 
 printStm (SForAllBlocks n im,m) =
-  "forAllBlocks i in [0.." ++ show n ++"] do \n" ++
-  concatMap printStm im ++ "\ndone;" ++ meta m
+  "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
+  concatMap printStm im ++ "\ndone;\n"
 printStm (SForAllThreads n im,m) =
-  "forAllThreads i in [0.." ++ show n ++"] do \n" ++
-  concatMap printStm im ++ "\ndone;" ++ meta m
+  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
+  concatMap printStm im ++ "\ndone;\n"
 
 
   

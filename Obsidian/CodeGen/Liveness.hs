@@ -237,8 +237,10 @@ cl im = mapM process im
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
+            ns  =  s `Set.union` l
+        put ns 
         -- Is this correct ?  Same question, all below
-        return (SCond bexp iml, s `Set.union` l)
+        return (SCond bexp iml,ns)
 
     process (SSeqFor nom n im,_) = 
       do 
@@ -253,19 +255,25 @@ cl im = mapM process im
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
-        return (SForAll n iml,s `Set.union` l) 
+            ns  = s `Set.union` l
+        put ns
+        return (SForAll n iml,ns) 
     
     process (SForAllBlocks n im,_) = 
       do 
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
-        return (SForAllBlocks n iml, s `Set.union` l)
+            ns  = s `Set.union` l
+        put ns
+        return (SForAllBlocks n iml,ns)
 
     process (SForAllThreads n im,_) = 
       do 
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
-        return (SForAllThreads n iml,s `Set.union` l)
+            ns  = s `Set.union` l
+        put ns 
+        return (SForAllThreads n iml,ns)
 
