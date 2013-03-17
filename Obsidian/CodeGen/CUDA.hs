@@ -1,4 +1,4 @@
-{- Joel Svensson 2012 -}
+{- Joel Svensson 2012, 2013 -}
 
 {-# LANGUAGE GADTs #-} 
 module Obsidian.CodeGen.CUDA 
@@ -19,7 +19,6 @@ import Obsidian.Atomic
 import Obsidian.CodeGen.PP
 import Obsidian.CodeGen.Common
 import Obsidian.CodeGen.InOut 
-import Obsidian.CodeGen.SyncAnalysis
 import Obsidian.CodeGen.Memory
 import Obsidian.CodeGen.Liveness
 
@@ -59,7 +58,7 @@ kernelHead name ins outs =
 genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String 
 genKernel name kernel a = proto ++ cuda 
   where
-    (ins,im) = toProgram2 0 kernel a
+    (ins,im) = toProgram 0 kernel a
 
     outs = getOutputs im
     
