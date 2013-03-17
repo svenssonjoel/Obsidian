@@ -6,8 +6,8 @@
         
 
 * IMPORTANT TODOs
-  + update the SPDMC based code outputer (cleaner, nicer) 
-  + Change CodeGen.Program to a completely first order representation! 
+  + (In Progress) update the SPDMC based code outputer (cleaner, nicer) 
+  + DONE: Change CodeGen.Program to a completely first order representation! 
     * Alternatively see if all following steps can be tweaked to run 
       on the Program t a type. I think doing some of the analysis will be hard 
       on the Program t a type, Liveness. Go for an as simple and concrete 
@@ -16,7 +16,9 @@
   + clean up and check for bugs in: 
     * CodeGen.Memory.hs
     * CodeGen.Liveness.hs 
-
+  + The CSE code is definitely completely broken in relation 
+    to all news now.
+  + Make sure unnecessary usage of shared memory can be avoided.    
 
 * Next version of Obsidian
   * Features (in progress): 

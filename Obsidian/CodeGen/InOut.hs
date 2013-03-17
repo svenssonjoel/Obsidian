@@ -51,7 +51,8 @@ type Inputs = [(Name,Type)]
 
 class ToProgram a b where
   toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.Program ())
-
+  toProgram2 :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.IM)
+  
 typeOf_ a = typeOf (Literal a)
 
 instance (Scalar t) => ToProgram (Exp t) (GProgram b) where
@@ -59,6 +60,11 @@ instance (Scalar t) => ToProgram (Exp t) (GProgram b) where
     where nom = "s" ++ show i
           input = variable nom
           t = typeOf_ (undefined :: t)
+  toProgram2 i f a = ([(nom,t)],CG.compileStep1 (f input))
+    where nom = "s" ++ show i
+          input = variable nom
+          t = typeOf_ (undefined :: t)
+
 
 -- UPDATE THIS: The rest of the code gen will need a length variable
 instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
@@ -67,26 +73,12 @@ instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
             lengthVar = variable "DUMMY!"
             input = namedGlobal nom lengthVar
             t = typeOf_ (undefined :: t)
+  toProgram2 i f (Pull n ixf) = ([(nom,Pointer t)],CG.compileStep1 (f input)) 
+      where nom = "input" ++ show i
+            lengthVar = variable "DUMMY!"
+            input = namedGlobal nom lengthVar
+            t = typeOf_ (undefined :: t)
 
---instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (Final (GProgram a)) where
---  toProgram i f (Pull n ixf) = ([(nom,Pointer t)],CG.runPrg (cheat (f input))) 
---      where nom = "input" ++ show i
---            lengthVar = variable "DUMMY!"
---            input = namedGlobal nom lengthVar
---            t = typeOf_ (undefined :: t)
-
-
---instance (Scalar t) => ToProgram (GlobPull (Exp t)) (GProgram a) where
---  toProgram i f (GlobPull ixf) = ([(nom,Pointer t)],CG.runPrg (f input)) 
---      where nom = "input" ++ show i 
---            input = namedGlobal nom
---            t = typeOf_ (undefined :: t)
-
---instance (Scalar t) => ToProgram (GlobPull (Exp t)) (Final (GProgram a)) where
---  toProgram i f (GlobPull ixf) = ([(nom,Pointer t)],CG.runPrg (cheat (f input))) 
---      where nom = "input" ++ show i 
---            input = namedGlobal nom
---            t = typeOf_ (undefined :: t)
 
 instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
   toProgram i f (a :-> rest) = ((nom,t):ins,prg)
@@ -95,6 +87,13 @@ instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
       nom = "s" ++ show i
       input = variable nom
       t = typeOf_ (undefined :: t)
+  toProgram2 i f (a :-> rest) = ((nom,t):ins,prg)
+    where
+      (ins,prg) = toProgram2 (i+1) (f input) rest
+      nom = "s" ++ show i
+      input = variable nom
+      t = typeOf_ (undefined :: t)
+
 
 instance (Scalar t, ToProgram b c) => ToProgram (Pull (Exp Word32) (Exp t)) (b -> c) where
   toProgram i f ((Pull n ixf) :-> rest) = ((nom,Pointer t):ins,prg)
@@ -104,6 +103,14 @@ instance (Scalar t, ToProgram b c) => ToProgram (Pull (Exp Word32) (Exp t)) (b -
       lengthVar = variable "DUMMY!"
       input = namedGlobal nom lengthVar
       t = typeOf_ (undefined :: t)
+  toProgram2 i f ((Pull n ixf) :-> rest) = ((nom,Pointer t):ins,prg)
+    where
+      (ins,prg) = toProgram2 (i+1) (f input) rest
+      nom = "input" ++ show i
+      lengthVar = variable "DUMMY!"
+      input = namedGlobal nom lengthVar
+      t = typeOf_ (undefined :: t)
+
 
 ---------------------------------------------------------------------------
 -- heterogeneous lists of inputs 

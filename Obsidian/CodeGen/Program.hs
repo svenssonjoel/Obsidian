@@ -375,10 +375,10 @@ numThreads im = foldl maxCheck (Left 0) $ map process im
     maxCheck (Right a) (Right b) = Right $ max a b
 
 
-getOutputs :: IMList a -> [Name]
+getOutputs :: IMList a -> [(Name,Type)]
 getOutputs im = concatMap process im
   where
-    process (SOutput name _,_)      = [name]
+    process (SOutput name t,_)      = [(name,t)]
     process (SSeqFor _ _ im,_)      = getOutputs im
     process (SForAll _ im,_)        = getOutputs im
     process (SForAllBlocks _ im,_)  = getOutputs im

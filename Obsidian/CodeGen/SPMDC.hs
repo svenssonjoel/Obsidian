@@ -384,7 +384,11 @@ ppCExpr ppc (CExpr (CCast e t)) = line "((" >>
       - What about conditional blocks. 
         Atleast Array indexing inside such a block should not be moved. 
         
-      
+
+   TODO: Completely rewrite this optimisation step.
+         - Implement a very very simplified form that just hoists
+           commonly appearing indexing expressions. 
+
 
 
 -} 
@@ -662,6 +666,7 @@ buildCSEMap' cm n (sp:sps) =  buildCSEMap' cm' n' sps
     
 collectCSE cm n CSync = (n,cm)
 collectCSE cm n (CDeclAssign _ _ _) = error "CDeclAssign found during collectCSE"
+collectCSE cm n (CDecl _ _) = (n,cm) -- error "CDecl found during collectCSE"
 collectCSE cm n (CAssign nom es e) = 
   let ((cm',nid),n') = runState (cExprToDag cm e) n 
       ((cm'',nids),n'') = buildDagList cm' es n'
@@ -672,7 +677,12 @@ collectCSE cm n (CIf b sp1 sp2) = (n3,cm3)
   where 
     ((cm1,nid),n1) = runState (cExprToDag cm b) n 
     (n2,cm2) = buildCSEMap' cm1 n1 sp1
-    (n3,cm3) = buildCSEMap' cm2 n2 sp2 
+    (n3,cm3) = buildCSEMap' cm2 n2 sp2
+collectCSE cm n (CFor name e s) = (n2,cm2)
+  where 
+    ((cm1,nid),n1) = runState (cExprToDag cm e) n
+    (n2,cm2) = buildCSEMap' cm1 n1 s
+                   
 collectCSE cm n (CFunc nom es) = (n1,cm1)
   where 
     ((cm1,nids),n1) = buildDagList cm es n
@@ -714,7 +724,7 @@ declareGlobals cm = declareGlobals' (Map.empty) globs
     strip = map (\(x,y,z) -> (x,y))
     declareGlobals' cp []  = (cp,[]) 
     declareGlobals' cp ((nid,cenode,i):xs) = 
-      if (i >= 2) 
+      if (i >= 1) 
       then
         case Map.lookup nid cp of
           (Just e) -> declareGlobals' cp xs          
@@ -744,14 +754,17 @@ performCSEPass cm cp (x:xs) = performCSEPass' cm cp x : performCSEPass cm cp xs
 performCSEPass' :: CSEMap -> Computed -> SPMDC -> SPMDC
 performCSEPass' cm cp CSync = CSync
 performCSEPass' cm cp (CDeclAssign _ _ _) = error "performCSEPass': CDeclAssign found during CSEPass" 
-performCSEPass' cm cp (CDecl _ _)         = error "performCSEPass': CDecl found during CSEPass" 
+performCSEPass' cm cp (CDecl n t)         = CDecl n t -- error "performCSEPass': CDecl found during CSEPass" 
 performCSEPass' cm cp (CAssign nom es e)  = CAssign nom xs x 
   where
     (x:xs) = cseReplaceL cm cp (e:es) 
 performCSEPass' cm cp (CIf b sp1 sp2) = CIf b' (performCSEPass cm cp sp1) 
                                                (performCSEPass cm cp sp2)
   where 
-    b' = cseReplace cm cp b 
+    b' = cseReplace cm cp b
+performCSEPass' cm cp (CFor name e s) = CFor name e' (performCSEPass cm cp s)
+  where
+    e' = cseReplace cm cp e
 performCSEPass' cm cp a@(CFunc nom es) = a -- look
 
 
