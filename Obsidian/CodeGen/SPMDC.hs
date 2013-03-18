@@ -465,9 +465,6 @@ collectExps sp = mapM_ process sp
         insert e
         processE e1
     
-    --processE e = do
-    --  insert e
-
 
 -- REMEMBER TO KEEP IT SIMPLE.
 replacePass :: ExpMap -> [SPMDC] -> ([(Int,CExpr)],[SPMDC])
@@ -479,7 +476,12 @@ replacePass m (x:xs) = let (decls,x') = process m x
   where
     fstEq :: (Int,a) -> (Int,a) -> Bool
     fstEq a b = fst a == fst b
-    
+
+    process m (CFor name e sp) = (decls,CFor name e' sp')
+      where
+        (decls1, e') = processE m e
+        (decls2, sp') = replacePass m sp
+        decls = L.nubBy fstEq (decls1++decls2) 
     process m (CAssign name es e) = (decls,CAssign name es' e')  
       where
         (decls1,es') = processEList m es
