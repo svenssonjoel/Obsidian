@@ -15,7 +15,7 @@ module Obsidian.CodeGen.Memory
         sharedMem,  
         Address,
         Bytes,
-        mapMemory,
+        --mapMemory,
         -- NEW
         mmIM) 
        where 
@@ -104,79 +104,9 @@ compress = merge . List.sort
 
 merge [] = [] 
 merge [x] = [x]
-merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
-                           else (x,b):merge((y,b2):xs)
-
---      merge [] = [] 
---      merge [x] = [x]
---      merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
---                                              else (x,b):merge((y,b2):xs)
-
-
-
-
-----------------------------------------------------------------------------
--- Map a program onto a memory
-
--- TODO: Make sure this does not add any input or output arrays to the map
-   
-mapMemory :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap) 
-mapMemory = mapMemoryProgram 
-
---TODO: there is a bug in here.
---      Shows itself when trying some more complicated programs.
-mapMemoryProgram :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap)    
-mapMemoryProgram Skip m mm = (m,mm) 
-mapMemoryProgram (Assign name i a) m mm  = (m,mm)
-mapMemoryProgram (AtomicOp _ _ _ _) m mm = (m,mm)
--- Added Jan-21-2013
-mapMemoryProgram (SeqFor nom n f) m mm = mapMemoryProgram (f (variable "X")) m mm
-
---Added Mar-13-2013
-mapMemoryProgram (ForAllThreads n f) m mm = mapMemoryProgram (f (variable "X")) m mm       
---Added Mar-13-2013
-mapMemoryProgram (ForAllBlocks n f) m mm = mapMemoryProgram (f (variable "X")) m mm       
-mapMemoryProgram (ForAll n f) m mm = mapMemoryProgram (f (variable "X")) m mm
--- Added Jan 2013
-mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
-mapMemoryProgram (Synchronize _) m mm = (m,mm)
-mapMemoryProgram (Declare _ _) m mm = (m,mm) 
-mapMemoryProgram ((Allocate name size t alive) `ProgramSeq` prg2) m mm 
-  = mapMemoryProgram prg2 {-m'-} mNew mm'
-  where 
-    (m'',addr) = allocate m size
-    aliveNext  = whatsAliveNext prg2
-    diff       = alive Set.\\ aliveNext
-    diffAddr   = mapM (\x -> Map.lookup x mm') (filter dontMap (Set.toList diff))
-    dontMap name = not ((List.isPrefixOf "input" name) || 
-                        (List.isPrefixOf "output" name))
-    mNew       =  
-      case diffAddr of 
-        (Just addys) -> freeAll m'' (map fst addys)
-        Nothing      -> error $ "atleast one array does not exist in memorymap: " ++ show mm'
-   
-    -- TODO: maybe create Global arrays if Local memory is full.
-   
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (Allocate name size t _) m mm = (m',mm')
-  where 
-    (m'',addr) = allocate m size
-    -- TODO: maybe create Global arrays if Local memory is full.
-    -- t = Pointer$ Local$ typeOf$ getLLArray (head ws) `llIndex`  tid
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (prg1 `ProgramSeq` prg2) m mm = mapMemoryProgram prg2 m' mm'
-  where 
-    (m',mm') = mapMemoryProgram prg1 m mm
-mapMemoryProgram (Output n t) m mm = (m,mm) 
-    
-
-
+merge ((x,b):(y,b2):xs) = if (x+b == y)
+                          then merge ((x,b+b2):xs) 
+                          else (x,b):merge((y,b2):xs)
 
 ---------------------------------------------------------------------------
 -- Memory map the new IM

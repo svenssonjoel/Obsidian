@@ -75,8 +75,8 @@ data Program t a where
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
-            -> Program t ()
+  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
+            -> Program t a
             
  -- SeqWhile :: LoopState a
  --             => Name
@@ -230,9 +230,9 @@ printPrg' i (Output t) =
   let newname = "globalOut" ++ show i
   in (newname,newname ++ " = new Global output;\n",i+1)
 printPrg' i (SeqFor n f) =
-  let ((),prg2,i') = printPrg' i (f (variable "i"))
+  let (a,prg2,i') = printPrg' i (f (variable "i"))
       
-  in ( (),  
+  in ( a,  
        "for (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
