@@ -714,6 +714,7 @@ instance ExpToCExp Word64 where
 expToCExpGeneral :: ExpToCExp a  => Exp a -> CExpr
 expToCExpGeneral WarpSize      = cWarpSize 
 expToCExpGeneral (BlockIdx d)  = cBlockIdx d
+expToCExpGeneral (BlockDim d)  = cBlockDim d 
 expToCExpGeneral (ThreadIdx d) = cThreadIdx d
 
 expToCExpGeneral e@(Index (name,[])) = cVar name (typeToCType (typeOf e))
@@ -743,7 +744,8 @@ expToCExpGeneral (UnOp ASinH e)      = cFuncExpr "asinh" [expToCExp e] (typeToCT
 expToCExpGeneral (UnOp ACosH e)      = cFuncExpr "acosh" [expToCExp e] (typeToCType (typeOf e))
 expToCExpGeneral (UnOp ATanH e)      = cFuncExpr "atanh" [expToCExp e] (typeToCType (typeOf e))
  
-expToCExpGeneral e@(UnOp  op e1)     = cUnOp  (unOpToCUnOp op) (expToCExp e1) (typeToCType (typeOf e)) 
+expToCExpGeneral e@(UnOp op e1)     = cUnOp  (unOpToCUnOp op) (expToCExp e1) (typeToCType (typeOf e))
+ 
 
 typeToCType Bool = CInt 
 typeToCType Int  = CInt

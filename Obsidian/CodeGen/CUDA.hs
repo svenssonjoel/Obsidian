@@ -183,6 +183,9 @@ imToSPMDC nt im = concatMap (process nt) im
     process nt (SForAllBlocks n im,_) =
       -- TODO: there should be "number of blocks"-related conditionals here (possibly) 
       imToSPMDC nt im
+    -- This one is even more tricky
+    process nt (SForAllThreads n im,_) =
+      imToSPMDC nt im 
     process nt (SAllocate name size t,_) = []
     process nt (SDeclare name t,_) =
       [cDecl (typeToCType t) name]

@@ -305,7 +305,16 @@ inputF :: Pull EWord32 EWord32
 inputF = namedPull "apa" (variable "X") 
 
 
+-- reverseglobal 
+revG :: Pull EWord32 a -> Pull EWord32 a
+revG arr = mkPullArray n $ \ix -> arr ! (sizeConv n - 1 - ix)
+ where
+   n = len arr
 
+testRev :: Scalar a=>  Pull EWord32 (Exp a) -> GProgram () 
+testRev = forceG . push Grid . revG
+
+   
 {- 
 ---------------------------------------------------------------------------
 -- Small experiments 

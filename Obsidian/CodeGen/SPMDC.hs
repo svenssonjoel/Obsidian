@@ -264,39 +264,47 @@ ppSPMDCList ppc xs = sequence_ (map (ppSPMDC ppc) xs)
 
 
 ppSPMDC :: PPConfig -> SPMDC -> PP () 
-ppSPMDC ppc (CAssign e [] expr) = ppCExpr ppc e >> 
-                                  line " = " >> 
-                                  ppCExpr ppc expr >> 
-                                  cTermLn
-ppSPMDC ppc (CAssign e exprs expr) = ppCExpr ppc e >> 
-                                     ppCommaSepList (ppCExpr ppc) "[" "]" exprs >> 
-                                     line " = " >> 
-                                     ppCExpr ppc expr >> 
-                                     cTermLn 
---ppSPMDC ppc (CDecl t n) = ppCType ppc t >> space >> line n >> cTermLn
+ppSPMDC ppc (CAssign e [] expr) =
+  ppCExpr ppc e >> 
+  line " = " >> 
+  ppCExpr ppc expr >> 
+  cTermLn
+ppSPMDC ppc (CAssign e exprs expr) =
+  ppCExpr ppc e >> 
+  ppCommaSepList (ppCExpr ppc) "[" "]" exprs >> 
+  line " = " >> 
+  ppCExpr ppc expr >> 
+  cTermLn 
 ppSPMDC ppc (CDecl t n) = ppCTypedName ppc t n  >> cTermLn
---ppSPMDC ppc (CDeclAssign t n e) = ppCType ppc t >> space >> line n >> line " = " >> ppCExpr ppc e >> cTermLn
-ppSPMDC ppc (CDeclAssign t n e) = ppCTypedName ppc t n >> line " = " >> ppCExpr ppc e >> cTermLn
-ppSPMDC ppc (CFunc nom args) = line nom >> ppCommaSepList (ppCExpr ppc) "(" ")" args >> cTermLn
+ppSPMDC ppc (CDeclAssign t n e) =
+  ppCTypedName ppc t n >>
+  line " = " >>
+  ppCExpr ppc e >> cTermLn
+ppSPMDC ppc (CFunc nom args) =
+  line nom >>
+  ppCommaSepList (ppCExpr ppc) "(" ")" args >> cTermLn
 ppSPMDC ppc  CSync = line (ppSyncLine ppc) >> cTermLn 
 ppSPMDC ppc (CIf e [] []) = return ()
-ppSPMDC ppc (CIf e xs []) = line "if " >> 
-                            wrap "(" ")" (ppCExpr ppc e) >> 
-                            begin >> indent >> newline  >> 
-                            ppSPMDCList ppc xs >>  unindent >> end
-ppSPMDC ppc (CIf e xs ys) = line "if " >> 
-                            wrap "(" ")" (ppCExpr ppc e) >> 
-                            begin >> indent >> newline >> 
-                            ppSPMDCList ppc xs >>  unindent >> end >> 
-                            line "else " >> begin >> indent >> newline >> 
-                            ppSPMDCList ppc ys >>  unindent >> end
+ppSPMDC ppc (CIf e xs []) =
+  line "if " >> 
+  wrap "(" ")" (ppCExpr ppc e) >> 
+  begin >> indent >> newline  >> 
+  ppSPMDCList ppc xs >>  unindent >> end
+ppSPMDC ppc (CIf e xs ys) =
+  line "if " >> 
+  wrap "(" ")" (ppCExpr ppc e) >> 
+  begin >> indent >> newline >> 
+  ppSPMDCList ppc xs >>  unindent >> end >> 
+  line "else " >> begin >> indent >> newline >> 
+  ppSPMDCList ppc ys >>  unindent >> end
 -- TODO: Clean up here
-ppSPMDC ppc (CFor name e s) = line "for " >>
-                              wrap "(" ")" (line ("int " ++ name ++ " = 0;") >>
-                                            line (name ++ " < ") >> (ppCExpr ppc e) >>
-                                            line (";") >> line "name ++") >>
-                              begin >> indent >> newline >> 
-                              ppSPMDCList ppc s >> unindent >> end
+ppSPMDC ppc (CFor name e s) =
+  line "for " >>
+  wrap "(" ")" (line ("int " ++ name ++ " = 0;") >>
+                line (name ++ " < ") >> (ppCExpr ppc e) >>
+                line (";") >> line (name ++ "++")) >>
+  begin >> indent >> newline >> 
+  ppSPMDCList ppc s >> unindent >> end
                             
 ----------------------------------------------------------------------------
 --

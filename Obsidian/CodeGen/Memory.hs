@@ -49,8 +49,6 @@ data Memory = Memory {freeList  :: [(Address,Bytes)] ,
               
 -- 48 kilobytes of smem              
 sharedMem = Memory [(0,49152)] [] 0
--- LARGER SHARED MEM
--- sharedMem = Memory [(0,2^32-1)] [] 0
 
 
 updateMax :: Memory -> Memory 
@@ -58,6 +56,7 @@ updateMax mem = let m = maximum [a+b|(a,b) <- allocated mem]
                     m' = max m (size mem)
                 in mem {size = m'}
 
+-- This one needs to check that shared memory is not full.
 allocate :: Memory -> Bytes -> (Memory,Address)
 allocate m b = 
   let adress = filter (\(x,y) -> y >= b) (freeList m) -- get a list of candidates

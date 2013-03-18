@@ -109,7 +109,7 @@ force arr = do
 
 
 
--- Experimental forceG 
+-- Experimental forceG  (Generalize!) 
 forceG :: forall a. Scalar a
           => Push Grid (Exp Word32) (Exp a)
           -> GProgram () -- Really to something else (named output ?)
