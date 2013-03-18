@@ -10,12 +10,14 @@ import Obsidian.CodeGen.PP
 import Data.Word
 import Data.Int
 
-import qualified Data.List as List
-import qualified Data.Map as Map
+import qualified Data.List as L
+import qualified Data.Map as M
 
 import Control.Monad.State
 
 import Data.Maybe
+
+-- TODO: Add Atomic ops 
 
 ---------------------------------------------------------------------------
 -- A C LIKE AST (SPMDC - Single Program Multiple Data C)  
@@ -69,7 +71,19 @@ data CExprP e  = CVar Name CType
                | CFuncExpr Name [e] CType  -- min, max, sin, cos 
                | CCast e CType             -- cast expr to type 
                deriving (Eq,Ord,Show)
-                        
+ctypeOfP (CVar _ t) = t
+ctypeOfP (CBlockIdx d) = CWord32
+ctypeOfP (CThreadIdx d) = CWord32
+ctypeOfP (CBlockDim d) = CWord32
+ctypeOfP (CGridDim d) = CWord32
+ctypeOfP (CLiteral _ t) = t
+ctypeOfP (CIndex _ t) = t
+ctypeOfP (CCond  _ _ _ t) = t
+ctypeOfP (CBinOp _ _ _ t) = t
+ctypeOfP (CUnOp _ _ t) = t
+ctypeOfP (CFuncExpr _ _ t) = t
+ctypeOfP (CCast _ t) = t 
+
 data CBinOp = CAdd | CSub | CMul | CDiv | CMod  
             | CEq | CNotEq | CLt | CLEq | CGt | CGEq 
             | CAnd | COr
@@ -113,6 +127,8 @@ data CKernel = CKernel CQualifyer CType Name [(CType,Name)] [SPMDC]
 -- CExpr 
 newtype CExpr = CExpr (CExprP CExpr)
              deriving (Eq,Ord,Show)
+
+ctypeOf (CExpr e) = ctypeOfP e 
                       
 ----------------------------------------------------------------------------                      
 -- DAGs
@@ -252,7 +268,7 @@ ppUnOp CWord32ToInt32 = line$ "(int32_t)"
 ---------------------------------------------------------------------------
 ppCommaSepList ppElt s e xs = 
   line s >>  
-  sequence_ (List.intersperse (line ",") (commaSepList' xs)) >> line e
+  sequence_ (L.intersperse (line ",") (commaSepList' xs)) >> line e
   where 
     commaSepList' [] = [] 
     commaSepList' (x:xs) = ppElt x : commaSepList' xs
@@ -375,3 +391,142 @@ ppCExpr ppc (CExpr (CCast e t)) =
 --       The first discovers expressions
 --         The in-between create small SPMDC code that declares variables. 
 --       The second replaces some of them by a variable
+--
+
+-- Assign with all expressions an integer 
+type ExpMap = M.Map CExpr (Int,Int) 
+
+insert e =
+  do
+    (i,m) <- get
+    case M.lookup e m of
+      (Just (id,count)) ->
+        do
+          let m' = M.insert e (id,count+1) m
+          put (i,m')
+          
+      Nothing           ->
+        do
+          let m' = M.insert e (i,1) m
+          put (i+1,m')
+          
+collectExps :: [SPMDC] -> State (Int,ExpMap) () 
+collectExps sp = mapM_ process sp
+  where
+    process (CAssign _ ixs e) =
+      do
+        mapM_ processE ixs 
+        processE e
+    process (CDeclAssign _ _ e) = processE e
+    process (CFunc _ es) = mapM_ processE es
+    process (CFor  _ e sp) =
+      do 
+        processE e
+        collectExps sp
+    process (CIf bexp sp1 sp2) =
+      do
+        processE bexp
+        collectExps sp1
+        collectExps sp2 
+    process a = return () 
+
+
+    processE (CExpr (CVar _ _))     = return () -- too simple
+    processE (CExpr (CBlockIdx d))  = return () 
+    processE (CExpr (CThreadIdx d)) = return ()
+    processE (CExpr (CBlockDim d))  = return ()
+    processE (CExpr (CGridDim d))   = return ()
+    processE (CExpr (CLiteral _ _)) = return ()
+    processE e@(CExpr (CIndex (e1,es) _)) =
+      do 
+        -- insert e
+        processE e1
+        mapM_ processE es
+    processE e@(CExpr (CCond e1 e2 e3 _)) =
+      do
+        insert e
+        mapM_ processE [e1,e2,e3]
+    processE e@(CExpr (CBinOp _ e1 e2 _)) =
+      do
+        insert e
+        processE e1
+        processE e2
+    processE e@(CExpr (CUnOp _ e1 _)) =
+      do
+        insert e
+        processE e1
+    processE e@(CExpr (CFuncExpr _ es _)) =
+      do
+        insert e
+        mapM_ processE es
+    processE e@(CExpr (CCast e1 _)) =
+      do
+        -- refine this step. Only insert if e1 is nonsimple
+        insert e
+        processE e1
+    
+    --processE e = do
+    --  insert e
+
+
+-- REMEMBER TO KEEP IT SIMPLE.
+replacePass :: ExpMap -> [SPMDC] -> ([(Int,CExpr)],[SPMDC])
+replacePass _ []     = ([],[])
+replacePass m (x:xs) = let (decls,x') = process m x
+                           (rest, xs') = replacePass m xs
+                         
+                       in  (L.nubBy fstEq (decls ++ rest), x':xs')
+  where
+    fstEq :: (Int,a) -> (Int,a) -> Bool
+    fstEq a b = fst a == fst b
+    
+    process m (CAssign name es e) = (decls,CAssign name es' e')  
+      where
+        (decls1,es') = processEList m es
+        (decls2,e')  = processE m e
+        decls = L.nubBy fstEq (decls1 ++ decls2)
+    process m s = ([],s)    
+
+    processEList m [] = ([],[])
+    processEList m (e:es) =
+      let (decls1,e') = processE m e
+          (decls2,es') = processEList m es
+      in  (L.nubBy fstEq (decls1 ++ decls2),e':es')
+
+
+    processE m e@(CExpr (CIndex (e1,es) t)) =
+      case M.lookup e m of
+        Nothing ->
+          let (d1,es') = processEList m es
+           in (L.nubBy fstEq d1, CExpr (CIndex (e1,es') t))
+           
+        (Just _) -> error "Just in CIndex case"
+    
+    processE m e@(CExpr (CBinOp op e1 e2 t))  =
+      case M.lookup e m of
+        Nothing -> 
+           let (d1,e1') = processE m e1
+               (d2,e2') = processE m e2
+           in (L.nubBy fstEq (d1++d2), CExpr (CBinOp op e1' e2' t))
+             
+        (Just (id,1)) -> 
+           let (d1,e1') = processE m e1
+               (d2,e2') = processE m e2
+           in (L.nubBy fstEq (d1++d2), CExpr (CBinOp op e1' e2' t))
+          
+        (Just (id,n)) -> 
+          ([(id,e)],CExpr (CVar ("t" ++ show id) (ctypeOf e)))
+
+    processE m e =
+      case M.lookup e m of
+        Nothing -> ([],e)
+        (Just (id,1)) -> ([],e)
+        (Just (id,n)) -> ([(id,e)],CExpr (CVar ("t" ++ show id) (ctypeOf e)))
+    
+
+
+
+declsToSPMDC :: [(Int,CExpr)] -> [SPMDC]
+declsToSPMDC decls = map process decls
+  where
+    process (i,e) = CDeclAssign (ctypeOf e) ("t" ++ show i) e 

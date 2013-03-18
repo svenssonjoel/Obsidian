@@ -8,6 +8,7 @@ import Data.List
 import Data.Word 
 import Data.Monoid
 import qualified Data.Map as Map
+import Control.Monad.State
 
 import Obsidian.Array
 import Obsidian.Exp 
@@ -73,9 +74,14 @@ genKernel name kernel a = proto ++ cuda
     spmd = imToSPMDC threadBudget im
     
     
-    body = shared : mmSPMDC mm spmd
+    body' = shared : mmSPMDC mm spmd
 
+    em = snd $ execState (collectExps body') ( 0, Map.empty)
+    (decls,body'') = replacePass em body'
+    spdecls = declsToSPMDC decls 
 
+    body = spdecls ++ body''
+              
     swap (x,y) = (y,x)
     inputs = map ((\(t,n) -> (typeToCType t,n)) . swap) ins
     outputs = map ((\(t,n) -> (typeToCType t,n)) . swap) outs 
