@@ -86,8 +86,8 @@ data Program t a where
   
 
   ForAll :: (Exp Word32) 
-            -> (Exp Word32 -> Program Thread ())
-            -> Program Block () 
+            -> (Exp Word32 -> Program Thread a)
+            -> Program Block a 
 
   {-
      I'm not sure about this constructor.
@@ -98,11 +98,11 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block ()) 
-                  -> Program Grid ()
+  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block a) 
+                  -> Program Grid a
 
-  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
-                   -> Program Grid () 
+  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
+                   -> Program Grid a 
 
   -- Allocate shared memory in each MP
   
@@ -238,9 +238,9 @@ printPrg' i (SeqFor n f) =
        i')
      
 printPrg' i (ForAll n f) =
-  let ((),prg2,i') = printPrg' i (f (variable "i"))
+  let (a,prg2,i') = printPrg' i (f (variable "i"))
       
-  in ( (),  
+  in ( a,  
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
