@@ -2,12 +2,10 @@
 {- Joel Svensson 2012,2013 -} 
 module Obsidian.CodeGen.SPMDC where
 
-
 import Obsidian.Globs
 import Obsidian.DimSpec
 
 import Obsidian.CodeGen.PP
-
 
 import Data.Word
 import Data.Int
@@ -19,18 +17,9 @@ import Control.Monad.State
 
 import Data.Maybe
 
--- A C LIKE AST (SPMDC - Single Program Multiple Data C) 
-{- 
-  TODO: 
-    + Add for loops to SPMDC 
-      - needed for sequential c code generation 
-      - potentially also for computing sequentialy on GPUs 
-        in the future. (by adding a sequential array construct to Obsidian)
-
--} 
-
-----------------------------------------------------------------------------
--- 
+---------------------------------------------------------------------------
+-- A C LIKE AST (SPMDC - Single Program Multiple Data C)  
+--------------------------------------------------------------------------- 
 data Value = IntVal Int         -- allow ? 
            | Int8Val Int8
            | Int16Val Int16
@@ -366,5 +355,15 @@ ppCExpr ppc (CExpr (CCast e t)) =
   line ")"
 
 ---------------------------------------------------------------------------
---
+-- Optimize for complicated indexing expressions
 ---------------------------------------------------------------------------
+
+-- TODO: #1: Discover all expressions that represent an index into an array
+--       #2: Count usages of them
+--       #3: For "Complicated" expressions used more than once
+--           declare a new name for the index and compute it once. (if not data dependent) 
+--
+--       Possible approach is two passes over the SPMDC structure.
+--       The first discovers expressions
+--         The in-between create small SPMDC code that declares variables. 
+--       The second replaces some of them by a variable
