@@ -498,10 +498,26 @@ replacePass m (x:xs) = let (decls,x') = process m x
       case M.lookup e m of
         Nothing ->
           let (d1,es') = processEList m es
-           in (L.nubBy fstEq d1, CExpr (CIndex (e1,es') t))
+          in (L.nubBy fstEq d1, CExpr (CIndex (e1,es') t))
            
         (Just _) -> error "Just in CIndex case"
-    
+
+    processE m e@(CExpr (CCond e1 e2 e3 t)) =
+      case M.lookup e m of
+        Nothing ->
+          let 
+            (d1,e1') = processE m e1
+            (d2,e2') = processE m e2
+            (d3,e3') = processE m e3
+          in (L.nubBy fstEq (d1++d2++d3), CExpr (CCond e1' e2' e3' t))
+        Just (id,1) ->
+          let 
+            (d1,e1') = processE m e1
+            (d2,e2') = processE m e2
+            (d3,e3') = processE m e3
+          in (L.nubBy fstEq (d1++d2++d3), CExpr (CCond e1' e2' e3' t))
+        Just (id,n) -> error "SERIOUS FLAW. FIX THIS"
+        
     processE m e@(CExpr (CBinOp op e1 e2 t))  =
       case M.lookup e m of
         Nothing -> 
