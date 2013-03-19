@@ -719,7 +719,11 @@ expToCExpGeneral (ThreadIdx d) = cThreadIdx d
 
 expToCExpGeneral e@(Index (name,[])) = cVar name (typeToCType (typeOf e))
 expToCExpGeneral e@(Index (name,xs)) = cIndex (cVar name (CPointer (typeToCType (typeOf e))),map expToCExp xs) (typeToCType (typeOf e)) 
-expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e)) 
+expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e))
+
+expToCExpGeneral (UnOp Word32ToInt32 e) = cCast (expToCExp e) CInt32
+expToCExpGeneral (UnOp Int32ToWord32 e) = cCast (expToCExp e) CWord32
+
 expToCExpGeneral e@(BinOp Min e1 e2) = cFuncExpr "min" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
 expToCExpGeneral e@(BinOp Max e1 e2) = cFuncExpr "max" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
 expToCExpGeneral e@(BinOp op e1 e2)  = cBinOp (binOpToCBinOp op) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e)) 
@@ -792,5 +796,3 @@ binOpToCBinOp ShiftR     = CShiftR
 
 unOpToCUnOp   BitwiseNeg = CBitwiseNeg
   
-unOpToCUnOp   Int32ToWord32 = CInt32ToWord32
-unOpToCUnOp   Word32ToInt32 = CWord32ToInt32

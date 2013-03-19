@@ -124,13 +124,16 @@ mmSPMDC' mm (CAssign e1 es e2) =
   cAssign (mmCExpr mm e1) 
           (map (mmCExpr mm) es)    
           (mmCExpr mm e2)
+mmSPMDC' mm (CAtomic op e1 e2 e3) = cAtomic op (mmCExpr mm e1)
+                                               (mmCExpr mm e2)
+                                               (mmCExpr mm e3) 
 mmSPMDC' mm (CFunc name es) = cFunc name (map (mmCExpr mm) es) 
 mmSPMDC' mm CSync           = CSync
 mmSPMDC' mm (CIf   e s1 s2) = cIf (mmCExpr mm e) (mmSPMDC mm s1) (mmSPMDC mm s2)
 mmSPMDC' mm (CFor name e s) = cFor name (mmCExpr mm e) (mmSPMDC mm s)
 mmSPMDC' mm (CDeclAssign t nom e) = cDeclAssign t nom (mmCExpr mm e)
 mmSPMDC' mm a@(CDecl t nom) = a
-mmSPMDC' mm a = error $ show a
+mmSPMDC' mm a = error $ "mmSPMDC': " ++ show a
 ---------------------------------------------------------------------------
 -- Memory map the arrays in an CExpr
 ---------------------------------------------------------------------------
@@ -157,6 +160,7 @@ mmCExpr mm a = a
 ---------------------------------------------------------------------------
 -- New IM to SPCMD
 ---------------------------------------------------------------------------
+atomicOpToCAtomicOp AtomicInc = CAtomicInc
 
 imToSPMDC :: Word32 -> IMList a -> [SPMDC]
 imToSPMDC nt im = concatMap (process nt) im
@@ -164,10 +168,14 @@ imToSPMDC nt im = concatMap (process nt) im
     process nt (SAssign name [] e,_) =
       [cAssign (cVar name (typeToCType (typeOf e))) [] (expToCExp e)]
 
-    process nt (SAssign name [ix] e,_) =
+    process nt (SAssign name [ix] e,_) = 
       [cAssign (cVar name (typeToCType (Pointer (typeOf e)))) [expToCExp ix] (expToCExp e)]
 
-    process nt (SAtomicOp res arr e op,_) = undefined -- SPMDC has no Atomics yet
+    process nt (SAtomicOp res arr e op,_) = 
+      [cAtomic (atomicOpToCAtomicOp op)
+               (cVar res (typeToCType (typeOf e)))
+               (cVar arr (typeToCType (Pointer (typeOf e))))
+               (expToCExp e)]
 
     process nt (SCond bexp im,_) =
       [cIf (expToCExp bexp) (imToSPMDC nt im) []]

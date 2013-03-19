@@ -12,6 +12,7 @@ import Data.Int
 
 import qualified Data.List as L
 import qualified Data.Map as M
+import qualified Data.Set as S 
 
 import Control.Monad.State
 
@@ -71,18 +72,26 @@ data CExprP e  = CVar Name CType
                | CFuncExpr Name [e] CType  -- min, max, sin, cos 
                | CCast e CType             -- cast expr to type 
                deriving (Eq,Ord,Show)
-ctypeOfP (CVar _ t) = t
-ctypeOfP (CBlockIdx d) = CWord32
-ctypeOfP (CThreadIdx d) = CWord32
-ctypeOfP (CBlockDim d) = CWord32
-ctypeOfP (CGridDim d) = CWord32
-ctypeOfP (CLiteral _ t) = t
-ctypeOfP (CIndex _ t) = t
-ctypeOfP (CCond  _ _ _ t) = t
-ctypeOfP (CBinOp _ _ _ t) = t
-ctypeOfP (CUnOp _ _ t) = t
-ctypeOfP (CFuncExpr _ _ t) = t
-ctypeOfP (CCast _ t) = t 
+cTypeOfP (CVar _ t) = t
+cTypeOfP (CBlockIdx d) = CWord32
+cTypeOfP (CThreadIdx d) = CWord32
+cTypeOfP (CBlockDim d) = CWord32
+cTypeOfP (CGridDim d) = CWord32
+cTypeOfP (CLiteral _ t) = t
+cTypeOfP (CIndex _ t) = t
+cTypeOfP (CCond  _ _ _ t) = t
+cTypeOfP (CBinOp _ _ _ t) = t
+cTypeOfP (CUnOp _ _ t) = t
+cTypeOfP (CFuncExpr _ _ t) = t
+cTypeOfP (CCast _ t) = t
+
+cSizeOf (CExpr (CIndex (e,es) _))  = 1 + max (cSizeOf e) (maximum (map cSizeOf es))
+cSizeOf (CExpr (CCond e1 e2 e3 _)) = 1 + maximum [cSizeOf e1, cSizeOf e2, cSizeOf e3] 
+cSizeOf (CExpr (CFuncExpr _ es _)) = 1 + maximum (map cSizeOf es) 
+cSizeOf (CExpr (CUnOp  _ e _)) = 1 + cSizeOf e 
+cSizeOf (CExpr (CBinOp _ e1 e2 _ )) = 1+ cSizeOf e1 + cSizeOf e2 
+cSizeOf e = 0
+
 
 data CBinOp = CAdd | CSub | CMul | CDiv | CMod  
             | CEq | CNotEq | CLt | CLEq | CGt | CGEq 
@@ -93,18 +102,16 @@ data CBinOp = CAdd | CSub | CMul | CDiv | CMod
             deriving (Eq,Ord,Show) 
                      
 data CUnOp = CBitwiseNeg
-           | CInt32ToWord32
-           | CWord32ToInt32
            deriving (Eq,Ord,Show)
 
-{-
-   SPMDC and CKernel may turn more complicated if we 
-   add features. 
-    - loops is an example.. 
-       + Already in normal C code generation this will be an issue. 
-       
--} 
-data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign 
+data CAtomicOp = CAtomicAdd | CAtomicInc
+               deriving (Eq, Ord, Show) 
+
+---------------------------------------------------------------------------
+-- SPMDC
+---------------------------------------------------------------------------
+data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign
+           | CAtomic CAtomicOp CExpr CExpr CExpr 
            | CDecl CType Name             -- Declare but no assign
            | CDeclAssign CType Name CExpr -- declare variable and assign a value 
            | CFunc   Name  [CExpr]                    
@@ -128,7 +135,7 @@ data CKernel = CKernel CQualifyer CType Name [(CType,Name)] [SPMDC]
 newtype CExpr = CExpr (CExprP CExpr)
              deriving (Eq,Ord,Show)
 
-ctypeOf (CExpr e) = ctypeOfP e 
+cTypeOf (CExpr e) = cTypeOfP e 
                       
 ----------------------------------------------------------------------------                      
 -- DAGs
@@ -158,7 +165,8 @@ cBinOp     = cexpr4 CBinOp
 cUnOp      = cexpr3 CUnOp 
 cCast      = cexpr2 CCast 
 
-cAssign     = CAssign 
+cAssign     = CAssign
+cAtomic     = CAtomic 
 cFunc       = CFunc  
 cDecl       = CDecl
 cSync       = CSync
@@ -260,8 +268,8 @@ ppBinOp CShiftR     = line$ ">>"
                      
 ppUnOp CBitwiseNeg = line$ "~"       
 -- May be incorrect.
-ppUnOp CInt32ToWord32 = line$ "(uint32_t)"
-ppUnOp CWord32ToInt32 = line$ "(int32_t)" 
+--ppUnOp CInt32ToWord32 = line$ "(uint32_t)"
+--ppUnOp CWord32ToInt32 = line$ "(int32_t)" 
 
 ---------------------------------------------------------------------------
 --
@@ -290,7 +298,9 @@ ppSPMDC ppc (CAssign e exprs expr) =
   ppCommaSepList (ppCExpr ppc) "[" "]" exprs >> 
   line " = " >> 
   ppCExpr ppc expr >> 
-  cTermLn 
+  cTermLn
+ppSPMDC ppc (CAtomic op res arr e) =
+  line "HELLO WORLD"
 ppSPMDC ppc (CDecl t n) = ppCTypedName ppc t n  >> cTermLn
 ppSPMDC ppc (CDeclAssign t n e) =
   ppCTypedName ppc t n >>
@@ -396,7 +406,9 @@ ppCExpr ppc (CExpr (CCast e t)) =
 -- Assign with all expressions an integer 
 type ExpMap = M.Map CExpr (Int,Int) 
 
-insert e =
+-- Insert, but only if number of occurances and size is right! 
+insert :: CExpr -> State (Int,ExpMap) () 
+insert e | cSizeOf e >= 2 =
   do
     (i,m) <- get
     case M.lookup e m of
@@ -404,14 +416,28 @@ insert e =
         do
           let m' = M.insert e (id,count+1) m
           put (i,m')
-          
       Nothing           ->
         do
           let m' = M.insert e (i,1) m
           put (i+1,m')
+insert e = return () 
+
+-- Decide if an expression is safe or not to move to
+-- function prelude.
+-- Simply put it checks for any data dependency.
+-- (This code is unused! ) 
+safeExp :: S.Set Name -> CExpr -> Bool
+safeExp s (CExpr (CVar name _)) = S.member name s
+safeExp s (CExpr (CIndex (e,es) _)) = safeExp s e && all (safeExp s) es
+safeExp s (CExpr (CCond e1 e2 e3 _)) = safeExp s e1 && safeExp s e2 && safeExp s e3
+safeExp s (CExpr (CBinOp _ e1 e2 _)) = safeExp s e2 && safeExp s e2
+safeExp s (CExpr (CUnOp _ e _)) = safeExp s e
+safeExp s (CExpr (CFuncExpr _ es _)) = all (safeExp s) es
+safeExp s (CExpr (CCast e _)) = safeExp s e 
+safeExp _ _ = True 
           
 collectExps :: [SPMDC] -> State (Int,ExpMap) () 
-collectExps sp = mapM_ process sp
+collectExps sp =  mapM_ process sp
   where
     process (CAssign _ ixs e) =
       do
@@ -533,13 +559,17 @@ replacePass m (x:xs) = let (decls,x') = process m x
            in (L.nubBy fstEq (d1++d2), CExpr (CBinOp op e1' e2' t))
           
         (Just (id,n)) -> 
-          ([(id,e)],CExpr (CVar ("t" ++ show id) (ctypeOf e)))
+          ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
+          
+    processE m e@(CExpr (CCast e1 t)) = (id,CExpr (CCast e1' t))
+      where
+        (id,e1') = processE m e1 
 
     processE m e =
       case M.lookup e m of
         Nothing -> ([],e)
         (Just (id,1)) -> ([],e)
-        (Just (id,n)) -> ([(id,e)],CExpr (CVar ("t" ++ show id) (ctypeOf e)))
+        (Just (id,n)) -> ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
     
 
 
@@ -547,4 +577,4 @@ replacePass m (x:xs) = let (decls,x') = process m x
 declsToSPMDC :: [(Int,CExpr)] -> [SPMDC]
 declsToSPMDC decls = map process decls
   where
-    process (i,e) = CDeclAssign (ctypeOf e) ("t" ++ show i) e 
+    process (i,e) = CDeclAssign (cTypeOf e) ("t" ++ show i) e 
