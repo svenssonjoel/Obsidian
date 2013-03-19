@@ -300,7 +300,12 @@ ppSPMDC ppc (CAssign e exprs expr) =
   ppCExpr ppc expr >> 
   cTermLn
 ppSPMDC ppc (CAtomic op res arr e) =
-  line "HELLO WORLD"
+  --ppCExpr ppc res >>
+  --line " = " >>
+  ppAtomicOp ppc op >>
+  wrap "(" ")" (ppCExpr ppc arr >> line ", " >> ppCExpr ppc e ) >>
+  cTermLn 
+
 ppSPMDC ppc (CDecl t n) = ppCTypedName ppc t n  >> cTermLn
 ppSPMDC ppc (CDeclAssign t n e) =
   ppCTypedName ppc t n >>
@@ -331,7 +336,11 @@ ppSPMDC ppc (CFor name e s) =
                 line (";") >> line (name ++ "++")) >>
   begin >> indent >> newline >> 
   ppSPMDCList ppc s >> unindent >> end
-                            
+
+
+ppAtomicOp :: PPConfig -> CAtomicOp -> PP ()
+ppAtomicOp ppc CAtomicInc = line "atomicInc" 
+
 ----------------------------------------------------------------------------
 --
 ppCExpr :: PPConfig -> CExpr -> PP ()  
