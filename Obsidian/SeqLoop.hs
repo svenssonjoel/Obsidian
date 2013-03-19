@@ -11,7 +11,8 @@ module Obsidian.SeqLoop where
 
 import Obsidian.Program
 import Obsidian.Exp
-import Obsidian.Array 
+import Obsidian.Array
+import Obsidian.Memory
 
 -- TODO: Add suitable allocs
 -- TODO: Rename module to something better
@@ -24,44 +25,45 @@ import Obsidian.Array
 --       (This is more general than this module, belongs somewhere else!) 
 
 ---------------------------------------------------------------------------
--- Hacking, No real plan (support more types) 
+-- seqFold (actually reduce) 
 ---------------------------------------------------------------------------
 
-seqFold :: forall l a. (ASize l, Scalar a)
-           => (Exp a -> Exp a -> Exp a)
-           -> (Exp a)
-           -> Pull l (Exp a)
-           -> Program Thread (Exp a)
+seqFold :: forall l a. (ASize l, MemoryOps a)
+           => (a -> a -> a)
+           -> a
+           -> Pull l a
+           -> Program Thread a
 seqFold op init arr = do
-  nom <- allocateLS init
-  Declare nom $ typeOf (undefined :: (Exp a))
-  Assign nom [] init  
+  ns  <- names (undefined :: a) 
+  allocateScalar ns (undefined :: a)
+
+  assignScalar ns init  
+  -- Assign nom [] init  
   SeqFor n $ (\ ix ->
-      Assign nom [] (variable nom `op`  (arr ! ix)))
+      assignScalar ns (readFrom ns `op`  (arr ! ix))) 
 
     
-  return $ variable nom
+  return $ readFrom ns
   where 
     n = sizeConv$ len arr
 
 
 ---------------------------------------------------------------------------
--- Hacking, No real plan
+-- Sequential scan
 ---------------------------------------------------------------------------
 
-seqScan :: forall l a. (ASize l, Scalar a)
-           => (Exp a -> Exp a -> Exp a)
-           -> Pull l (Exp a)
-           -> Push Thread l (Exp a)
+seqScan :: forall l a. (ASize l, MemoryOps a)
+           => (a -> a -> a)
+           -> Pull l a
+           -> Push Thread l a
 seqScan op (Pull n ixf)  =
   Push n $ \wf -> do
-    i <- Identifier  -- allocateLS (undefined :: a)
-    let nom = "v" ++ show i
-    Declare nom $ typeOf (undefined :: (Exp a))
-    Assign nom [] (ixf 0)
-    wf (variable nom) 0 
+    ns <- names (undefined :: a) 
+    allocateScalar ns (undefined :: a)
+    assignScalar ns (ixf 0)
+    wf (readFrom ns) 0 
     SeqFor (sizeConv (n-1)) $ \ix -> do
-      wf (variable nom) ix                  
-      Assign nom [] $ variable nom `op` (ixf (ix +1))
+      wf (readFrom ns) ix                  
+      assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
                  
 

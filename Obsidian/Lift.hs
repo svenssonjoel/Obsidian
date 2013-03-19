@@ -43,7 +43,7 @@ instance MemoryOps a => LiftB a where
               do
                 elts <- txf tix
                 wf elts tix 
-      p (assign snames)
+      p (assignArray snames)
       return $ pullFrom snames ts
       
 
@@ -66,7 +66,7 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
       forAllBlocks (sizeConv bs) $ \bix -> do 
         arr <- bxf bix
         let (Push _ p) = push Block arr
-        p (assign snames) 
+        p (assignArray snames) 
 
       let pully = Pull bs $ \bix -> pullFrom snames (len tmp) 
 
@@ -78,8 +78,5 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
               wf ((pully ! bix) ! tix) (bix * (sizeConv (len tmp)) + tix)
                     
           
--- Each block computes a value
---instance  StoreOps a => LiftB a where
---  liftB = error "liftB: is not implemented for this type" 
 
     

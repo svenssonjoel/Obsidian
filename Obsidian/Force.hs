@@ -45,7 +45,7 @@ write arr = do
 
   let (Push m p) = push Block arr
 
-  p (assign snames) 
+  p (assignArray snames) 
       
   return $ pullFrom snames n
 
