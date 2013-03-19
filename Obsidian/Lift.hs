@@ -9,34 +9,35 @@ module Obsidian.Lift where
 import Obsidian.Program
 import Obsidian.Exp 
 import Obsidian.Array
-import Obsidian.Force 
+import Obsidian.Force
+import Obsidian.Memory
 
 import Data.Word
 -- Start sketching on lift functions.
 -- TODO: Think about how to deal with Push arrays
 
 
-class LiftT a where
-  liftT :: Pull Word32 (TProgram a) -> BProgram (Pull Word32 a)   
+class LiftB a where
+  liftB :: Pull Word32 (TProgram a) -> BProgram (Pull Word32 a)   
   
 
-class LiftB a where
+class LiftG a where
   type Elt a
-  liftB :: ASize l => Pull l (BProgram a) -> GProgram (Push Grid l (Elt a)) 
+  liftG :: ASize l => Pull l (BProgram a) -> GProgram (Push Grid l (Elt a)) 
 
 
 ---------------------------------------------------------------------------
--- instances LiftT 
+-- instances LiftB 
 ---------------------------------------------------------------------------  
 
-instance Pushable p => LiftT (p Word32 a) where
-  liftT = error "liftT: not implemented for this type" 
+instance Pushable p => LiftB (p Word32 a) where
+  liftB = error "liftB: not implemented for this type" 
 
-instance StoreOps a => LiftT a where
-  liftT arr@(Pull ts txf) =
+instance MemoryOps a => LiftB a where
+  liftB arr@(Pull ts txf) =
     do
       snames <- names (undefined :: a)
-      allocate snames (undefined :: a) ts
+      allocateArray snames (undefined :: a) ts
       let p wf = do
             forAll (fromIntegral ts) $ \tix -> 
               do
@@ -53,14 +54,14 @@ instance StoreOps a => LiftT a where
 ---------------------------------------------------------------------------  
 
 -- Each block computes an array
-instance StoreOps a => LiftB (Pull Word32 a) where
+instance MemoryOps a => LiftG (Pull Word32 a) where
   type Elt (Pull Word32 a) = a 
-  liftB (Pull bs bxf) =
+  liftG (Pull bs bxf) =
     do
       let tmp = fst $ runPrg 0 (bxf 0) -- get info about result  
 
       snames <- names (undefined :: a)
-      allocate snames (undefined :: a) (len tmp)
+      allocateArray snames (undefined :: a) (len tmp)
       
       forAllBlocks (sizeConv bs) $ \bix -> do 
         arr <- bxf bix

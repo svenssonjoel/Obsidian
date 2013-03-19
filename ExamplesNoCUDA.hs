@@ -15,7 +15,8 @@ import Obsidian.Force
 import Obsidian.CodeGen.InOut
 import Obsidian.Atomic
 import Obsidian.SeqLoop
-import Obsidian.Lift 
+import Obsidian.Lift
+import Obsidian.Memory
 
 import Data.Word
 import Data.Int
@@ -58,10 +59,10 @@ splitUpS n (Pull m ixf) = Pull (m `div` n) $
 
 
 test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
-test1 input = computeBlocks $ fmap mapFusion (splitUp 256 input) 
+test1 input = liftG  $ fmap mapFusion (splitUp 256 input) 
 
-test2 :: Pull (Exp Word32) EInt -> GProgram () -- Push Grid (Exp Word32) EInt
-test2 input = forceG $ computeBlocks' $ fmap mapFusion (splitUp 256 input) 
+--test2 :: Pull (Exp Word32) EInt -> GProgram () -- Push Grid (Exp Word32) EInt
+--test2 input = forceG $ computeBlocks' $ fmap mapFusion (splitUp 256 input) 
 
 input1 :: Pull (Exp Word32) EInt 
 input1 = namedGlobal "apa" (variable "X")
@@ -70,55 +71,55 @@ input1 = namedGlobal "apa" (variable "X")
 ---------------------------------------------------------------------------
 -- WORK IN PROGRESS
 --------------------------------------------------------------------------- 
-computeBlocks :: forall a . StoreOps a
-                 => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
-                 -- GProgram enables sharing...
-                 -- If that was not needed just go to Push. 
-                 GProgram (Push Grid (Exp Word32) a) 
-computeBlocks (Pull bs bxf) =
-  do
-    let arr = fst $ runPrg 0 $ bxf 0
-        n   = len arr
+-- computeBlocks :: forall a . StoreOps a
+--                  => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+--                  -- GProgram enables sharing...
+--                  -- If that was not needed just go to Push. 
+--                  GProgram (Push Grid (Exp Word32) a) 
+-- computeBlocks (Pull bs bxf) =
+--   do
+--     let arr = fst $ runPrg 0 $ bxf 0
+--         n   = len arr
 
-    sm <- names (undefined :: a) 
-    allocate sm (undefined :: a) n
+--     sm <- names (undefined :: a) 
+--     allocate sm (undefined :: a) n
                 
     
-    ForAllBlocks bs $ \bix ->
-      do
-        arr <- bxf bix -- Perform the local computation
-        let (Push n p) = push Block arr
+--     ForAllBlocks bs $ \bix ->
+--       do
+--         arr <- bxf bix -- Perform the local computation
+--         let (Push n p) = push Block arr
             
-        -- Extra - possibly unnecessary - store
+--         -- Extra - possibly unnecessary - store
 
-        p (assign sm) 
+--         p (assign sm) 
 
-    -- Create a slightly special pull array     
-    let pully = Pull (bs * sizeConv n)
-                   $ \gix -> (pullFrom sm n) ! (gix `mod` fromIntegral n) 
-    return $ push Grid pully 
+--     -- Create a slightly special pull array     
+--     let pully = Pull (bs * sizeConv n)
+--                    $ \gix -> (pullFrom sm n) ! (gix `mod` fromIntegral n) 
+--     return $ push Grid pully 
 
 
-computeBlocks' :: forall a . StoreOps a
-                   => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
-                   Push Grid (Exp Word32) a
-computeBlocks' (Pull bs bxf) =
-  Push (bs * (fromIntegral n)) $ \ wf -> 
-    ForAllBlocks bs $ \bix ->
-      do
-        arr <- bxf bix 
-        ForAll (fromIntegral n) $ \tix ->
-          wf (arr ! tix) (bix * fromIntegral (len arr) + tix) 
+-- computeBlocks' :: forall a . StoreOps a
+--                    => Pull (Exp Word32) (BProgram (Pull Word32 a)) ->
+--                    Push Grid (Exp Word32) a
+-- computeBlocks' (Pull bs bxf) =
+--   Push (bs * (fromIntegral n)) $ \ wf -> 
+--     ForAllBlocks bs $ \bix ->
+--       do
+--         arr <- bxf bix 
+--         ForAll (fromIntegral n) $ \tix ->
+--           wf (arr ! tix) (bix * fromIntegral (len arr) + tix) 
       
-  where
-    arr = fst $ runPrg 0 $ bxf 0
-    n  = len arr
+--   where
+--     arr = fst $ runPrg 0 $ bxf 0
+--     n  = len arr
 
 
 ---------------------------------------------------------------------------
 -- Scans 
 ---------------------------------------------------------------------------
-sklansky :: (Choice a, StoreOps a)
+sklansky :: (Choice a, MemoryOps a)
             => Int
             -> (a -> a -> a)
             -> Pull Word32 a
@@ -143,7 +144,7 @@ fan op arr =  a1 `conc`  fmap (op c) a2
 --             -> Pull (Exp Word32) a
 --            -> Push Grid (Exp Word32) a
 sklanskyG logbs op =
-  forceG . computeBlocks' . fmap (sklansky logbs op) . splitUp (2^logbs) 
+  join . liftM forceG . liftG . fmap (sklansky logbs op) . splitUp (2^logbs) 
 
 getSklansky =
   quickPrint (sklanskyG 8 (+))
@@ -152,7 +153,7 @@ getSklansky =
 ---------------------------------------------------------------------------
 -- kStone (TEST THAT THIS IS REALLY A SCAN!) 
 ---------------------------------------------------------------------------
-kStone :: (Choice a, StoreOps a) 
+kStone :: (Choice a, MemoryOps a) 
           => Int -> (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
 kStone 0 op arr = return arr
 kStone n op arr =
@@ -164,7 +165,7 @@ kStone n op arr =
     force (r1' `conc` r2) 
 
 -- Push array version 
-kStoneP :: (Choice a, StoreOps a) 
+kStoneP :: (Choice a, MemoryOps a) 
           => Int -> (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
 kStoneP 0 op arr = return arr
 kStoneP n op arr =
@@ -178,9 +179,9 @@ kStoneP n op arr =
 
 
 kStoneG logbs op =
-  forceG . computeBlocks' . fmap (kStone logbs op) . splitUp (2^logbs)
+  join . liftM forceG . liftG . fmap (kStone logbs op) . splitUp (2^logbs)
 kStonePG logbs op =
-  forceG . computeBlocks' . fmap (kStoneP logbs op) . splitUp (2^logbs) 
+  join . liftM forceG . liftG . fmap (kStoneP logbs op) . splitUp (2^logbs) 
 
 getKStone =
   quickPrint (kStoneG 8 (+))
@@ -194,14 +195,14 @@ getKStoneP =
 -- Brent Kung
 --------------------------------------------------------------------------- 
 
-bKung :: (Choice a, StoreOps a) 
+bKung :: (Choice a, MemoryOps a) 
          => (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
 bKung op arr | len arr == 1 = return arr
 bKung op arr = undefined 
 
 
 bKungG op =
-  forceG . computeBlocks' . fmap (bKung op) . splitUp 256
+  join . liftM forceG . liftG . fmap (bKung op) . splitUp 256
 
 getBKung =
   quickPrint (bKungG (+))
@@ -271,7 +272,7 @@ testFold :: Pull Word32 EWord32 -> Pull Word32 (Program Thread EWord32)
 testFold arr = fmap (seqFold (+) 0) (splitUpS (32 :: Word32)  arr)
 
 testFold2 :: Pull Word32 EWord32 -> BProgram (Pull Word32 EWord32)
-testFold2 = liftT . testFold
+testFold2 = liftB . testFold
 
 -- testFold3 :: Pull EWord32 EWord32 -> Pull EWord32 (BProgram (Pull Word32 EWord32))
 testFold3 :: Pull EWord32 EWord32
@@ -281,7 +282,7 @@ testFold3 arr =  fmap (testFold2) (splitUp 256 arr)
 --testFold4 :: Pull EWord32 EWord32
 --             -> GProgram (Push Grid EWord32 EWord32)
 -- FIX THIS STRANGENESS
-testFold4 = join . liftM forceG . liftB . testFold3 
+testFold4 = join . liftM forceG . liftG . testFold3 
 
 flatten :: ASize l => Pull EWord32 (Pull l a) -> Pull EWord32 a
 flatten pp =
