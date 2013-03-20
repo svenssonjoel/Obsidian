@@ -16,13 +16,6 @@ import Obsidian.Memory
 
 -- TODO: Add suitable allocs
 -- TODO: Rename module to something better
--- TODO: Generalise all operations somewhat.
---       (similar to the StoreOps class in Force)
--- TODO: Sketch on a Lift class
---       lift local to global
---       lift thread to block
---       etc!
---       (This is more general than this module, belongs somewhere else!) 
 
 ---------------------------------------------------------------------------
 -- seqFold (actually reduce) 
@@ -66,4 +59,39 @@ seqScan op (Pull n ixf)  =
       wf (readFrom ns) ix                  
       assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
                  
+---------------------------------------------------------------------------
+-- Sequential Map (here for uniformity) 
+---------------------------------------------------------------------------
 
+seqMap :: forall l a b. ASize l
+          => (a -> b)
+          -> Pull l a
+          -> Push Thread l b
+seqMap f arr =
+  Push (len arr) $ \wf -> do
+    SeqFor (sizeConv (len arr)) $ \ix ->
+      wf (f (arr ! ix)) ix 
+
+
+---------------------------------------------------------------------------
+-- Sequential Map and scan (generalisation of map + accum) 
+---------------------------------------------------------------------------
+
+seqMapScan :: forall l a b acc. (ASize l, MemoryOps acc, MemoryOps b)
+              => (acc -> a -> (acc,b))
+              -> acc 
+              -> Pull l a
+              -> Push Thread l (acc,b)
+seqMapScan op acc (Pull n ixf)  =
+  Push n $ \wf -> do
+    ns <- names (undefined :: b) 
+    allocateScalar ns (undefined :: b)
+    nacc <- names (undefined :: acc)
+    allocateScalar nacc (undefined :: acc)
+    
+    assignScalar nacc acc
+
+    SeqFor (sizeConv n) $ \ix -> do
+      let (a,b) = op (readFrom nacc) (ixf ix)
+      wf (a,b) ix                  
+      assignScalar nacc a
