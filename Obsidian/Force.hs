@@ -57,14 +57,13 @@ force arr = do
   return rval
 
 
--- Experimental forceG  (Generalize!) 
-forceG :: forall a. Scalar a
-          => Push Grid (Exp Word32) (Exp a)
-          -> GProgram () -- Really to something else (named output ?)
+
+
+forceG :: forall a. GlobalMemoryOps a
+          => Push Grid (Exp Word32) a
+         -> GProgram () 
 forceG (Push _ p)  =
   do
-    output <- Output $ Pointer (typeOf (undefined :: Exp a))
-    p (assignTo output) 
+    output <- outputs (undefined :: a) 
+    p (assignOut output) 
     return ()
-    where
-      assignTo nom a ix = Assign nom [ix] a 

@@ -1,7 +1,7 @@
 
 {- Joel Svensson 2013 -} 
 
-module Obsidian.Memory (MemoryOps(..))  where
+module Obsidian.Memory (MemoryOps(..),GlobalMemoryOps(..))  where
 
 
 import Obsidian.Program
@@ -15,7 +15,9 @@ import Data.Word
 data Names = Single Name
            | Tuple [Names]
 
-
+---------------------------------------------------------------------------
+-- Local Memory
+---------------------------------------------------------------------------
 class MemoryOps a where
   names          :: a -> Program t Names 
   allocateArray  :: Names -> a -> Word32 -> Program t ()
@@ -24,7 +26,6 @@ class MemoryOps a where
   assignScalar   :: Names -> a -> TProgram () 
   pullFrom       :: Names -> Word32 -> Pull Word32 a
   readFrom       :: Names -> a
-
 
 instance Scalar a => MemoryOps (Exp a) where
   names a = do {i <- uniqueSM; return (Single i)}
@@ -67,4 +68,34 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   readFrom (Tuple [ns1,ns2])  =
     let p1 = readFrom ns1
         p2 = readFrom ns2
-    in (p1,p2) 
+    in (p1,p2)
+
+
+---------------------------------------------------------------------------
+-- Global Memory
+---------------------------------------------------------------------------
+
+class GlobalMemoryOps a where
+  outputs   :: a -> GProgram Names
+  assignOut :: Names -> a -> Exp Word32 -> Program Thread()
+
+
+instance Scalar a => GlobalMemoryOps (Exp a) where
+  outputs a =
+    do
+      name <- Output $ Pointer $ typeOf a
+      return (Single name) 
+  assignOut (Single name) a ix = Assign name [ix] a
+
+
+instance (GlobalMemoryOps a, GlobalMemoryOps b)
+         => GlobalMemoryOps (a,b) where
+  outputs (a,b) =
+    do
+      na <- outputs a
+      nb <- outputs b
+      return (Tuple [na,nb]) 
+  assignOut (Tuple [n1,n2]) (a,b) ix =
+    do
+      assignOut n1 a ix 
+      assignOut n2 b ix
