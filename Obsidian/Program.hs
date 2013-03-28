@@ -37,14 +37,10 @@ data PT a where
 
 type Identifier = Int 
 
-class LoopState a where
-  allocateLS :: a -> Program t Name -- generalise 
-
-instance Scalar a => LoopState (Exp a) where
-  allocateLS a =
-    do
-      id <- Identifier
-      return $ "v" ++ show id
+---------------------------------------------------------------------------
+-- Obsidian
+---------------------------------------------------------------------------
+data Obsidian a = Obsidian (Program Grid a)
       
 
 ---------------------------------------------------------------------------
