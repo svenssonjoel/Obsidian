@@ -125,7 +125,7 @@ mmIM im memory memmap = r im (memory,memmap)
           mNew =
             case freeableAddrs of
               (Just as) -> freeAll m' (map fst as)
-              Nothing   -> m
+              Nothing   -> m'
       in r xs (mNew,mm')
          
     process (SAllocate name size t,_) m mm = (m',mm') 
@@ -145,7 +145,8 @@ mmIM im memory memmap = r im (memory,memmap)
 
     process (_,_) m mm = (m,mm) 
 
+-- Friday (2013 Mars 29, discovered bug) 
 getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 
-getFreeableSet (_,l) [] = l
+getFreeableSet (_,l) [] = Set.empty -- not l ! 
 getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1
 

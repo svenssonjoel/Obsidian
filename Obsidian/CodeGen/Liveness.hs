@@ -64,7 +64,8 @@ cl im = mapM process im
         s <- get
         let arrays = collectArrays e
             living = Set.fromList (nom:arrays) `Set.union` s
-        -- Need to recreate the statement (but at a different type, Haskell is "great") 
+        
+        put living  -- update state   
         return (SAssign nom ixs e,living)
     
     process (SAtomicOp n1 n2 ixs op,_) =
@@ -74,8 +75,8 @@ cl im = mapM process im
         
     process (SAllocate name size t,_) =
       do
-        modify (name `Set.delete`) 
-        s <- get
+        modify (name `Set.delete`)
+        s <- get        
         return (SAllocate name size t,s)  
     
     process (SDeclare name t,_) = 
@@ -109,7 +110,9 @@ cl im = mapM process im
         s <- get
         let iml = computeLiveness1 s im 
             l   = safeHead iml
-        return (SSeqFor nom n iml, s `Set.union` l) 
+            ns  = s `Set.union` l
+        put ns
+        return (SSeqFor nom n iml,ns) 
 
 
     process (SForAll n im,_) =  

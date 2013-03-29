@@ -1,4 +1,4 @@
-
+{-# LANGUAGE NoMonomorphismRestriction #-} 
 module ExamplesNoCuda where
 
 import qualified Obsidian.CodeGen.CUDA as CUDA
@@ -219,3 +219,22 @@ testRev :: Scalar a=>  Pull EWord32 (Exp a) -> GProgram ()
 testRev = forceG . push Grid . revG
 
    
+---------------------------------------------------------------------------
+-- Simple 
+---------------------------------------------------------------------------
+
+s1 :: ( Num a, MemoryOps a) =>
+     Pull Word32 a -> BProgram (Pull Word32 a)
+s1 arr = do
+  a1 <- force (fmap (+3) arr)
+  a2 <- force (fmap (+2) a1) 
+  force (fmap (+1) a2)  
+
+gs1 :: (Num a, MemoryOps a) =>
+     Pull EWord32 a -> Program Grid (Push Grid EWord32 a)
+gs1 = liftG . (fmap s1) . splitUp 256 
+
+
+getgs1 =
+  quickPrint (join . liftM forceG . gs1)
+             (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)

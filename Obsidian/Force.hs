@@ -57,8 +57,6 @@ force arr = do
   return rval
 
 
-
-
 forceG :: forall a. GlobalMemoryOps a
           => Push Grid (Exp Word32) a
          -> GProgram () 
