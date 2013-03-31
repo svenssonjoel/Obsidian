@@ -41,7 +41,7 @@ mapFusion :: Pull Word32 EInt -> BProgram (Pull Word32 EInt)
 mapFusion arr =
   do
     imm <- force $ (fmap (+1) . fmap (*2)) arr
-    force $ (fmap (+3) . fmap (*4)) imm 
+    force $ (fmap (+3) . fmap (*4)) imm
 
 splitUp :: (ASize l, Num l)
            => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)

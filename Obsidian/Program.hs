@@ -63,11 +63,9 @@ data Program t a where
               -> Atomic a
               -> Program Thread (Exp a)
 
-  -- TODO: Code generation for this.
-  -- May want this at all levels. (Grid, Block, Thread)
   Cond :: Exp Bool
-          -> Program Thread ()
-          -> Program Thread ()
+          -> Program t ()
+          -> Program t ()
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
