@@ -80,12 +80,6 @@ fan op arr =  a1 `conc`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! sizeConv (len a1 - 1)
 
-
--- Many local Scans
---sklanskyG :: (Choice a, StoreOps a)
---             => Int -> (a -> a -> a)
---             -> Pull (Exp Word32) a
---            -> Push Grid (Exp Word32) a
 sklanskyG logbs op =
   join . liftM forceG . liftG . fmap (sklansky logbs op) . splitUp (2^logbs) 
 

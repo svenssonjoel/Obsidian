@@ -58,8 +58,8 @@ force arr = do
 
 
 forceG :: forall a. GlobalMemoryOps a
-          => Push Grid (Exp Word32) a
-         -> GProgram () 
+        => Push Grid (Exp Word32) a
+        -> GProgram () 
 forceG (Push _ p)  =
   do
     output <- outputs (undefined :: a) 

@@ -17,6 +17,11 @@ import Data.Word
 -- TODO: Think about how to deal with Push arrays
 
 
+---------------------------------------------------------------------------
+-- testing
+---------------------------------------------------------------------------
+
+
 class LiftB a where
   liftB :: Pull Word32 (TProgram a) -> BProgram (Pull Word32 a)   
   
