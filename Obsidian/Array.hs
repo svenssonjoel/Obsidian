@@ -43,8 +43,8 @@ instance ASize (Exp Word32) where
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
-data Push p s a = Push s
-                     ((a -> Exp Word32 -> TProgram ()) -> Program p ())   
+data Push p s a =
+  Push s ((a -> Exp Word32 -> TProgram ()) -> Program p ())   
 
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: Exp Word32 -> a}
