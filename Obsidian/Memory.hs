@@ -19,7 +19,7 @@ data Names = Single Name
 -- Local Memory
 ---------------------------------------------------------------------------
 class MemoryOps a where
-  names          :: a -> Program t Names 
+  names          :: String -> a -> Program t Names
   allocateArray  :: Names -> a -> Word32 -> Program t ()
   allocateScalar :: Names -> a -> Program t () 
   assignArray    :: Names -> a -> Exp Word32 -> TProgram ()
@@ -28,7 +28,7 @@ class MemoryOps a where
   readFrom       :: Names -> a
 
 instance Scalar a => MemoryOps (Exp a) where
-  names a = do {i <- uniqueSM; return (Single i)}
+  names pre a = do {i <- uniqueNamed pre; return (Single i)}
   allocateArray (Single name) a n = 
     Allocate name (n * fromIntegral (sizeOf a))
                   (Pointer (typeOf a))
@@ -40,10 +40,10 @@ instance Scalar a => MemoryOps (Exp a) where
   readFrom (Single name) = variable name
 
 instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
-  names (a,b) =
+  names pre (a,b) =
     do
-      a' <- names a
-      b' <- names b
+      a' <- names pre a
+      b' <- names pre b
       return $ Tuple [a', b']
   allocateArray (Tuple [ns1,ns2]) (a,b) n =
     do 

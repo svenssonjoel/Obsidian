@@ -36,7 +36,7 @@ import Data.Word
 
 write :: forall p a. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
-  snames <- names (undefined :: a)
+  snames <- names "arr" (undefined :: a)
 
   -- Here i know that this pattern match will succeed
   let n = len arr
@@ -57,8 +57,8 @@ force arr = do
   return rval
 
 
-forceG :: forall a. GlobalMemoryOps a
-        => Push Grid (Exp Word32) a
+forceG :: forall l a. GlobalMemoryOps a
+        => Push Grid l a
         -> GProgram () 
 forceG (Push _ p)  =
   do

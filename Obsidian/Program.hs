@@ -138,6 +138,10 @@ uniqueSM = do
   id <- Identifier
   return $ "arr" ++ show id 
 
+uniqueNamed pre = do
+  id <- Identifier
+  return $ pre ++ show id 
+
 ---------------------------------------------------------------------------
 -- forAll and forAllN
 ---------------------------------------------------------------------------

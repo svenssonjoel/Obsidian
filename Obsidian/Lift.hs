@@ -41,7 +41,7 @@ instance Pushable p => LiftB (p Word32 a) where
 instance MemoryOps a => LiftB a where
   liftB arr@(Pull ts txf) =
     do
-      snames <- names (undefined :: a)
+      snames <- names "arr" (undefined :: a)
       allocateArray snames (undefined :: a) ts
       let p wf = do
             forAll (fromIntegral ts) $ \tix -> 
@@ -65,7 +65,7 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
     do
       let tmp = fst $ runPrg 0 (bxf 0) -- get info about result  
 
-      snames <- names (undefined :: a)
+      snames <- names "arr" (undefined :: a)
       allocateArray snames (undefined :: a) (len tmp)
       
       forAllBlocks (sizeConv bs) $ \bix -> do 

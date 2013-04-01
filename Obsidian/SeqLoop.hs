@@ -27,7 +27,7 @@ seqFold :: forall l a. (ASize l, MemoryOps a)
            -> Pull l a
            -> Program Thread a
 seqFold op init arr = do
-  ns  <- names (undefined :: a) 
+  ns  <- names "v" (undefined :: a) 
   allocateScalar ns (undefined :: a)
 
   assignScalar ns init  
@@ -51,7 +51,7 @@ seqScan :: forall l a. (ASize l, MemoryOps a)
            -> Push Thread l a
 seqScan op (Pull n ixf)  =
   Push n $ \wf -> do
-    ns <- names (undefined :: a) 
+    ns <- names "v" (undefined :: a) 
     allocateScalar ns (undefined :: a)
     assignScalar ns (ixf 0)
     wf (readFrom ns) 0 
@@ -84,9 +84,9 @@ seqMapScan :: forall l a b acc. (ASize l, MemoryOps acc, MemoryOps b)
               -> Push Thread l (acc,b)
 seqMapScan op acc (Pull n ixf)  =
   Push n $ \wf -> do
-    ns <- names (undefined :: b) 
+    ns <- names "v" (undefined :: b) 
     allocateScalar ns (undefined :: b)
-    nacc <- names (undefined :: acc)
+    nacc <- names "v" (undefined :: acc)
     allocateScalar nacc (undefined :: acc)
     
     assignScalar nacc acc

@@ -60,8 +60,6 @@ instance (Scalar t) => ToProgram (Exp t) (GProgram b) where
           input = variable nom
           t = typeOf_ (undefined :: t)
 
-
--- UPDATE THIS: The rest of the code gen will need a length variable
 instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
   toProgram i f (Pull n ixf) = ([(nom,Pointer t),(n,Word32)],CG.compileStep1 (f input)) 
       where nom = "input" ++ show i
@@ -69,6 +67,15 @@ instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
             lengthVar = variable n
             input = namedGlobal nom lengthVar
             t = typeOf_ (undefined :: t)
+
+instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
+  toProgram i f (Pull n ixf) = ([(nom,Pointer t){-,(n,Word32)-}],CG.compileStep1 (f input)) 
+      where nom = "input" ++ show i
+            --n   = "n" ++ show i 
+            --lengthVar = variable n
+            input = namedGlobal nom n -- lengthVar
+            t = typeOf_ (undefined :: t)
+
 
 
 instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
@@ -79,7 +86,6 @@ instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
       input = variable nom
       t = typeOf_ (undefined :: t)
 
-
 instance (Scalar t, ToProgram b c) => ToProgram (Pull (Exp Word32) (Exp t)) (b -> c) where
   toProgram i f ((Pull n ixf) :-> rest) = ((nom,Pointer t):(n,Word32):ins,prg)
     where
@@ -88,6 +94,17 @@ instance (Scalar t, ToProgram b c) => ToProgram (Pull (Exp Word32) (Exp t)) (b -
       n   = "n" ++ show i
       lengthVar = variable n
       input = namedGlobal nom lengthVar
+      t = typeOf_ (undefined :: t)
+
+
+instance (Scalar t, ToProgram b c) => ToProgram (Pull Word32 (Exp t)) (b -> c) where
+  toProgram i f ((Pull n ixf) :-> rest) = ((nom,Pointer t){-:(n,Word32)-}:ins,prg)
+    where
+      (ins,prg) = toProgram (i+1) (f input) rest
+      nom = "input" ++ show i
+      --n   = "n" ++ show i
+      --lengthVar = variable n
+      input = namedGlobal nom n --lengthVar
       t = typeOf_ (undefined :: t)
 
 
