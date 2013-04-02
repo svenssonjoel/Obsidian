@@ -37,18 +37,18 @@ import Data.Word
 
 write :: forall p a. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
-  snames <- names "arr" (undefined :: a)
+  -- snames <- names "arr" (undefined :: a)
 
-  -- Here i know that this pattern match will succeed
+  -- Here I know that this pattern match will succeed
   let n = len arr
   
   -- allocateArray snames (undefined :: a) n
 
   let (Push m p) = push Block arr
 
-  names <- p (assignArrayN n) 
+  snames <- p (assignArrayN n) 
       
-  return $ pullFrom snames n
+  return $ pullFromS snames n
 
   
 force :: forall p a. (Array p, Pushable p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
@@ -64,5 +64,5 @@ forceG :: forall l a. GlobalMemoryOps a
 forceG (Push _ p)  =
   do
     output <- outputs (undefined :: a) 
-    p (\a e -> do {assignOut output a e; return (Single "")}) 
+    p (\a e -> do {assignOut output a e; return (Single (Var,""))}) 
     return ()

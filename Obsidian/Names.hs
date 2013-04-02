@@ -10,6 +10,10 @@ data Tree a = None
 
 type Names = Tree Name
 
+type NameInfo = Tree (Kind,Name)
+
+data Kind = Var | Arr
+
 instance Functor Tree where
   fmap f None = None
   fmap f (Single a) = Single $ f a

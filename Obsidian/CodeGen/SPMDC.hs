@@ -553,7 +553,8 @@ replacePass m (x:xs) = let (decls,x') = process m x
             (d2,e2') = processE m e2
             (d3,e3') = processE m e3
           in (L.nubBy fstEq (d1++d2++d3), CExpr (CCond e1' e2' e3' t))
-        Just (id,n) -> error "SERIOUS FLAW. FIX THIS"
+        Just (id,n) -> -- error "SERIOUS FLAW. FIX THIS"
+          ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
         
     processE m e@(CExpr (CBinOp op e1 e2 t))  =
       case M.lookup e m of

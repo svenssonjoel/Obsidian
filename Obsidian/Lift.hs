@@ -49,7 +49,7 @@ instance MemoryOps a => LiftB a where
                 elts <- txf tix
                 wf elts tix 
       snames <- p (assignArrayN ts)
-      return $ pullFrom snames ts
+      return $ pullFromS snames ts -- mkPullArray ts $ \ix -> readFrom snames
       
 
 --class PromoteToBlock a where
@@ -78,7 +78,7 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
         let (Push _ p) = push Block arr
         p (assignArrayN (len tmp)) 
 
-      let pully = Pull bs $ \bix -> pullFrom snames (len tmp) 
+      let pully = Pull bs $ \bix -> pullFromS snames (len tmp) 
 
       return $ Push (bs * (fromIntegral (len tmp))) $
         \wf ->

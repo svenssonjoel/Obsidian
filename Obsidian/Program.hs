@@ -43,8 +43,6 @@ type Identifier = Int
 ---------------------------------------------------------------------------
 data Obsidian a = Obsidian (Program Grid a)
       
-data Array a = Array {arrayNames :: Names}
-
 
 ---------------------------------------------------------------------------
 -- Program datatype
@@ -77,7 +75,7 @@ data Program t a where
  
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread a)
-            -> Program Block (Array a) 
+            -> Program Block a 
 
   {-
      I'm not sure about this constructor.
@@ -146,7 +144,7 @@ uniqueNamed pre = do
 --forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 --forAll f = ForAll Nothing f
 
-forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block (Array a)
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
 forAll n f = ForAll n f
 
 (*||*) = Par

@@ -1,6 +1,12 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,
+             GADTs #-}
 
-{- Joel Svensson 2013 -} 
+{- Joel Svensson 2013
+
+   This Module became quite messy.
+   TODO: CLEAN IT UP! 
+
+-} 
 
 module Obsidian.Memory (MemoryOps(..),GlobalMemoryOps(..),assignArrayN)  where
 
@@ -15,10 +21,11 @@ import Obsidian.Names
 import Data.Word
 
 class Inspect a where
-  inspect :: a -> Tree (Either Name Type)
+  inspect :: a -> Tree (Either (Kind,Name) Type)
 
 instance Scalar a => Inspect (Exp a) where
-  inspect (Index (name,[])) = Single (Left name)
+  inspect (Index (name,[])) = Single (Left (Var,name))
+  inspect (Index (name,[ix])) | isid ix =  Single (Left (Arr,name))
   inspect _ = Single $ Right (typeOf (undefined :: Exp a)) 
 
 instance (Inspect a, Inspect b) => Inspect (a,b) where
@@ -27,7 +34,8 @@ instance (Inspect a, Inspect b) => Inspect (a,b) where
 instance (Inspect a, Inspect b, Inspect c) => Inspect (a,b,c) where
   inspect (a,b,c) = Tuple [inspect a, inspect b, inspect c]
 
-  
+isid (ThreadIdx X) = True
+isid _ = False
 
 ---------------------------------------------------------------------------
 -- Local Memory
@@ -37,16 +45,21 @@ class Inspect a => MemoryOps a where
   allocateArray  :: Names -> a -> Word32 -> Program t ()
   allocateScalar :: Names -> a -> Program t () 
   assignArray    :: Names -> a -> Exp Word32 -> TProgram ()
-  assignArrayS   :: Tree (Either Name Name) -> a -> Exp Word32 -> TProgram Names
+  assignArrayS   :: Tree (Either (Kind,Name) (Kind,Name))
+                    -> a
+                    -> Exp Word32
+                    -> TProgram (Tree (Kind,Name)) 
   assignScalar   :: Names -> a -> TProgram () 
   pullFrom       :: Names -> Word32 -> Pull Word32 a
   readFrom       :: Names -> a
+
+  pullFromS      :: Tree (Kind,Name) -> Word32 -> Pull Word32 a
 
 ---------------------------------------------------------------------------
 -- Derived
 ---------------------------------------------------------------------------
 assignArrayN :: MemoryOps a =>
-                Word32 -> a -> Exp Word32 -> TProgram Names
+                Word32 -> a -> Exp Word32 -> TProgram (Tree (Kind,Name))
 assignArrayN n a ix  =
   do
     names <- allocateNeeded n insp
@@ -56,14 +69,14 @@ assignArrayN n a ix  =
     insp = inspect a
 
 
-allocateNeeded :: Word32 -> Tree (Either Name Type) -> TProgram (Tree (Either Name Name))
+allocateNeeded :: Word32 -> Tree (Either (Kind,Name) Type) -> TProgram (Tree (Either (Kind,Name) (Kind,Name)))
 allocateNeeded n None = return None
-allocateNeeded n a@(Single (Left nom)) = return $ Single (Left nom)
+allocateNeeded n a@(Single (Left (k,nom))) = return $ Single (Left (k,nom))
 allocateNeeded n (Single (Right t)) =
   do
     name <- uniqueNamed "arr"
     Allocate name (n * typeSize t) (Pointer t)
-    return $ Single (Right name)
+    return $ Single (Right (Arr,name))
 allocateNeeded n (Tuple xs) =
   do
     ns <- mapM (allocateNeeded n) xs
@@ -81,11 +94,11 @@ instance Scalar a => MemoryOps (Exp a) where
   allocateScalar (Single name) a =
     Declare name (typeOf a) 
   assignArray  (Single name) a ix = Assign name [ix] a
-  assignArrayS (Single (Left name)) a ix = return $ Single name
-  assignArrayS (Single (Right name)) a ix =
+  assignArrayS (Single (Left (k,name))) a ix = return $ Single (k,name)
+  assignArrayS (Single (Right (k,name))) a ix =
     do 
-      Assign name [ix] a
-      return $ Single name
+      Assign name [ix] a -- ? 
+      return $ Single (k,name)
     
   
 
@@ -94,6 +107,9 @@ instance Scalar a => MemoryOps (Exp a) where
   assignScalar (Single name) a    = Assign name [] a  
   pullFrom (Single name) n = Pull n (\i -> index name i) 
   readFrom (Single name) = variable name
+
+  pullFromS (Single (Var,name)) n = Pull n $ \_ -> variable name
+  pullFromS (Single (Arr,name)) n = Pull n (\i -> index name i) 
 
 instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   names pre (a,b) =
@@ -131,6 +147,11 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
     let p1 = readFrom ns1
         p2 = readFrom ns2
     in (p1,p2)
+
+  pullFromS (Tuple [ns1,ns2]) n =
+    let p1 = pullFromS ns1 n
+        p2 = pullFromS ns2 n
+    in Pull n (\ix -> (p1 ! ix, p2 ! ix))
 
 
 ---------------------------------------------------------------------------
