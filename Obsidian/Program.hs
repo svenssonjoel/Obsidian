@@ -18,6 +18,7 @@ import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Atomic
+import Obsidian.Names
 
 -- Package value-supply
 import Data.Supply
@@ -42,6 +43,8 @@ type Identifier = Int
 ---------------------------------------------------------------------------
 data Obsidian a = Obsidian (Program Grid a)
       
+data Array a = Array {arrayNames :: Names}
+
 
 ---------------------------------------------------------------------------
 -- Program datatype
@@ -74,7 +77,7 @@ data Program t a where
  
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread a)
-            -> Program Block a 
+            -> Program Block (Array a) 
 
   {-
      I'm not sure about this constructor.
@@ -143,7 +146,7 @@ uniqueNamed pre = do
 --forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 --forAll f = ForAll Nothing f
 
-forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block (Array a)
 forAll n f = ForAll n f
 
 (*||*) = Par
