@@ -19,10 +19,24 @@ __global__ void kernel(float* input0,float* input1,float* output0){
     
   
 }
-*/ 
+
 __global__ void kernel(float* input0,float* input1,float* output0){
   
     extern __shared__ __attribute__ ((aligned(16))) uint8_t sbase[];
+    float v1;
+    v1 = 0.0;
+    for (int i2 = 0;i2 < 256;i2++){
+      
+        v1 = (v1+(input0[((blockIdx.x*256)+i2)]*input1[((i2*256)+threadIdx.x)]));
+        
+    }
+    output0[((blockIdx.x*256)+threadIdx.x)] = v1;
+    
+  
+}
+*/ 
+__global__ void kernel(float* input0,float* input1,float* output0){
+  
     float v1;
     v1 = 0.0;
     for (int i2 = 0;i2 < 256;i2++){

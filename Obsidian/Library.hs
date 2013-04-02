@@ -34,11 +34,6 @@ import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate)
 
----------------------------------------------------------------------------
--- Functor instance Pull/Push arrays
----------------------------------------------------------------------------
-instance Array arr => Functor (arr w) where 
-  fmap = aMap
 
 
 

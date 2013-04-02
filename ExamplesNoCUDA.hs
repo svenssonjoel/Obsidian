@@ -252,7 +252,8 @@ transpose arr = mkPullArray m
      n = len arr
      m = len (arr ! 0) 
 
-     
+
+{-      
 matMul :: (Num a1, ASize l1, ASize l, MemoryOps a1, LiftB a1)
           => Pull l1 (Pull l a1)
           -> Pull l (Pull Word32 a1) -> Program Grid (Push Grid l1 a1)    
@@ -268,15 +269,47 @@ matMul x y = liftG
         y' = transpose y
         n  = len x
         m  = len y'
+-} 
+
+mkMatrix n m f = mkPullArray n $ \i -> mkPullArray m $ \j -> f i j 
+
+matMul :: (Num a, MemoryOps a, LiftB a)
+          => SMatrix a -> SMatrix a -> Program Grid (Push Grid Word32 a)    
+matMul x y = liftG
+             -- :: Pull l (BProgram (Pull l a))  
+             $ fmap liftB
+             -- :: Pull l (Pull l (Program Thread a))
+             $ mkMatrix n m cell 
+                          
+  where cell i j = seqFold (+) 0 $ zipWith (*) (x ! i) (y' ! j) 
+        y' = transpose y
+        n  = len x
+        m  = len y'
+
+matMul2 :: (Num a, MemoryOps a, LiftB a)
+          => SMatrix a -> SMatrix a -> Push Grid Word32 a
+matMul2 x y = pushBlocks $ fmap liftB $ mkMatrix n m cell 
+                          
+  where cell i j = seqFold (+) 0 $ zipWith (*) (x ! i) (y' ! j) 
+        y' = transpose y
+        n  = len x
+        m  = len y'
 
 
-matMulIn a b = join $ liftM forceG $  matMul (mkMatrix 256 256 a) (mkMatrix 256 256 b) 
 
-mkMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
-mkMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
+matMulIn  a b = join $ liftM forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
+matMulIn2 a b = forceG $ matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
+
+toMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
+toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
 
 
 getMM =
   quickPrint matMulIn
+             ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
+              (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
+
+getMM2 =
+  quickPrint matMulIn2
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))

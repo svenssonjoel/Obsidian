@@ -15,6 +15,9 @@ import Obsidian.Memory
 import Obsidian.Names 
 
 import Data.Word
+import Control.Monad
+
+
 -- Start sketching on lift functions.
 -- TODO: Think about how to deal with Push arrays
 
@@ -62,7 +65,7 @@ instance MemoryOps a => LiftB a where
 ---------------------------------------------------------------------------
 -- instances LiftB 
 ---------------------------------------------------------------------------  
--- This one has bugs ! 
+
 -- Each block computes an array
 instance MemoryOps a => LiftG (Pull Word32 a) where
   type Elt (Pull Word32 a) = a 
@@ -90,5 +93,38 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
                
                     
           
+{- 
+pushBlocks :: ASize l => Pull l (BProgram (Pull Word32 a)) -> Push Grid l a     
+pushBlocks arr =
+  Push s $ \wf -> 
+    do
+      forAllBlocks (sizeConv (len arr)) $
+       \ bix -> 
+        do
+          sm <- arr ! bix
+          forAll (sizeConv (len sm)) $
+            \ tix ->
+              wf (sm ! tix) (bix * (sizeConv (len sm)) + tix)
 
-    
+  where
+    s = len arr * (fromIntegral s')
+    s' = len $ fst $ runPrg 0 (arr ! 0)
+-} 
+--shBlocks :: (Pushable p, ASize l) => Pull l (BProgram (p Word32 a)) -> Push Grid l a     
+--pushBlocks arr = pushBlocks' $ fmap (liftM (push Block)) arr 
+
+
+pushBlocks :: (Array p, Pushable p, ASize l) => Pull l (BProgram (p Word32 a)) -> Push Grid l a     
+pushBlocks arr =
+  Push s $ \wf -> 
+    do
+      forAllBlocks (sizeConv (len arr)) $
+       \ bix -> 
+        do
+          sm <- arr ! bix
+          let (Push m p) = push Block sm
+          let wf' a ix = wf a (bix * sizeConv m + ix)
+          p wf'
+  where
+    s = len arr * (fromIntegral s')
+    s' = len $ fst $ runPrg 0 (arr ! 0)

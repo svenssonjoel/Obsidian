@@ -67,14 +67,14 @@ genKernel name kernel a = proto ++ cuda
     
     -- Creates (name -> memory address) map      
     (m,mm) = mmIM lc sharedMem Map.empty
-
+             
     -- What if its Right ??? (I DONT KNOW!) 
     (Left threadBudget) = numThreads im 
 
     spmd = imToSPMDC threadBudget im
     
     
-    body' = shared : mmSPMDC mm spmd
+    body' = (if size m > 0 then (shared :) else id)  $ mmSPMDC mm spmd
 
     em = snd $ execState (collectExps body') ( 0, Map.empty)
     (decls,body'') = replacePass em body'

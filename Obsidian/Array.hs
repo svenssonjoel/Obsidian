@@ -81,6 +81,12 @@ class Indexible a where
 instance Indexible Pull where
   access p ix = pullFun p ix
 
+---------------------------------------------------------------------------
+-- Functor instance Pull/Push arrays
+---------------------------------------------------------------------------
+instance Array arr => Functor (arr w) where 
+  fmap = aMap
+
 
 ---------------------------------------------------------------------------
 -- Pushable
