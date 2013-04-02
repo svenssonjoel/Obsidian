@@ -84,13 +84,10 @@ instance Scalar Int32 where
 instance Scalar Int64 where 
   sizeOf _ = 8 
   typeOf _ = Int64
-
-
   
 instance Scalar Float where
   sizeOf _ = Storable.sizeOf (undefined :: Float)
   typeOf _ = Float
-
   
 instance Scalar Double where 
   sizeOf _ = 8 -- Storable.sizeOf (undefined :: Double) 
@@ -99,7 +96,6 @@ instance Scalar Double where
 instance Scalar Word where
   sizeOf _ = Storable.sizeOf (undefined :: Word) 
   typeOf _ = Word
-
   
 instance Scalar Word8 where
   sizeOf _ = 1
@@ -109,12 +105,10 @@ instance Scalar Word8 where
 instance Scalar Word16 where 
   sizeOf _ = 2
   typeOf _ = Word16
-
   
 instance Scalar Word32 where 
   sizeOf _ = 4 
   typeOf _ = Word32
-
   
 instance Scalar Word64 where 
   sizeOf _ = 8 

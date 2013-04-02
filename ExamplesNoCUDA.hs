@@ -14,6 +14,7 @@ import Obsidian.Atomic
 import Obsidian.SeqLoop
 import Obsidian.Lift
 import Obsidian.Memory
+import Obsidian.Names
 
 import Data.Word
 import Data.Int
@@ -166,7 +167,9 @@ reconstruct arr = Push (len arr) f
     f k = do forAllT (len arr) $ \gix ->
                let startIx = arr ! gix
                in  SeqFor (arr ! (gix+1) - startIx) $ \ix ->
-                   k (word32ToInt32 gix) (ix + startIx)
+                   do 
+                     k (word32ToInt32 gix) (ix + startIx)
+                 
 getRec =
   quickPrint (forceG . reconstruct)
              (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)
@@ -238,11 +241,7 @@ getgs1 =
 -- Matrix Mul
 ---------------------------------------------------------------------------
 
-type Matrix n m a = Pull n (Pull m a)
-
-
-type SubMatrix a = Pull Word32 (Pull Word32 a)
-
+type SMatrix a = Pull Word32 (Pull Word32 a)
 
 transpose :: (ASize l1, ASize l2) => Pull l1 (Pull l2 a) -> Pull l2 (Pull l1 a)
 transpose arr = mkPullArray m
@@ -253,10 +252,6 @@ transpose arr = mkPullArray m
      n = len arr
      m = len (arr ! 0) 
 
---matMulSmall :: SubMatrix EFloat -> SubMatrix EFloat -> BProgram (SubMatrix EFloat)
---matMulSmall :: (Num a1, ASize l, MemoryOps a1, LiftB a1)
---               => Pull l (Pull Word32 a1)
---               -> Pull Word32 (Pull Word32 a1) -> Program Grid (Push Grid l a1)
      
 matMul :: (Num a1, ASize l1, ASize l, MemoryOps a1, LiftB a1)
           => Pull l1 (Pull l a1)
@@ -277,7 +272,7 @@ matMul x y = liftG
 
 matMulIn a b = join $ liftM forceG $  matMul (mkMatrix 256 256 a) (mkMatrix 256 256 b) 
 
-mkMatrix :: Word32 -> Word32 -> Pull Word32 a -> Matrix Word32 Word32 a 
+mkMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
 mkMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
 
 

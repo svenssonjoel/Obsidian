@@ -71,14 +71,7 @@ data Program t a where
   -- TODO: Generalize this loop! (Replace Thread with t) 
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
             -> Program t a
-            
- -- SeqWhile :: LoopState a
- --             => Name
- --            -> (a -> Exp Bool)
- --             -> (a -> Program t a) -- state transformation
- --             -> Program t ()       -- hmm
-  
-
+ 
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread a)
             -> Program Block a 
@@ -99,7 +92,9 @@ data Program t a where
                    -> Program Grid a 
 
   -- Allocate shared memory in each MP
-  
+
+  -- TODO: Change the Liveness analysis to a two-pass algo
+  --       and remove the Allocate constructor. 
   Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
@@ -148,7 +143,7 @@ uniqueNamed pre = do
 --forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 --forAll f = ForAll Nothing f
 
-forAll :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
 forAll n f = ForAll n f
 
 (*||*) = Par
@@ -163,8 +158,8 @@ forAll n f = ForAll n f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
-           -> Program Grid ()
+forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
+           -> Program Grid a
 forAllT n f = ForAllThreads n 
             $ \gtid -> f gtid 
 

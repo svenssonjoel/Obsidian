@@ -13,6 +13,7 @@ import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Memory
+import Obsidian.Names
 
 -- TODO: Add suitable allocs
 -- TODO: Rename module to something better
@@ -32,8 +33,10 @@ seqFold op init arr = do
 
   assignScalar ns init  
   -- Assign nom [] init  
-  SeqFor n $ (\ ix ->
-      assignScalar ns (readFrom ns `op`  (arr ! ix))) 
+  SeqFor n $ \ ix ->
+    do
+      assignScalar ns (readFrom ns `op`  (arr ! ix))
+      return None
 
     
   return $ readFrom ns
@@ -58,6 +61,7 @@ seqScan op (Pull n ixf)  =
     SeqFor (sizeConv (n-1)) $ \ix -> do
       wf (readFrom ns) ix                  
       assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
+      return None
                  
 ---------------------------------------------------------------------------
 -- Sequential Map (here for uniformity) 
@@ -95,3 +99,4 @@ seqMapScan op acc (Pull n ixf)  =
       let (a,b) = op (readFrom nacc) (ixf ix)
       wf (a,b) ix                  
       assignScalar nacc a
+      return None

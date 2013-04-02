@@ -1,32 +1,78 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {- Joel Svensson 2013 -} 
 
-module Obsidian.Memory (MemoryOps(..),GlobalMemoryOps(..))  where
+module Obsidian.Memory (MemoryOps(..),GlobalMemoryOps(..),assignArrayN)  where
 
 
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
-import Obsidian.Array -- Importing this feels a bit strange. 
+import Obsidian.Array -- Importing this feels a bit strange.
+import Obsidian.Names
 
 import Data.Word
 
-data Names = Single Name
-           | Tuple [Names]
+class Inspect a where
+  inspect :: a -> Tree (Either Name Type)
+
+instance Scalar a => Inspect (Exp a) where
+  inspect (Index (name,[])) = Single (Left name)
+  inspect _ = Single $ Right (typeOf (undefined :: Exp a)) 
+
+instance (Inspect a, Inspect b) => Inspect (a,b) where
+  inspect (a,b) = Tuple [inspect a, inspect b]
+
+instance (Inspect a, Inspect b, Inspect c) => Inspect (a,b,c) where
+  inspect (a,b,c) = Tuple [inspect a, inspect b, inspect c]
+
+  
 
 ---------------------------------------------------------------------------
 -- Local Memory
 ---------------------------------------------------------------------------
-class MemoryOps a where
+class Inspect a => MemoryOps a where
   names          :: String -> a -> Program t Names
   allocateArray  :: Names -> a -> Word32 -> Program t ()
   allocateScalar :: Names -> a -> Program t () 
   assignArray    :: Names -> a -> Exp Word32 -> TProgram ()
+  assignArrayS   :: Tree (Either Name Name) -> a -> Exp Word32 -> TProgram Names
   assignScalar   :: Names -> a -> TProgram () 
   pullFrom       :: Names -> Word32 -> Pull Word32 a
   readFrom       :: Names -> a
 
+---------------------------------------------------------------------------
+-- Derived
+---------------------------------------------------------------------------
+assignArrayN :: MemoryOps a =>
+                Word32 -> a -> Exp Word32 -> TProgram Names
+assignArrayN n a ix  =
+  do
+    names <- allocateNeeded n insp
+    assignArrayS names a ix
+    -- return names
+  where
+    insp = inspect a
+
+
+allocateNeeded :: Word32 -> Tree (Either Name Type) -> TProgram (Tree (Either Name Name))
+allocateNeeded n None = return None
+allocateNeeded n a@(Single (Left nom)) = return $ Single (Left nom)
+allocateNeeded n (Single (Right t)) =
+  do
+    name <- uniqueNamed "arr"
+    Allocate name (n * typeSize t) (Pointer t)
+    return $ Single (Right name)
+allocateNeeded n (Tuple xs) =
+  do
+    ns <- mapM (allocateNeeded n) xs
+    return $ Tuple ns 
+    
+
+---------------------------------------------------------------------------
+-- Instances
+---------------------------------------------------------------------------
 instance Scalar a => MemoryOps (Exp a) where
   names pre a = do {i <- uniqueNamed pre; return (Single i)}
   allocateArray (Single name) a n = 
@@ -35,6 +81,16 @@ instance Scalar a => MemoryOps (Exp a) where
   allocateScalar (Single name) a =
     Declare name (typeOf a) 
   assignArray  (Single name) a ix = Assign name [ix] a
+  assignArrayS (Single (Left name)) a ix = return $ Single name
+  assignArrayS (Single (Right name)) a ix =
+    do 
+      Assign name [ix] a
+      return $ Single name
+    
+  
+
+  
+
   assignScalar (Single name) a    = Assign name [] a  
   pullFrom (Single name) n = Pull n (\i -> index name i) 
   readFrom (Single name) = variable name
@@ -56,7 +112,13 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   assignArray (Tuple [ns1,ns2]) (a,b) ix =
     do
       assignArray ns1 a ix 
-      assignArray ns2 b ix 
+      assignArray ns2 b ix
+
+  assignArrayS (Tuple [ns1,ns2]) (a,b) ix =
+    do
+      nas1 <- assignArrayS ns1 a ix 
+      nas2 <- assignArrayS ns2 b ix
+      return $ Tuple [nas1,nas2]
   assignScalar (Tuple [ns1,ns2]) (a,b) =
     do
       assignScalar ns1 a 
@@ -77,7 +139,7 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
 
 class GlobalMemoryOps a where
   outputs   :: a -> GProgram Names
-  assignOut :: Names -> a -> Exp Word32 -> Program Thread()
+  assignOut :: Names -> a -> Exp Word32 -> Program Thread ()
 
 
 instance Scalar a => GlobalMemoryOps (Exp a) where

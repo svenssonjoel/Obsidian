@@ -2,6 +2,7 @@
              UndecidableInstances,   --
              OverlappingInstances,   -- 
              ScopedTypeVariables,
+             MultiParamTypeClasses,
              TypeFamilies #-}
 
 module Obsidian.Lift where
@@ -11,6 +12,7 @@ import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Force
 import Obsidian.Memory
+import Obsidian.Names 
 
 import Data.Word
 -- Start sketching on lift functions.
@@ -23,13 +25,11 @@ import Data.Word
 
 
 class LiftB a where
-  liftB :: Pull Word32 (TProgram a) -> BProgram (Pull Word32 a)   
-  
+  liftB :: Pull Word32 (TProgram a) -> BProgram (Pull Word32 a)
 
 class LiftG a where
   type Elt a
   liftG :: ASize l => Pull l (BProgram a) -> GProgram (Push Grid l (Elt a)) 
-
 
 ---------------------------------------------------------------------------
 -- instances LiftB 
@@ -41,23 +41,28 @@ instance Pushable p => LiftB (p Word32 a) where
 instance MemoryOps a => LiftB a where
   liftB arr@(Pull ts txf) =
     do
-      snames <- names "arr" (undefined :: a)
-      allocateArray snames (undefined :: a) ts
+      --snames <- names "arr" (undefined :: a)
+      --allocateArray snames (undefined :: a) ts
       let p wf = do
             forAll (fromIntegral ts) $ \tix -> 
               do
                 elts <- txf tix
                 wf elts tix 
-      p (assignArray snames)
+      snames <- p (assignArrayN ts)
       return $ pullFrom snames ts
       
 
+--class PromoteToBlock a where
+--  promoteToBlock :: Pull Word32 (TProgram a) -> BProgram Word32 a
+  
+      
+        
 
 
 ---------------------------------------------------------------------------
 -- instances LiftB 
 ---------------------------------------------------------------------------  
-
+-- This one has bugs ! 
 -- Each block computes an array
 instance MemoryOps a => LiftG (Pull Word32 a) where
   type Elt (Pull Word32 a) = a 
@@ -65,13 +70,13 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
     do
       let tmp = fst $ runPrg 0 (bxf 0) -- get info about result  
 
-      snames <- names "arr" (undefined :: a)
-      allocateArray snames (undefined :: a) (len tmp)
+      --snames <- names "arr" (undefined :: a)
+      --allocateArray snames (undefined :: a) (len tmp)
       
-      forAllBlocks (sizeConv bs) $ \bix -> do 
+      snames <- forAllBlocks (sizeConv bs) $ \bix -> do 
         arr <- bxf bix
         let (Push _ p) = push Block arr
-        p (assignArray snames) 
+        p (assignArrayN (len tmp)) 
 
       let pully = Pull bs $ \bix -> pullFrom snames (len tmp) 
 
@@ -80,7 +85,9 @@ instance MemoryOps a => LiftG (Pull Word32 a) where
         do
           forAllBlocks (sizeConv bs) $ \bix ->
             forAll (sizeConv (len tmp)) $ \tix ->
-              wf ((pully ! bix) ! tix) (bix * (sizeConv (len tmp)) + tix)
+              do
+                wf ((pully ! bix) ! tix) (bix * (sizeConv (len tmp)) + tix)
+               
                     
           
 

@@ -73,8 +73,9 @@ compileStep1 p = snd $ cs1 ns p
 cs1 :: Supply Int -> P.Program t a -> (a,IM) 
 cs1 i P.Identifier = (supplyValue i, [])
 
-cs1 i (P.Assign name ix e) = ((),out (SAssign name ix e))
-
+cs1 i (P.Assign name ix e) =
+  ((),out (SAssign name ix e))
+ 
 cs1 i (P.AtomicOp name ix at) = (v,out im)
   where 
     nom = "a" ++ show (supplyValue i)
@@ -84,7 +85,6 @@ cs1 i (P.AtomicOp name ix at) = (v,out im)
 cs1 i (P.Cond bexp p) = ((),out (SCond bexp im)) 
   where ((),im) = cs1 i p
 
-
 cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
   where
     (i1,i2) = split2 i
@@ -93,12 +93,10 @@ cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
     p = f v
     (a,im) = cs1 i2 p 
     
-
 cs1 i (P.ForAll n f) = (a,out (SForAll n im))
   where
     p = f (ThreadIdx X)  
     (a,im) = cs1 i p 
-
 
 cs1 i (P.ForAllBlocks n f) = (a,out (SForAllBlocks n im)) 
   where

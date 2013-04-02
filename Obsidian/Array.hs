@@ -1,7 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses,  
              FlexibleInstances, FlexibleContexts,
              GADTs, 
-             TypeFamilies #-} 
+             TypeFamilies,
+             RankNTypes #-} 
 
 {- Joel Svensson 2012
 
@@ -16,6 +17,7 @@ import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
+import Obsidian.Names
 
 
 import Data.List
@@ -44,13 +46,13 @@ instance ASize (Exp Word32) where
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 data Push p s a =
-  Push s ((a -> Exp Word32 -> TProgram ()) -> Program p ())   
+  Push s (forall b. ((a -> Exp Word32 -> TProgram Names) -> Program p Names))
 
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: Exp Word32 -> a}
 
-mkPushArray :: s -> ((a -> Exp Word32 -> TProgram ())
-                             -> Program t ()) -> Push t s a
+mkPushArray :: s -> (forall b. ((a -> Exp Word32 -> TProgram Names)
+                             -> Program t Names)) -> Push t s a
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 

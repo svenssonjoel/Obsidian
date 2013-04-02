@@ -28,6 +28,7 @@ import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Memory
+import Obsidian.Names
 
 import Data.Word
 ---------------------------------------------------------------------------
@@ -41,11 +42,11 @@ write arr = do
   -- Here i know that this pattern match will succeed
   let n = len arr
   
-  allocateArray snames (undefined :: a) n
+  -- allocateArray snames (undefined :: a) n
 
   let (Push m p) = push Block arr
 
-  p (assignArray snames) 
+  names <- p (assignArrayN n) 
       
   return $ pullFrom snames n
 
@@ -63,5 +64,5 @@ forceG :: forall l a. GlobalMemoryOps a
 forceG (Push _ p)  =
   do
     output <- outputs (undefined :: a) 
-    p (assignOut output) 
+    p (\a e -> do {assignOut output a e; return (Single "")}) 
     return ()
