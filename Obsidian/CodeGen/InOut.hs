@@ -93,6 +93,11 @@ instance (ToProgram b (GProgram ()),
           => ToProgram b (Push Grid Word32 a) where
   toProgram i f arr = toProgram i (forceG . f)  arr
 
+instance (ToProgram b (GProgram ()),
+          GlobalMemoryOps a)
+          => ToProgram b (Push Grid EWord32 a) where
+  toProgram i f arr = toProgram i (forceG . f)  arr
+
 
 ---------------------------------------------------------------------------
 -- Recursive cases
@@ -142,7 +147,7 @@ type family Ips a b
  
 -- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
 -- type instance Ips a (Final (GProgram b)) = a
-type instance Ips a (Push Grid Word32 b) = a
+type instance Ips a (Push Grid l b) = a
 type instance Ips a (Pull l b) = a
 type instance Ips a (GProgram b) = a
 type instance Ips a (b -> c) =  a :-> Ips b c
