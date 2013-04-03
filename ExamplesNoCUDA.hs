@@ -298,7 +298,7 @@ matMul2 x y = pushBlocks $ fmap liftB $ mkMatrix n m cell
 
 
 matMulIn  a b = join $ liftM forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
-matMulIn2 a b = forceG $ matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
+matMulIn2 a b = matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
 
 toMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
 toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)

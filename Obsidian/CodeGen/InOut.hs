@@ -1,4 +1,6 @@
-{-# LANGUAGE FlexibleInstances, 
+{-# LANGUAGE FlexibleInstances,
+             OverlappingInstances,
+             UndecidableInstances,
              FlexibleContexts,
              MultiParamTypeClasses,
              TypeOperators,
@@ -26,6 +28,9 @@ import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs 
 import Obsidian.Program
+import Obsidian.Force
+import Obsidian.Memory
+
 import qualified Obsidian.CodeGen.Program as CG 
 
 import Data.Word
@@ -54,6 +59,10 @@ class ToProgram a b where
   
 typeOf_ a = typeOf (Literal a)
 
+
+---------------------------------------------------------------------------
+-- Base cases
+--------------------------------------------------------------------------- 
 instance (Scalar t) => ToProgram (Exp t) (GProgram b) where
   toProgram i f a = ([(nom,t)],CG.compileStep1 (f input))
     where nom = "s" ++ show i
@@ -76,8 +85,18 @@ instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
             input = namedGlobal nom n -- lengthVar
             t = typeOf_ (undefined :: t)
 
+---------------------------------------------------------------------------
+-- More natural to work with these in some cases
+---------------------------------------------------------------------------
+instance (ToProgram b (GProgram ()),
+          GlobalMemoryOps a)
+          => ToProgram b (Push Grid Word32 a) where
+  toProgram i f arr = toProgram i (forceG . f)  arr
 
 
+---------------------------------------------------------------------------
+-- Recursive cases
+--------------------------------------------------------------------------- 
 instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
   toProgram i f (a :-> rest) = ((nom,t):ins,prg)
     where
@@ -122,7 +141,9 @@ infixr 5 :->
 type family Ips a b
  
 -- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
--- type instance Ips a (Final (GProgram b)) = a 
+-- type instance Ips a (Final (GProgram b)) = a
+type instance Ips a (Push Grid Word32 b) = a
+type instance Ips a (Pull l b) = a
 type instance Ips a (GProgram b) = a
 type instance Ips a (b -> c) =  a :-> Ips b c
 
