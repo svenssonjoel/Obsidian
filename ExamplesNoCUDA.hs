@@ -1,4 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction #-} 
+
 module ExamplesNoCuda where
 
 import qualified Obsidian.CodeGen.CUDA as CUDA

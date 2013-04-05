@@ -101,7 +101,6 @@ instance Scalar Word8 where
   sizeOf _ = 1
   typeOf _ = Word8 
 
-  
 instance Scalar Word16 where 
   sizeOf _ = 2
   typeOf _ = Word16
@@ -311,6 +310,9 @@ instance Num (Exp Int) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = Literal 0
+  (*) (Literal 0) _ = Literal 0
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Int" 
@@ -346,7 +348,9 @@ instance Enum (Exp Int) where
   fromEnum = error "fromEnum: not implemented for Exp Int"
          
 instance Integral (Exp Int) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Int" 
   toInteger = error "toInteger: not implemented for Exp Int" 
@@ -369,6 +373,9 @@ instance Num (Exp Int32) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = 0
+  (*) (Literal 0) _ = 0 
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Int32"
@@ -404,7 +411,9 @@ instance Enum (Exp Int32) where
   fromEnum = error "fromEnum: not implemented for Exp Int32" 
          
 instance Integral (Exp Int32) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Int32" 
   toInteger = error "toInteger: not implemented for Exp Int32" 
@@ -425,7 +434,6 @@ instance Num (Exp Word32) where
       -- This spots the kind of indexing that occurs from 
       --  converting a bix tix view to and from gix view
         
-
   -- Added 2 oct 2012
   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
   (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
@@ -438,6 +446,9 @@ instance Num (Exp Word32) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = Literal 0
+  (*) (Literal 0) _ = Literal 0
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Word32"
@@ -484,7 +495,9 @@ instance Enum (Exp Word32) where
   fromEnum = error "fromEnum: not implemented for Exp Word32" 
 
 instance Integral (Exp Word32) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Word32" 
   toInteger = error "toInteger: not implemented for Exp Word32"
@@ -579,6 +592,9 @@ infixr 2 ||*
 (&&*) a b = BinOp And a b 
 (||*) a b = BinOp Or a b 
 
+---------------------------------------------------------------------------
+-- Choice class
+---------------------------------------------------------------------------
 class Choice a where 
   ifThenElse :: Exp Bool -> a -> a -> a 
 
@@ -591,14 +607,10 @@ instance (Choice a, Choice b) => Choice (a,b) where
   ifThenElse b (e1,e1') (e2,e2') = (ifThenElse b e1 e2,
                                     ifThenElse b e1' e2') 
   
-
----------------------------------------------------------------------------
--- Built-ins
-
-
 ---------------------------------------------------------------------------
 -- Print Expressions
-
+---------------------------------------------------------------------------
+  
 printExp :: Scalar a => Exp a -> String
 printExp (BlockIdx X) = "blockIdx.x"
 printExp (ThreadIdx X) = "threadIdx.x"
@@ -645,7 +657,7 @@ printOp BitwiseNeg = " ~ "
 
 
 ---------------------------------------------------------------------------
--- Experimenting
+-- Turn expressions into backend-expressions
 ---------------------------------------------------------------------------
 class ExpToCExp a where 
   expToCExp :: Exp a -> CExpr 

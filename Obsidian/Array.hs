@@ -56,7 +56,7 @@ mkPushArray n p = Push n p
 mkPullArray n p = Pull n p  
 
 class Array a where
-  resize :: s -> a s e -> a s e
+  resize :: r -> a s e -> a r e
   len    :: ASize s => a s e -> s
   aMap   :: (e -> e') -> a s e -> a s e'
   ixMap  :: (Exp Word32 -> Exp Word32)
@@ -157,56 +157,12 @@ instance Pushable Pull where
   n threads, each writing m elements:
   [(tid * m + k | k <- [0..m]] 
 
------------------------------------------------------------------------- -} 
-
----------------------------------------------------------------------------
--- Global Pushable
---------------------------------------------------------------------------- 
-{- 
-class PushableGlobal a where
-  pushG :: a e -> GlobPush e
-  -- Push Global and Flatten
-  pushGF :: a [e] -> GlobPush e
-
-  -- Push using m threads per block and n elements per thread
-  pushGN :: Word32 -> Word32 -> a e -> GlobPush e
-  
-instance PushableGlobal GlobPull where
-  pushG (GlobPull ixf) =
-      GlobPush 
-        $ \wf -> forAllT
-                 $ \gix -> wf (ixf gix) gix
-                           
-  pushGF (GlobPull ixf) = undefined
-
-  -- Implementing this will set a fixed blocksize.
-  -- But then again, if exact control over number of threads
-  -- is wanted then that is neccessary. 
-  pushGN m n (GlobPull ixf) =
-    GlobPush 
-    $ \wf ->
-    ForAllBlocks $ \bid ->
-    ForAll (Just m) 
-    $ \tid ->
-    let i = bid * (fromIntegral m) + tid in     
-    sequence_ [wf (ixf (i + fromIntegral (j * n))) (i + fromIntegral (j * n))
-              | j <- [0..n]] 
-    
-
--} 
-  
+------------------------------------------------------------------------ -}   
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
 namedArray name n = mkPullArray n (\ix -> index name ix)
 indexArray n      = mkPullArray n (\ix -> ix)
-
-
---instance Indexible GlobPull a where
---  access (GlobPull ixf) ix = ixf ix 
-
---instance Indexible Distrib a where
---  access p ix = getBlock p ix 
 
 pushApp (Push _ p) a = p a 
 
