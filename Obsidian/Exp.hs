@@ -654,8 +654,6 @@ printOp BitwiseOr  = " | "
 printOp BitwiseXor = " ^ " 
 printOp BitwiseNeg = " ~ "  
 
-
-
 ---------------------------------------------------------------------------
 -- Turn expressions into backend-expressions
 ---------------------------------------------------------------------------
