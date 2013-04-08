@@ -3,18 +3,7 @@ module ExamplesNoCuda where
 
 import qualified Obsidian.CodeGen.CUDA as CUDA
 
-import Obsidian.Program
-import Obsidian.Exp
-import Obsidian.Types
-import Obsidian.Array
-import Obsidian.Library
-import Obsidian.Force
-import Obsidian.CodeGen.InOut
-import Obsidian.Atomic
-import Obsidian.SeqLoop
-import Obsidian.Lift
-import Obsidian.Memory
-import Obsidian.Names
+import Obsidian
 
 import Data.Word
 import Data.Int

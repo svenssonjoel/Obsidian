@@ -1,0 +1,54 @@
+Name:           Obsidian
+Version:        0.0.0.1
+
+License:                BSD3
+License-file:           LICENSE
+Stability:              Beta
+Maintainer:		Joel Svensson<svenssonjoel@yahoo.se>
+Author:			Joel Svensson<svenssonjoel@yahoo.se>
+
+Copyright:              Copyright (c) 2011-2013 Joel Svensson 		  
+			Copyright (c) 2013 Josef Svenningsson 
+  
+Synopsis:               Embedded language for GPU Programming 
+HomePage:               https://github.com/svenssonjoel/Obsidian
+Description: 
+   Obsidian is an embedded language for general purpose programming targeting 
+   GPU's. 
+
+Category: Language
+Cabal-Version: >=1.8
+Tested-With: GHC == 7.6.1
+
+build-type: Simple
+
+--extra-source-files:
+--     examples/tests/Test_DotProd.hs
+
+
+source-repository head
+  type:     git
+  location: git://github.com/svenssonjoel/Obsidian.git
+
+----------------------------------------------------------------------------------------------------
+Library
+  build-depends: base >= 4 && < 5
+               , mtl >= 2.0 
+             
+  exposed-modules: Intel.ArbbVM
+                 , Intel.ArbbVM.Convenience
+                 , Intel.ArbbVM.Type
+-- other-modules: 
+
+  GHC-Options: 
+-- -O2 
+
+--  include-dirs:
+
+
+--  extra-lib-dirs: 
+
+--  Includes: 
+--  Extra-libraries: 
+  
+
