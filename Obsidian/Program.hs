@@ -6,7 +6,8 @@
 -}
 
 {-# LANGUAGE GADTs,
-             FlexibleInstances #-} 
+             FlexibleInstances,
+             EmptyDataDecls #-} 
 
 
 module Obsidian.Program  where 

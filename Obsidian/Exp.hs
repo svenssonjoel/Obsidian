@@ -339,6 +339,11 @@ instance Bits (Exp Int) where
   bitSize a  = sizeOf a * 8
   isSigned a = True
 
+  bit  = error "bit: is undefined for Exp Int"
+  testBit = error "testBit: is undefined for Exp Int"
+  popCount = error "popCoint: is undefined for Exp Int"
+
+
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int) where
   toRational = error "toRational: not implemented for Exp Int)"  
@@ -401,6 +406,11 @@ instance Bits (Exp Int32) where
   shiftR a i = BinOp ShiftR  a (Literal i)
   bitSize a  = 32 -- sizeeOf a * 8
   isSigned a = True
+
+  bit  = error "bit: is undefined for Exp Int32"
+  testBit = error "testBit: is undefined for Exp Int32"
+  popCount = error "popCoint: is undefined for Exp Int32"
+
 
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int32) where
@@ -485,6 +495,10 @@ instance Bits (Exp Word32) where
   shiftR a i = BinOp ShiftR a (Literal i)
   bitSize a  = 32
   isSigned a = False
+
+  bit  = error "bit: is undefined for Exp Word32"
+  testBit = error "testBit: is undefined for Exp Word32"
+  popCount = error "popCoint: is undefined for Exp Word32"
 
 instance Real (Exp Word32) where 
   toRational = error "toRational: not implemented for Exp Word32" 
