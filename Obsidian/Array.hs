@@ -23,6 +23,14 @@ import Data.List
 import Data.Word
 
 ---------------------------------------------------------------------------
+-- Aliases
+---------------------------------------------------------------------------
+type SPull = Pull Word32
+type DPull = Pull EWord32
+
+type SPush t a = Push t Word32 a
+type DPush t a = Push t EWord32 a 
+---------------------------------------------------------------------------
 -- Create arrats
 ---------------------------------------------------------------------------
 undefinedGlobal n = Pull n $ \gix -> undefined
