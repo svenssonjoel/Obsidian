@@ -51,3 +51,35 @@ zipWithG kern as bs =
     blocks = min (len as) (len bs) 
      
 
+---------------------------------------------------------------------------
+-- Experimental
+---------------------------------------------------------------------------
+zipWithG' :: forall a b c. MemoryOps c
+             => (SPull a -> SPull b -> BProgram (SPull c))
+             -> DPull (SPull a)
+             -> DPull (SPull b)
+             -> GProgram (DPush Grid c)
+zipWithG' kern as bs =
+  do
+    snames <- forAllBlocks (sizeConv n) $ \bix ->
+      do
+        res <- kern (as ! bix) (bs ! bix)
+        let (Push _ p) = push Block res
+        p (assignArrayN n)
+    let pully = Pull blocks $ \bix -> (pullFromS snames n :: Pull Word32 c)
+        
+    return $ Push (blocks * fromIntegral n) $
+      \wf ->
+      do
+        forAllBlocks (sizeConv blocks) $ \bix ->
+          forAll (sizeConv n) $ \tix ->
+            do
+              wf ((pully ! bix) ! tix) (bix * (sizeConv n) + tix)
+      
+  where
+    n = min m k 
+    -- Assume uniformity
+    m = len (as ! 0)
+    k = len (bs ! 0)
+    blocks = (min (len as) (len bs))
+
