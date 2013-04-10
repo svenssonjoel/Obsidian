@@ -34,7 +34,7 @@ Library
   build-depends: base >= 4 && < 5
                , mtl >= 2.0 
                , value-supply >= 0.6
-              
+               , containers >= 0.4.2.1
              
   exposed-modules: Obsidian
                  
@@ -46,7 +46,8 @@ Library
                ,  Obsidian.Force
                ,  Obsidian.Globs
                ,  Obsidian.Library
-               ,  Obsidian.Lift
+               ,  Obsidian.LibraryG 
+--               ,  Obsidian.Lift
                ,  Obsidian.Memory
                ,  Obsidian.Names
                ,  Obsidian.Program 
