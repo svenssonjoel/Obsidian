@@ -60,22 +60,23 @@ sklansky :: (Choice a, MemoryOps a)
 sklansky 0 op arr = return arr
 sklansky n op arr =
   do 
-    let arr1 = twoK (n-1) (fan op) arr
+    let arr1 = binSplit (n-1) (fan op) arr
     arr2 <- force arr1
     sklansky (n-1) op arr2
 
-fan :: (Choice a, ASize l) => (a -> a -> a) -> Pull l a -> Pull l a 
+-- fan :: (Choice a, ASize l) => (a -> a -> a) -> Pull l a -> Pull l a
+fan :: Choice a => (a -> a -> a) -> SPull a -> SPull a
 fan op arr =  a1 `conc`  fmap (op c) a2 
     where 
       (a1,a2) = halve arr
       c = a1 ! sizeConv (len a1 - 1)
 
---sklanskyG logbs op =
---  join . liftM forceG . liftG . fmap (sklansky logbs op) . splitUp (2^logbs) 
+sklanskyG logbs op arr =
+  mapG (sklansky logbs op) (splitUp (2^logbs) arr)
 
---getSklansky =
---  quickPrint (sklanskyG 8 (+))
---             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+getSklansky =
+  quickPrint (sklanskyG 8 (+))
+             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
 
 ---------------------------------------------------------------------------
 -- kStone (TEST THAT THIS IS REALLY A SCAN!) 
@@ -233,6 +234,7 @@ s1 arr = do
 
 type SMatrix a = Pull Word32 (Pull Word32 a)
 
+{-
 transpose :: (ASize l1, ASize l2) => Pull l1 (Pull l2 a) -> Pull l2 (Pull l1 a)
 transpose arr = mkPullArray m
                 $ \i -> mkPullArray n
@@ -241,6 +243,16 @@ transpose arr = mkPullArray m
    where
      n = len arr
      m = len (arr ! 0) 
+-}
+transpose :: SMatrix a -> SMatrix a
+transpose arr = mkPullArray m
+                $ \i -> mkPullArray n
+                       $ \j -> (arr ! j) ! i                                       
+                                
+   where
+     n = len arr
+     m = len (arr ! 0) 
+
 
 
 {-      
@@ -300,8 +312,8 @@ matMul x y = zipWithG body (replicate n x) (replicate m (transpose y))
 
 
  
-matMulIn  a b = forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
---matMulIn2 a b = matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
+matMulIn  a b = matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
+
 
 toMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
 toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)

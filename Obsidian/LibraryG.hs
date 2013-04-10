@@ -13,14 +13,14 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- 
 --------------------------------------------------------------------------- 
-mapG :: (SPull a -> BProgram (SPull b))
-        -> DPull (SPull a)
-        -> DPush Grid b
+mapG :: ASize l => (SPull a -> BProgram (SPull b))
+        -> Pull l (SPull a)
+        -> Push Grid l b
 mapG kern as =
-  Push (blocks * sizeConv n) $
+  Push (blocks * fromIntegral n) $
   \wf ->
     do
-      forAllBlocks blocks $ \bix -> do
+      forAllBlocks (sizeConv blocks) $ \bix -> do
         res <- kern (as ! bix)
         let (Push _ p) = push Block res
             wf' a ix = wf a (bix * sizeConv n + ix)
