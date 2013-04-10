@@ -280,8 +280,13 @@ matMul x y = liftG
 
 --matMul2 :: Num a 
 --          => SMatrix a -> SMatrix a -> Push Grid Word32 a
-matMul2 x y = zipWithG body x (transpose y) 
+matMul :: (Num c, MemoryOps c)
+          => SPull (SPull c)
+          -> SPull (SPull c) -> SPush Grid c
+matMul x y = zipWithG body (replicate n x) (replicate m (transpose y))
   where
+    n = len x
+    m = len (y ! 0) 
     body a b = force (zipWithT cell a b)
     cell i j = do
       let arr = zipWith (*) i j 
@@ -294,19 +299,20 @@ matMul2 x y = zipWithG body x (transpose y)
 --        m  = len y'
 
 
-{- 
-matMulIn  a b = join $ liftM forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
-matMulIn2 a b = matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
+ 
+matMulIn  a b = forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
+--matMulIn2 a b = matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
 
 toMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
 toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
--}
-{-
+
+
 getMM =
   quickPrint matMulIn
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
 
+{-
 getMM2 =
   quickPrint matMulIn2
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->

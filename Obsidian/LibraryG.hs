@@ -7,6 +7,8 @@ import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Memory
 
+import Data.Word
+
 
 ---------------------------------------------------------------------------
 -- 
@@ -47,20 +49,22 @@ mapT threadf as =
 ---------------------------------------------------------------------------
 -- 
 --------------------------------------------------------------------------- 
-zipWithG :: (SPull a -> SPull b -> BProgram (SPull c))
-           -> DPull (SPull a)
-           -> DPull (SPull b)
-           -> DPush Grid c
+zipWithG :: ASize l => (SPull a -> SPull b -> BProgram (SPull c))
+           -> Pull l (SPull a)
+           -> Pull l (SPull b)
+           -> Push Grid l c
 zipWithG kern as bs =
-  Push (blocks * sizeConv n) $
+  Push (blocks * fromIntegral rn) $
   \wf ->
     do
-      forAllBlocks blocks $ \bix -> do
+      forAllBlocks (sizeConv blocks) $ \bix -> do
         res <- kern (as ! bix) (bs ! bix)
         let (Push _ p) = push Block res
             wf' a ix = wf a (bix * sizeConv n + ix)
         p wf'
   where
+    -- Is this ok?! (does it break?) 
+    rn = len $ fst $ runPrg 0 (kern (as ! 0) (bs ! 0))
     n = min m k
     -- assume uniformity
     m = len (as ! 0)
@@ -73,16 +77,19 @@ zipWithT :: (SPull a -> SPull b -> TProgram (SPull c))
         -> SPull (SPull b) 
         -> SPush Block c
 zipWithT threadf as bs =
-  Push (threads * n) $
+  Push (threads * rn) $
   \wf ->
     do
-      forAll (sizeConv n) $ \tix -> do
+      forAll (sizeConv threads) $ \tix -> do
         res <- threadf (as ! tix) (bs ! tix) 
         let (Push _ p) = push Thread res
             wf' a ix = wf a (tix * sizeConv n + ix)
         p wf'      
 
   where
+
+    -- Is this ok?! (does it break?) 
+    rn = len $ fst $ runPrg 0 (threadf (as ! 0) (bs ! 0))
     n = min m k 
 
     m  = len (as ! 0)
@@ -92,11 +99,11 @@ zipWithT threadf as bs =
 ---------------------------------------------------------------------------
 -- Experimental
 ---------------------------------------------------------------------------
-zipWithG' :: forall a b c. MemoryOps c
+zipWithG' :: forall a b c l. (ASize l, MemoryOps c)
              => (SPull a -> SPull b -> BProgram (SPull c))
-             -> DPull (SPull a)
-             -> DPull (SPull b)
-             -> GProgram (DPush Grid c)
+             -> Pull l (SPull a)
+             -> Pull l (SPull b)
+             -> GProgram (Push Grid l c)
 zipWithG' kern as bs =
   do
     snames <- forAllBlocks (sizeConv n) $ \bix ->

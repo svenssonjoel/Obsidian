@@ -8,7 +8,7 @@
 {- Joel Svensson 2012, 2013 
 
    Notes:
-
+   2013-04-10: Looking at force and threads
    2013-01-27: globArrays nolonger exist
    2013-01-02: Added simple forceG for globArrays
    2012-12-10: Edited 

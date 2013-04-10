@@ -57,7 +57,7 @@ kernelHead name ins outs =
 ---------------------------------------------------------------------------
     
 genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String 
-genKernel name kernel a = proto ++ cuda 
+genKernel name kernel a = proto ++ ts ++ cuda 
   where
     (ins,im) = toProgram 0 kernel a
 
@@ -69,7 +69,8 @@ genKernel name kernel a = proto ++ cuda
     (m,mm) = mmIM lc sharedMem Map.empty
              
     -- What if its Right ??? (I DONT KNOW!) 
-    (Left threadBudget) = numThreads im 
+    (Left threadBudget) = numThreads im
+    ts = "/* number of threads needed " ++ show threadBudget ++ "*/\n"
 
     spmd = imToSPMDC threadBudget im
     

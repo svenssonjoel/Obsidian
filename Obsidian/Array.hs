@@ -122,9 +122,9 @@ instance Pushable (Push Grid) where
   push Thread = error "not implemented: Program transformations!"
   push Block = error "not implemented: Program transformations!" 
   
-instance Pushable Pull where   
+instance Pushable Pull where
   push Thread (Pull n ixf) =
-    Push n $ \wf -> SeqFor (sizeConv n) $ \i -> wf (ixf i) i
+    Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
   push Block (Pull n ixf) =
     Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i 
   push Grid (Pull n ixf) =
