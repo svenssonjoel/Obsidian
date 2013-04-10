@@ -22,7 +22,7 @@ import qualified Prelude as P
 quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
 quickPrint prg input =
   putStrLn $ CUDA.genKernel "kernel" prg input 
-
+ 
 ---------------------------------------------------------------------------
 -- MapFusion example
 ---------------------------------------------------------------------------
@@ -43,8 +43,8 @@ splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
 splitUpS n (Pull m ixf) = Pull (m `div` n) $ 
                           \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
 
-test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
-test1 input = liftG  $ fmap mapFusion (splitUp 256 input) 
+--test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
+--test1 input = liftG  $ fmap mapFusion (splitUp 256 input) 
 
 input1 :: Pull (Exp Word32) EInt 
 input1 = namedGlobal "apa" (variable "X")
@@ -70,12 +70,12 @@ fan op arr =  a1 `conc`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! sizeConv (len a1 - 1)
 
-sklanskyG logbs op =
-  join . liftM forceG . liftG . fmap (sklansky logbs op) . splitUp (2^logbs) 
+--sklanskyG logbs op =
+--  join . liftM forceG . liftG . fmap (sklansky logbs op) . splitUp (2^logbs) 
 
-getSklansky =
-  quickPrint (sklanskyG 8 (+))
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+--getSklansky =
+--  quickPrint (sklanskyG 8 (+))
+--             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
 
 ---------------------------------------------------------------------------
 -- kStone (TEST THAT THIS IS REALLY A SCAN!) 
@@ -105,18 +105,18 @@ kStoneP n op arr =
  
 
 
-kStoneG logbs op =
-  join . liftM forceG . liftG . fmap (kStone logbs op) . splitUp (2^logbs)
-kStonePG logbs op =
-  join . liftM forceG . liftG . fmap (kStoneP logbs op) . splitUp (2^logbs) 
+--kStoneG logbs op =
+--join . liftM forceG . liftG . fmap (kStone logbs op) . splitUp (2^logbs)
+--kStonePG logbs op =
+--  join . liftM forceG . liftG . fmap (kStoneP logbs op) . splitUp (2^logbs) 
 
-getKStone =
-  quickPrint (kStoneG 8 (+))
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+--getKStone =
+--  quickPrint (kStoneG 8 (+))
+--             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
 
-getKStoneP =
-  quickPrint (kStonePG 8 (+))
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+--getKStoneP =
+--  quickPrint (kStonePG 8 (+))
+--             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
 
 ---------------------------------------------------------------------------
 -- Brent Kung
@@ -127,12 +127,12 @@ bKung op arr | len arr == 1 = return arr
 bKung op arr = undefined 
 
 
-bKungG op =
-  join . liftM forceG . liftG . fmap (bKung op) . splitUp 256
+--bKungG op =
+--  join . liftM forceG . liftG . fmap (bKung op) . splitUp 256
 
-getBKung =
-  quickPrint (bKungG (+))
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+--getBKung =
+--  quickPrint (bKungG (+))
+--             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
 
 
 ---------------------------------------------------------------------------
@@ -168,6 +168,7 @@ getRec =
 -- Testing some sequential loop approaches
 ---------------------------------------------------------------------------
 
+{- 
 testFold :: Pull Word32 EWord32 -> Pull Word32 (Program Thread EWord32)
 testFold arr = fmap (seqFold (+) 0) (splitUpS (32 :: Word32)  arr)
 
@@ -203,7 +204,7 @@ revG arr = mkPullArray n $ \ix -> arr ! (sizeConv n - 1 - ix)
 
 testRev :: Scalar a=>  Pull EWord32 (Exp a) -> GProgram () 
 testRev = forceG . push Grid . revG
-
+-} 
    
 ---------------------------------------------------------------------------
 -- Simple 
@@ -216,14 +217,14 @@ s1 arr = do
   a2 <- force (fmap (+2) a1) 
   force (fmap (+1) a2)  
 
-gs1 :: (Num a, MemoryOps a) =>
-     Pull EWord32 a -> Program Grid (Push Grid EWord32 a)
-gs1 = liftG . (fmap s1) . splitUp 256 
+--gs1 :: (Num a, MemoryOps a) =>
+--     Pull EWord32 a -> Program Grid (Push Grid EWord32 a)
+--gs1 = liftG . (fmap s1) . splitUp 256 
 
 
-getgs1 =
-  quickPrint (join . liftM forceG . gs1)
-             (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)
+--getgs1 =
+--  quickPrint (join . liftM forceG . gs1)
+--             (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)
 
 
 ---------------------------------------------------------------------------
@@ -262,6 +263,7 @@ matMul x y = liftG
 
 mkMatrix n m f = mkPullArray n $ \i -> mkPullArray m $ \j -> f i j 
 
+{-
 matMul :: (Num a, MemoryOps a, LiftB a)
           => SMatrix a -> SMatrix a -> Program Grid (Push Grid Word32 a)    
 matMul x y = liftG
@@ -274,25 +276,32 @@ matMul x y = liftG
         y' = transpose y
         n  = len x
         m  = len y'
+-} 
 
-matMul2 :: (Num a, MemoryOps a, LiftB a)
-          => SMatrix a -> SMatrix a -> Push Grid Word32 a
-matMul2 x y = pushBlocks $ fmap liftB $ mkMatrix n m cell 
-                          
-  where cell i j = seqFold (+) 0 $ zipWith (*) (x ! i) (y' ! j) 
-        y' = transpose y
-        n  = len x
-        m  = len y'
+--matMul2 :: Num a 
+--          => SMatrix a -> SMatrix a -> Push Grid Word32 a
+matMul2 x y = zipWithG body x (transpose y) 
+  where
+    body a b = force (zipWithT cell a b)
+    cell i j = do
+      let arr = zipWith (*) i j 
+      r <- seqFold (+) 0 arr
+      return (singleton r) 
+              
+--  where cell i j = seqFold (+) 0 $ zipWith (*) (x ! i) (y' ! j) 
+--        y' = transpose y
+--        n  = len x
+--        m  = len y'
 
 
-
+{- 
 matMulIn  a b = join $ liftM forceG $  matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
 matMulIn2 a b = matMul2 (toMatrix 256 256 a) (toMatrix 256 256 b) 
 
 toMatrix :: Word32 -> Word32 -> Pull Word32 a -> SMatrix a 
 toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
-
-
+-}
+{-
 getMM =
   quickPrint matMulIn
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
@@ -302,3 +311,4 @@ getMM2 =
   quickPrint matMulIn2
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
+-}
