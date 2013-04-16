@@ -12,7 +12,8 @@ import Data.Int
 
 import qualified Data.List as L
 import qualified Data.Map as M
-import qualified Data.Set as S 
+import qualified Data.Set as S
+import Data.Tuple
 
 import Control.Monad.State
 
@@ -89,7 +90,7 @@ cSizeOf (CExpr (CIndex (e,es) _))  = 1 + max (cSizeOf e) (maximum (map cSizeOf e
 cSizeOf (CExpr (CCond e1 e2 e3 _)) = 1 + maximum [cSizeOf e1, cSizeOf e2, cSizeOf e3] 
 cSizeOf (CExpr (CFuncExpr _ es _)) = 1 + maximum (map cSizeOf es) 
 cSizeOf (CExpr (CUnOp  _ e _)) = 1 + cSizeOf e 
-cSizeOf (CExpr (CBinOp _ e1 e2 _ )) = 1+ cSizeOf e1 + cSizeOf e2 
+cSizeOf (CExpr (CBinOp _ e1 e2 _ )) = 1 + cSizeOf e1 + cSizeOf e2 
 cSizeOf e = 0
 
 
@@ -139,9 +140,9 @@ cTypeOf (CExpr e) = cTypeOfP e
                       
 ----------------------------------------------------------------------------                      
 -- DAGs
-type NodeID = Integer                
+type NodeID = Int               
 newtype CENode = CENode (CExprP NodeID) 
-               deriving Show
+               deriving (Show, Ord, Eq)
                         
 ----------------------------------------------------------------------------
 -- Helpers 
@@ -402,7 +403,7 @@ ppCExpr ppc (CExpr (CCast e t)) =
 ---------------------------------------------------------------------------
 
 -- TODO: #1: Discover all expressions that represent an index into an array
---       #2: Count usages of them
+--       #2: Count usages of them (is more complicated than expected)
 --       #3: For "Complicated" expressions used more than once
 --           declare a new name for the index and compute it once. (if not data dependent) 
 --
@@ -415,7 +416,10 @@ ppCExpr ppc (CExpr (CCast e t)) =
 -- Assign with all expressions an integer 
 type ExpMap = M.Map CExpr (Int,Int) 
 
--- Insert, but only if number of occurances and size is right! 
+type Decl = (Int,CExpr) 
+
+
+-- Insert, but only if size is right! 
 insert :: CExpr -> State (Int,ExpMap) () 
 insert e | cSizeOf e >= 2 =
   do
@@ -433,7 +437,7 @@ insert e = return ()
 
 -- Decide if an expression is safe or not to move to
 -- function prelude.
--- Simply put it checks for any data dependency.
+-- Simply put, it checks for any data dependency.
 -- (This code is unused! ) 
 safeExp :: S.Set Name -> CExpr -> Bool
 safeExp s (CExpr (CVar name _)) = S.member name s
@@ -501,8 +505,9 @@ collectExps sp =  mapM_ process sp
         processE e1
     
 
+
 -- REMEMBER TO KEEP IT SIMPLE.
-replacePass :: ExpMap -> [SPMDC] -> ([(Int,CExpr)],[SPMDC])
+replacePass :: ExpMap -> [SPMDC] -> ([Decl],[SPMDC])
 replacePass _ []     = ([],[])
 replacePass m (x:xs) = let (decls,x') = process m x
                            (rest, xs') = replacePass m xs
@@ -531,6 +536,7 @@ replacePass m (x:xs) = let (decls,x') = process m x
       in  (L.nubBy fstEq (decls1 ++ decls2),e':es')
 
 
+    processE :: ExpMap ->  CExpr -> ([Decl],CExpr)
     processE m e@(CExpr (CIndex (e1,es) t)) =
       case M.lookup e m of
         Nothing ->
@@ -553,7 +559,7 @@ replacePass m (x:xs) = let (decls,x') = process m x
             (d2,e2') = processE m e2
             (d3,e3') = processE m e3
           in (L.nubBy fstEq (d1++d2++d3), CExpr (CCond e1' e2' e3' t))
-        Just (id,n) -> -- error "SERIOUS FLAW. FIX THIS"
+        Just (id,n) -> 
           ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
         
     processE m e@(CExpr (CBinOp op e1 e2 t))  =
@@ -568,9 +574,24 @@ replacePass m (x:xs) = let (decls,x') = process m x
                (d2,e2') = processE m e2
            in (L.nubBy fstEq (d1++d2), CExpr (CBinOp op e1' e2' t))
           
-        (Just (id,n)) -> 
+        (Just (id,n)) ->
+          --let (decls1,e1') = processE m e1
+          --    (decls2,e2') = processE m e2
+          --    e' = CExpr (CBinOp op e1' e2' t)
+          --in (L.nubBy fstEq (decls1++decls2++[(id,e')]),CExpr (CVar ("t" ++ show id) (cTypeOf e)))
           ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
-          
+          --let (decls,e1') = performCSE e
+          --in  (decls,e1')
+    processE m e@(CExpr (CUnOp op e1 t)) =
+      case M.lookup e m of
+        Nothing -> -- e is not a candidate for hoisting
+          let (d1,e1') = processE m e1
+          in (L.nubBy fstEq d1,CExpr (CUnOp op e1' t))
+        Just (id,1) -> -- e occurs only once, do not replace
+          let (d1,e1') = processE m e1
+          in (L.nubBy fstEq d1,CExpr (CUnOp op e1' t))
+        Just (id,n) -> -- e occurs n times, replace it! 
+          ([(id,e)],CExpr (CVar ("t" ++ show id) (cTypeOf e)))
     processE m e@(CExpr (CCast e1 t)) = (id,CExpr (CCast e1' t))
       where
         (id,e1') = processE m e1 
@@ -584,7 +605,140 @@ replacePass m (x:xs) = let (decls,x') = process m x
 
 
 
-declsToSPMDC :: [(Int,CExpr)] -> [SPMDC]
+declsToSPMDC :: [Decl] -> [SPMDC]
 declsToSPMDC decls = map process decls
   where
     process (i,e) = CDeclAssign (cTypeOf e) ("t" ++ show i) e 
+
+
+
+---------------------------------------------------------------------------
+-- Custom form of CSE 
+-- 
+---------------------------------------------------------------------------
+
+
+performCSE :: CExpr -> ([Decl],CExpr)
+performCSE exp = dagToExp dag a 
+  where (a,(i,dag,cpd)) = runState (buildDAG exp) (0,M.empty,M.empty)
+        
+
+type DAG = M.Map NodeID CENode
+type CPD = M.Map CENode NodeID
+
+--isComputed :: [Decl] -> CExpr -> Maybe NodeID
+--isComputed c e = L.lookup e (map swap c) 
+
+-- ensure that node ids stay separate from already generated names.
+-- By using the integer from the collectPass as initial state
+buildDAG :: CExpr -> State (Int,DAG,CPD) NodeID
+buildDAG (CExpr (CVar n t)) =
+  addNode (CENode (CVar n t))
+buildDAG (CExpr (CBlockIdx d)) =
+  addNode (CENode (CBlockIdx d))
+buildDAG (CExpr (CThreadIdx d)) =
+  addNode (CENode (CThreadIdx d))
+buildDAG (CExpr (CBlockDim d)) =
+  addNode (CENode (CBlockDim d))
+buildDAG (CExpr (CGridDim d)) =
+  addNode (CENode (CGridDim d))
+buildDAG (CExpr (CLiteral v t)) =
+  addNode (CENode (CLiteral v t))
+buildDAG (CExpr (CIndex (e,es) t)) =
+  do
+    e' <- buildDAG e
+    es' <- mapM buildDAG es
+    addNode (CENode (CIndex (e',es') t))
+buildDAG (CExpr (CCond e1 e2 e3 t)) =
+  do
+    [e1',e2',e3'] <- mapM buildDAG [e1,e2,e3]
+    addNode (CENode (CCond e1' e2' e3' t))
+buildDAG (CExpr (CBinOp op e1 e2 t)) =
+  do
+    [e1',e2'] <- mapM buildDAG [e1,e2]
+    addNode (CENode (CBinOp op e1' e2' t))
+buildDAG (CExpr (CUnOp op e t)) =
+  do 
+    e' <- buildDAG e
+    addNode (CENode (CUnOp op e' t))
+buildDAG (CExpr (CFuncExpr n es t)) =
+  do
+    es' <- mapM buildDAG es
+    addNode (CENode (CFuncExpr n es' t))
+buildDAG (CExpr (CCast e t)) =
+  do
+    e' <- buildDAG e
+    addNode (CENode (CCast e' t)) 
+  
+
+addNode :: CENode -> State (Int, DAG, CPD) NodeID
+addNode node = do
+  (i,d,c) <- get
+  case M.lookup node c of
+    Nothing ->
+      do 
+        put (i+1,M.insert i node d,M.insert node i c)
+        return i
+    (Just n) -> return n
+    
+---------------------------------------------------------------------------
+-- Reconstruct a CExpr + [decls]
+---------------------------------------------------------------------------
+
+dagToExp :: DAG -> NodeID -> ([Decl], CExpr)
+dagToExp dag nid =
+  case M.lookup nid dag of
+    Nothing -> error "dagToExp: Broken DAG"
+    (Just (CENode (CVar nom t)))   -> ([],CExpr (CVar nom t))
+    (Just (CENode (CBlockIdx d)))  -> ([],CExpr (CBlockIdx d))
+    (Just (CENode (CThreadIdx d))) -> ([],CExpr (CThreadIdx d)) 
+    (Just (CENode (CGridDim d)))   -> ([],CExpr (CGridDim d))
+    (Just (CENode (CLiteral v t))) -> ([],CExpr (CLiteral v t))
+
+    -- Bit of a special case 
+    (Just (CENode (CIndex (e,es) t))) ->
+      let
+        (d,e') = dagToExp dag e
+        r       = map (dagToExp dag) es
+        ds      = concatMap fst r
+        es'     = map snd r
+      in (d ++ ds, CExpr (CIndex (e',es') t))
+
+    -- Normal cases      
+    (Just (CENode (CCond e1 e2 e3 t))) ->
+      let (d1,e1') = dagToExp dag e1
+          (d2,e2') = dagToExp dag e2
+          (d3,e3') = dagToExp dag e3
+          exp = CExpr (CCond e1' e2' e3' t)
+          this = (nid,tmp nid t)
+      in (d1++d2++d3++[this], exp)
+    (Just (CENode (CBinOp op e1 e2 t))) ->
+      let (d1,e1') = dagToExp dag e1
+          (d2,e2') = dagToExp dag e2
+          exp = CExpr (CBinOp op e1' e2' t)
+          this = (nid,exp)
+      in (d1++d2++[this],tmp nid t)
+    (Just (CENode (CUnOp op e t))) ->
+      let (d,e') = dagToExp dag e
+          exp = CExpr (CUnOp op e' t)
+          this = (nid, exp)
+      in (d++[this],tmp nid t)
+    (Just (CENode (CFuncExpr nom es t))) ->
+      let r = map (dagToExp dag) es
+          ds = concatMap fst r
+          es' = map snd r
+          exp = CExpr (CFuncExpr nom es' t)
+          this = (nid,exp)
+      in (ds++[this],tmp nid t)
+    -- never pull out just for a cast
+    (Just (CENode (CCast e t))) ->
+      let (d,e') = dagToExp dag e
+          exp = CExpr (CCast e' t)
+          --this = (nid,exp)
+      in (d,exp) 
+
+         
+  
+
+
+tmp nid t = CExpr $ CVar ("t" ++ show nid) t 

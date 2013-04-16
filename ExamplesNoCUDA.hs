@@ -330,3 +330,36 @@ getMM2 =
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
 -}
+
+
+inc :: SPull EFloat -> SPull EFloat
+inc  = fmap (+1)
+
+getIncP = putStrLn $ genKernel "incP" incP input
+
+input :: DPull EFloat
+input = namedGlobal "apa" (variable "X")
+
+incP :: DPull EFloat -> DPush Grid EFloat
+incP arr = mapG (return . inc) ((splitUp 512 . ixMap (vperm2 12 3 1. vperm 11 1 0)) arr)
+
+
+swapBitBlocks :: Int -> Int -> Int -> Exp Word32 -> Exp Word32
+swapBitBlocks l m r i = f .|. (lbs `shiftR` (m-r)) .|. (rbs `shiftL` (l-m))
+  where
+    f = i .&. complement (oneBitsFT r l)
+    lbs = i .&. (oneBitsFT m l) 
+    rbs = i .&. (oneBitsFT r m)
+
+oneBitsFT :: Int -> Int -> Exp Word32
+oneBitsFT i j = (1 `shiftL` j)  - (1 `shiftL` i)
+
+-- r > 0   xor the bit at r-1 with all bits in the block from r to l
+bitBlockXor :: Int -> Int -> Exp Word32 -> Exp Word32
+bitBlockXor l r i = i `xor` (((b `shiftL` (l-r)) - b)`shiftL` 1)
+  where 
+    b = i .&. (1 `shiftL` r)
+
+vperm l m r = bitBlockXor (l-1) (r+l-m-1) . swapBitBlocks l m r
+
+vperm2 l m r = swapBitBlocks l (r+l-m) r . bitBlockXor (l-1) (r+l-m-1)
