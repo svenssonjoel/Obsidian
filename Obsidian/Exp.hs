@@ -173,7 +173,6 @@ data Op a where
   Sub :: Num a => Op ((a,a) -> a) 
   Mul :: Num a => Op ((a,a) -> a) 
   Div :: Num a => Op ((a,a) -> a) 
-  -- If  :: Op ((Bool,a,a) -> a) 
   
   Mod :: Integral a => Op ((a,a) -> a)
          

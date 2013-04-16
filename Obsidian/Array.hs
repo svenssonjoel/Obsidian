@@ -53,13 +53,13 @@ instance ASize (Exp Word32) where
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 data Push p s a =
-  Push s (forall b. ((a -> Exp Word32 -> TProgram NameInfo) -> Program p NameInfo))
+  Push s ((a -> Exp Word32 -> TProgram NameInfo) -> Program p NameInfo)
 
 data Pull s a = Pull {pullLen :: s, 
-                      pullFun :: Exp Word32 -> a}
+                      pullFun :: EWord32 -> a}
 
-mkPushArray :: s -> (forall b. ((a -> Exp Word32 -> TProgram NameInfo)
-                             -> Program t NameInfo)) -> Push t s a
+mkPushArray :: s -> ((a -> EWord32 -> TProgram NameInfo)
+                             -> Program t NameInfo) -> Push t s a
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 
