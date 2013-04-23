@@ -1,0 +1,41 @@
+* Obsidian
+
+  * Fresh TODOs:  
+    + TODO: Look at code generation, is there a problem with the memory management ? 
+    + TODO: global arrays have sizes! make the code generation aware of this! 
+        
+
+* IMPORTANT TODOs
+  + Think about completely dissallowing Int and Word as types in Obsidian programs.
+    Require that the programmer explicitly makes a Int32, Int64, Word32, Word64 Choice-
+  + (In Progress) update the SPDMC based code outputer (cleaner, nicer) 
+  + DONE: Change CodeGen.Program to a completely first order representation! 
+    * Alternatively see if all following steps can be tweaked to run 
+      on the Program t a type. I think doing some of the analysis will be hard 
+      on the Program t a type, Liveness. Go for an as simple and concrete 
+      representation as possible. 
+  + update genProg function
+  + clean up and check for bugs in: 
+    * CodeGen.Memory.hs
+    * CodeGen.Liveness.hs 
+  + The CSE code is definitely completely broken in relation 
+    to all news now.
+  + Make sure unnecessary usage of shared memory can be avoided.    
+
+* Next version of Obsidian
+  * Features (in progress): 
+     + Only one kind of Pull array.
+       However, it can have either Dynamic or Statically known length.
+     + A Set of lift functional that lifts local computations 
+       to global, lifts sequential into local. 
+     + A collection of sequential building blocks for sequential (reg->reg 
+       computations). 
+       
+       * Currently: 
+          + Fold 
+          + Scan 
+          + Sort (todo). How ? Which kind of sort. 
+	    I want one with known number of iterations and in-place capability. 
+          + Merge (todo) 
+          + Filter (todo, Tricky, whats the lengths?) 
+	    

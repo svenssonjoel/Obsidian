@@ -84,13 +84,10 @@ instance Scalar Int32 where
 instance Scalar Int64 where 
   sizeOf _ = 8 
   typeOf _ = Int64
-
-
   
 instance Scalar Float where
   sizeOf _ = Storable.sizeOf (undefined :: Float)
   typeOf _ = Float
-
   
 instance Scalar Double where 
   sizeOf _ = 8 -- Storable.sizeOf (undefined :: Double) 
@@ -99,22 +96,18 @@ instance Scalar Double where
 instance Scalar Word where
   sizeOf _ = Storable.sizeOf (undefined :: Word) 
   typeOf _ = Word
-
   
 instance Scalar Word8 where
   sizeOf _ = 1
   typeOf _ = Word8 
 
-  
 instance Scalar Word16 where 
   sizeOf _ = 2
   typeOf _ = Word16
-
   
 instance Scalar Word32 where 
   sizeOf _ = 4 
   typeOf _ = Word32
-
   
 instance Scalar Word64 where 
   sizeOf _ = 8 
@@ -180,7 +173,6 @@ data Op a where
   Sub :: Num a => Op ((a,a) -> a) 
   Mul :: Num a => Op ((a,a) -> a) 
   Div :: Num a => Op ((a,a) -> a) 
-  -- If  :: Op ((Bool,a,a) -> a) 
   
   Mod :: Integral a => Op ((a,a) -> a)
          
@@ -317,6 +309,9 @@ instance Num (Exp Int) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = Literal 0
+  (*) (Literal 0) _ = Literal 0
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Int" 
@@ -343,6 +338,11 @@ instance Bits (Exp Int) where
   bitSize a  = sizeOf a * 8
   isSigned a = True
 
+  bit  = error "bit: is undefined for Exp Int"
+  testBit = error "testBit: is undefined for Exp Int"
+  popCount = error "popCoint: is undefined for Exp Int"
+
+
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int) where
   toRational = error "toRational: not implemented for Exp Int)"  
@@ -352,7 +352,9 @@ instance Enum (Exp Int) where
   fromEnum = error "fromEnum: not implemented for Exp Int"
          
 instance Integral (Exp Int) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Int" 
   toInteger = error "toInteger: not implemented for Exp Int" 
@@ -375,6 +377,9 @@ instance Num (Exp Int32) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = 0
+  (*) (Literal 0) _ = 0 
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Int32"
@@ -401,6 +406,11 @@ instance Bits (Exp Int32) where
   bitSize a  = 32 -- sizeeOf a * 8
   isSigned a = True
 
+  bit  = error "bit: is undefined for Exp Int32"
+  testBit = error "testBit: is undefined for Exp Int32"
+  popCount = error "popCoint: is undefined for Exp Int32"
+
+
 -- TODO: change undefined to some specific error.
 instance Real (Exp Int32) where
   toRational = error "toRational: not implemented for Exp Int32"
@@ -410,7 +420,9 @@ instance Enum (Exp Int32) where
   fromEnum = error "fromEnum: not implemented for Exp Int32" 
          
 instance Integral (Exp Int32) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Int32" 
   toInteger = error "toInteger: not implemented for Exp Int32" 
@@ -431,7 +443,6 @@ instance Num (Exp Word32) where
       -- This spots the kind of indexing that occurs from 
       --  converting a bix tix view to and from gix view
         
-
   -- Added 2 oct 2012
   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
   (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
@@ -444,6 +455,9 @@ instance Num (Exp Word32) where
   
   (*) a (Literal 1) = a 
   (*) (Literal 1) a = a
+  (*) _ (Literal 0) = Literal 0
+  (*) (Literal 0) _ = Literal 0
+  (*) (Literal a) (Literal b) = Literal (a*b) 
   (*) a b = BinOp Mul a b 
   
   signum = error "signum: not implemented for Exp Word32"
@@ -481,6 +495,10 @@ instance Bits (Exp Word32) where
   bitSize a  = 32
   isSigned a = False
 
+  bit  = error "bit: is undefined for Exp Word32"
+  testBit = error "testBit: is undefined for Exp Word32"
+  popCount = error "popCoint: is undefined for Exp Word32"
+
 instance Real (Exp Word32) where 
   toRational = error "toRational: not implemented for Exp Word32" 
   
@@ -490,7 +508,9 @@ instance Enum (Exp Word32) where
   fromEnum = error "fromEnum: not implemented for Exp Word32" 
 
 instance Integral (Exp Word32) where
-  mod a b = BinOp Mod a b 
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Word32" 
   toInteger = error "toInteger: not implemented for Exp Word32"
@@ -585,6 +605,9 @@ infixr 2 ||*
 (&&*) a b = BinOp And a b 
 (||*) a b = BinOp Or a b 
 
+---------------------------------------------------------------------------
+-- Choice class
+---------------------------------------------------------------------------
 class Choice a where 
   ifThenElse :: Exp Bool -> a -> a -> a 
 
@@ -597,16 +620,14 @@ instance (Choice a, Choice b) => Choice (a,b) where
   ifThenElse b (e1,e1') (e2,e2') = (ifThenElse b e1 e2,
                                     ifThenElse b e1' e2') 
   
-
----------------------------------------------------------------------------
--- Built-ins
-
-
 ---------------------------------------------------------------------------
 -- Print Expressions
-
+---------------------------------------------------------------------------
+  
 printExp :: Scalar a => Exp a -> String
 printExp (BlockIdx X) = "blockIdx.x"
+printExp (ThreadIdx X) = "threadIdx.x"
+printExp (BlockDim X)   = "blockDim.x"
 printExp (Literal a) = show a 
 printExp (Index (name,[])) = name
 printExp (Index (name,es)) = 
@@ -646,10 +667,8 @@ printOp BitwiseOr  = " | "
 printOp BitwiseXor = " ^ " 
 printOp BitwiseNeg = " ~ "  
 
-
-
 ---------------------------------------------------------------------------
--- Experimenting
+-- Turn expressions into backend-expressions
 ---------------------------------------------------------------------------
 class ExpToCExp a where 
   expToCExp :: Exp a -> CExpr 
@@ -712,11 +731,16 @@ instance ExpToCExp Word64 where
 expToCExpGeneral :: ExpToCExp a  => Exp a -> CExpr
 expToCExpGeneral WarpSize      = cWarpSize 
 expToCExpGeneral (BlockIdx d)  = cBlockIdx d
+expToCExpGeneral (BlockDim d)  = cBlockDim d 
 expToCExpGeneral (ThreadIdx d) = cThreadIdx d
 
 expToCExpGeneral e@(Index (name,[])) = cVar name (typeToCType (typeOf e))
 expToCExpGeneral e@(Index (name,xs)) = cIndex (cVar name (CPointer (typeToCType (typeOf e))),map expToCExp xs) (typeToCType (typeOf e)) 
-expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e)) 
+expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e))
+
+expToCExpGeneral (UnOp Word32ToInt32 e) = cCast (expToCExp e) CInt32
+expToCExpGeneral (UnOp Int32ToWord32 e) = cCast (expToCExp e) CWord32
+
 expToCExpGeneral e@(BinOp Min e1 e2) = cFuncExpr "min" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
 expToCExpGeneral e@(BinOp Max e1 e2) = cFuncExpr "max" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
 expToCExpGeneral e@(BinOp op e1 e2)  = cBinOp (binOpToCBinOp op) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e)) 
@@ -741,7 +765,8 @@ expToCExpGeneral (UnOp ASinH e)      = cFuncExpr "asinh" [expToCExp e] (typeToCT
 expToCExpGeneral (UnOp ACosH e)      = cFuncExpr "acosh" [expToCExp e] (typeToCType (typeOf e))
 expToCExpGeneral (UnOp ATanH e)      = cFuncExpr "atanh" [expToCExp e] (typeToCType (typeOf e))
  
-expToCExpGeneral e@(UnOp  op e1)     = cUnOp  (unOpToCUnOp op) (expToCExp e1) (typeToCType (typeOf e)) 
+expToCExpGeneral e@(UnOp op e1)     = cUnOp  (unOpToCUnOp op) (expToCExp e1) (typeToCType (typeOf e))
+ 
 
 typeToCType Bool = CInt 
 typeToCType Int  = CInt
@@ -788,5 +813,3 @@ binOpToCBinOp ShiftR     = CShiftR
 
 unOpToCUnOp   BitwiseNeg = CBitwiseNeg
   
-unOpToCUnOp   Int32ToWord32 = CInt32ToWord32
-unOpToCUnOp   Word32ToInt32 = CWord32ToInt32

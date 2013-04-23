@@ -3,7 +3,7 @@
  
    notes:
      Added a SeqFor case Jan-21-2013
-  
+
  -} 
 module Obsidian.CodeGen.Memory 
        (MemMap,
@@ -15,7 +15,9 @@ module Obsidian.CodeGen.Memory
         sharedMem,  
         Address,
         Bytes,
-        mapMemory) 
+        --mapMemory,
+        -- NEW
+        mmIM) 
        where 
 
 import qualified Data.List as List
@@ -42,16 +44,19 @@ type Bytes   = Word32
 data Memory = Memory {freeList  :: [(Address,Bytes)] ,
                       allocated :: [(Address,Bytes)] , 
                       size      :: Bytes} -- how much used
+            deriving Show 
               
               
 -- 48 kilobytes of smem              
 sharedMem = Memory [(0,49152)] [] 0
+
 
 updateMax :: Memory -> Memory 
 updateMax mem = let m = maximum [a+b|(a,b) <- allocated mem]
                     m' = max m (size mem)
                 in mem {size = m'}
 
+-- This one needs to check that shared memory is not full.
 allocate :: Memory -> Bytes -> (Memory,Address)
 allocate m b = 
   let adress = filter (\(x,y) -> y >= b) (freeList m) -- get a list of candidates
@@ -75,13 +80,18 @@ free m a = mem
     where 
       bytes = lookup a (allocated m)
       al    = filter (\(addr,_) -> a /= addr) (allocated m)
+
+      -- TODO: Investigate this much closer.
+      --       Is it a bug or is freeing a non allocated memory area
+      --       OK?
       
-      merge [] = [] 
-      merge [x] = [x]
-      merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
-                                              else (x,b):merge((y,b2):xs)
       mem   = case bytes of 
-                Nothing -> error $ "error: Address " ++ show a ++ " not found in free list"
+                Nothing -> m
+                {-
+                  error $ "error: Address " ++ show a ++
+                          " not found in allocated list" ++
+                          "\n" ++ show m
+                -} 
                 Just b -> m {freeList = compress ((a,b):(freeList m)),
                              allocated = al}
 
@@ -93,83 +103,50 @@ compress = merge . List.sort
 
 merge [] = [] 
 merge [x] = [x]
-merge ((x,b):(y,b2):xs) = if (x+b == y) then merge ((x,b+b2):xs) 
-                           else (x,b):merge((y,b2):xs)
+merge ((x,b):(y,b2):xs) = if (x+b == y)
+                          then merge ((x,b+b2):xs) 
+                          else (x,b):merge((y,b2):xs)
 
+---------------------------------------------------------------------------
+-- Memory map the new IM
+---------------------------------------------------------------------------
+mmIM :: IML -> Memory -> MemMap -> (Memory, MemMap)
+mmIM im memory memmap = r im (memory,memmap)
+  where
+    r [] m = m
+    r (x:xs) (m,mm) =
+      let
+          (m',mm') = process x m mm
+           
+          freeable = getFreeableSet x xs
+          freeableAddrs = mapM (flip Map.lookup mm') (filter dontMap (Set.toList freeable))
+          dontMap name = not ((List.isPrefixOf "input" name) || 
+                              (List.isPrefixOf "output" name))
+          mNew =
+            case freeableAddrs of
+              (Just as) -> freeAll m' (map fst as)
+              Nothing   -> m'
+      in r xs (mNew,mm')
+         
+    process (SAllocate name size t,_) m mm = (m',mm') 
+      where (m',addr) = allocate m size
+            mm' = case Map.lookup name mm of
+                      Nothing -> Map.insert name (addr,t) mm
+                      (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
 
+    -- A tricky case.                      
+    process (SForAllBlocks n im,_) m mm = mmIM im m mm
+    -- Another tricky case. 
+    process (SSeqFor _ n im,_) m mm = mmIM im m mm
+    -- Yet another tricky case.
+    process (SForAll n im,_) m mm = mmIM im m mm 
+    -- The worst of them all.
+    process (SForAllThreads n im,_) m mm = mmIM im m mm
 
+    process (_,_) m mm = (m,mm) 
 
+-- Friday (2013 Mars 29, discovered bug) 
+getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 
+getFreeableSet (_,l) [] = Set.empty -- not l ! 
+getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1
 
-----------------------------------------------------------------------------
--- Map a program onto a memory
-
--- TODO: Make sure this does add any input or output arrays to the map
-   
-mapMemory :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap) 
-mapMemory = mapMemoryProgram 
-
-
-mapMemoryProgram :: Program Liveness -> Memory -> MemMap -> (Memory,MemMap)    
-mapMemoryProgram Skip m mm = (m,mm) 
-mapMemoryProgram (Assign name i a) m mm  = (m,mm)
-mapMemoryProgram (AtomicOp _ _ _ _) m mm = (m,mm)
--- Added Jan-21-2013
-mapMemoryProgram (SeqFor nom n f) m mm = mapMemoryProgram (f (variable "X")) m mm 
-mapMemoryProgram (ForAll n f) m mm = mapMemoryProgram (f (variable "X")) m mm       
--- Added Jan 2013
-mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
-mapMemoryProgram (Synchronize _) m mm = (m,mm)
-mapMemoryProgram ((Allocate name size t alive) `ProgramSeq` prg2) m mm 
-  = mapMemoryProgram prg2 {-m'-} mNew mm'
-  where 
-    (m'',addr) = allocate m size
-    aliveNext  = whatsAliveNext prg2
-    diff       = alive Set.\\ aliveNext
-    diffAddr   = mapM (\x -> Map.lookup x mm') (filter dontMap {-(not . (List.isPrefixOf "input")-} (Set.toList diff))
-    dontMap name = not ((List.isPrefixOf "input" name) || 
-                        (List.isPrefixOf "output" name))
-    mNew       =  
-      case diffAddr of 
-        (Just addys) -> freeAll m'' (map fst addys)
-        Nothing      -> error $ "atleast one array does not exist in memorymap: " ++ show mm'
-   
-    -- TODO: maybe create Global arrays if Local memory is full.
-   
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (Allocate name size t _) m mm = (m',mm')
-  where 
-    (m'',addr) = allocate m size
-    -- TODO: maybe create Global arrays if Local memory is full.
-    -- t = Pointer$ Local$ typeOf$ getLLArray (head ws) `llIndex`  tid
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (prg1 `ProgramSeq` prg2) m mm = mapMemoryProgram prg2 m' mm'
-  where 
-    (m',mm') = mapMemoryProgram prg1 m mm
-mapMemoryProgram (Output n t) m mm = (m,mm) 
-    
-
-
-{-
-mapMemoryProgram (Assign name i a) m mm = (m,mm) 
-mapMemoryProgram (ForAll f n) m mm = mapMemoryProgram (f (variable "X")) m mm       
-mapMemoryProgram (Cond c p) m mm = mapMemoryProgram p m mm 
-mapMemoryProgram (Allocate name size t program) m mm = mapMemoryProgram program m' mm'
-  where 
-    (m'',addr) = allocate m size
-    -- TODO: maybe create Global arrays if Local memory is full.
-    -- t = Pointer$ Local$ typeOf$ getLLArray (head ws) `llIndex`  tid
-    (m',mm') = 
-      case Map.lookup name mm of 
-        Nothing      -> (m'',Map.insert name (addr,t) mm)
-        (Just (a,t)) -> (m,mm) -- what does this case really mean ? -
-mapMemoryProgram (prg1 `ProgramSeq` prg2) m mm = mapMemoryProgram prg2 m' mm'
-  where 
-    (m',mm') = mapMemoryProgram prg1 m mm 
-
--}

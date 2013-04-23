@@ -1,0 +1,79 @@
+Name:           Obsidian
+Version:        0.0.0.2
+
+License:                BSD3
+License-file:           LICENSE
+Stability:              Beta
+Maintainer:		Joel Svensson<svenssonjoel@yahoo.se>
+Author:			Joel Svensson<svenssonjoel@yahoo.se>
+
+Copyright:              Copyright (c) 2011-2013 Joel Svensson 		  			
+  
+Synopsis:               Embedded language for GPU Programming 
+HomePage:               https://github.com/svenssonjoel/Obsidian
+Description: 
+   Obsidian is an embedded language for general purpose programming targeting 
+   GPU's. 
+
+Category: Language
+Cabal-Version: >=1.8
+Tested-With: GHC == 7.6.1
+
+build-type: Simple
+
+--extra-source-files:
+--     examples/tests/Test_DotProd.hs
+
+
+source-repository head
+  type:     git
+  location: git://github.com/svenssonjoel/Obsidian.git
+
+----------------------------------------------------------------------------------------------------
+Library
+  build-depends: base >= 4 && < 5
+               , mtl >= 2.0 
+               , value-supply >= 0.6
+               , containers >= 0.4.2.1
+             
+  exposed-modules: Obsidian
+                 
+            
+  other-modules:  Obsidian.Array
+               ,  Obsidian.Atomic
+               ,  Obsidian.DimSpec
+               ,  Obsidian.Exp
+               ,  Obsidian.Force
+               ,  Obsidian.Globs
+               ,  Obsidian.Library
+               ,  Obsidian.LibraryG 
+--               ,  Obsidian.Lift
+               ,  Obsidian.Memory
+               ,  Obsidian.Names
+               ,  Obsidian.Program 
+               ,  Obsidian.SeqLoop 
+               ,  Obsidian.Types 
+--	       ,  Obsidian.CodeGen.C
+               ,  Obsidian.CodeGen.CUDA
+               ,  Obsidian.CodeGen.Common
+               ,  Obsidian.CodeGen.InOut
+               ,  Obsidian.CodeGen.Liveness
+               ,  Obsidian.CodeGen.Memory
+--               ,  Obsidian.CodeGen.OpenCL
+               ,  Obsidian.CodeGen.PP 
+               ,  Obsidian.CodeGen.Program
+               ,  Obsidian.CodeGen.SPMDC
+
+ 	       
+  GHC-Options: 
+-- -O2 
+
+--  include-dirs:
+
+
+--  extra-lib-dirs: 
+
+--  Includes: 
+--  Extra-libraries: 
+  
+

@@ -2,6 +2,9 @@
    Mary Sheeran  2012
 
    Notes:
+   2013-01-24: GlobPull nolonger exists
+               GlobPush is Push Grid
+              
    2013-01-08: Renamed GlobArray to GlobPush 
    2013-01-02: Added toGlobArray and toGlobArrayN
    2012-12-10: Refactoring
@@ -31,42 +34,22 @@ import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate)
 
----------------------------------------------------------------------------
--- Functor instance Pull/Push arrays
----------------------------------------------------------------------------
-instance Functor Pull where 
-  fmap f arr = Pull (len arr) $ \ix -> f (arr ! ix) 
 
-instance Functor Push where
-  fmap f (Push n pfun) =
-    Push n $ \wf -> pfun (\a ix -> wf (f a) ix)
 
---instance Functor Distrib where
---  fmap f (Distrib bixf) = Distrib $ \bix -> f $ bixf bix
-
-instance Functor GlobPush where
-  fmap f (GlobPush wf ) =
-    GlobPush
-    $ \wf' -> wf (\a gix -> wf' (f a) gix)
-
-instance Functor GlobPull where
-  fmap f (GlobPull ixf) = GlobPull (f . ixf)
-
-  
 
 ---------------------------------------------------------------------------
 -- Reverse an array by indexing in it backwards
 ---------------------------------------------------------------------------
   
-rev :: Pull a -> Pull a 
-rev arr = mkPullArray n (\ix -> arr ! (m - ix))  
-   where m = fromIntegral (n-1)
+rev :: ASize l => Pull l a -> Pull l a 
+rev arr = mkPullArray n (\ix -> arr ! ((sizeConv m) - ix))  
+   where m = n-1
          n = len arr
          
 ---------------------------------------------------------------------------
 -- splitAt (name clashes with Prelude.splitAt)
 ---------------------------------------------------------------------------
-splitAt :: Integral i => i -> Pull a -> (Pull a, Pull a) 
+splitAt :: (Integral i, ASize l) => i -> Pull l a -> (Pull l a, Pull l a) 
 splitAt n arr = (mkPullArray m (\ix -> arr ! ix), 
                  mkPullArray  (len arr - m) (\ix -> arr ! (ix + pos)))
   where pos = fromIntegral n
@@ -82,7 +65,6 @@ halve arr = splitAt n2 arr
 -- replicate 
 ---------------------------------------------------------------------------
 replicate n a = mkPullArray n (\ix -> a)
-replicateG a = GlobPull $ \ix -> a 
 
 singleton a = replicate 1 a 
 
@@ -94,31 +76,55 @@ last arr = arr ! fromIntegral ( len arr - 1)
 
 
 ---------------------------------------------------------------------------
+-- Take and Drop (what about strange sizes ? fix) 
+---------------------------------------------------------------------------
+take :: ASize l => l -> Pull l a -> Pull l a
+take n arr = resize n arr
+
+drop :: ASize l => l -> Pull l a -> Pull l a
+drop n arr = resize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
+
+---------------------------------------------------------------------------
 -- Shift arrays
 ---------------------------------------------------------------------------
-shiftRight :: Choice a => Word32 -> a -> Pull a -> Pull a
+shiftRight :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
 shiftRight dist elt arr = resize (len arr)
-                          $ replicate dist elt `conc` arr
+                          $ replicate (fromIntegral dist) elt `conc` arr
 
 -- TODO: incorrect! 
-shiftLeft :: Choice a => Word32 -> a -> Pull a -> Pull a
-shiftLeft dist elt arr = resize (len arr)
-                         $ arr `conc`  replicate dist elt
+shiftLeft :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
+shiftLeft dist elt arr = mkPullArray (len arr)
+                         $ \ix -> (arr `conc`  replicate (fromIntegral dist) elt)
+                                  ! (ix + fromIntegral dist) 
                          
 ---------------------------------------------------------------------------
 -- elements at even indices to fst output, odd to snd.
 ---------------------------------------------------------------------------
-evenOdds :: Pull a -> (Pull a, Pull a)
+evenOdds :: ASize l => Pull l a -> (Pull l a, Pull l a)
 evenOdds arr = (mkPullArray (n-n2) (\ix -> arr ! (2*ix)) ,
                 mkPullArray n2     (\ix -> arr ! (2*ix + 1)))
   where
-    n = fromIntegral (len arr)
+    n  = len arr
     n2 = div n 2
+    
+evens, odds :: ASize l => Pull l a -> Pull l a
+evens = fst . evenOdds
+odds  = snd . evenOdds
+
+-- opposite of evenOdds 
+shuffle :: ASize l => PT t -> Pull l a -> Pull l a -> Push t l a
+shuffle Block a1 a2 =
+  Push (len a1 + len a2) $
+    \ wf -> ForAll (sizeConv (len a1)) $
+            \ tid -> do
+              wf (a1 ! tid) (tid * 2) 
+              wf (a2 ! tid) (tid * 2 + 1) 
+
 
 ---------------------------------------------------------------------------
 -- Concatenate the arrays
 ---------------------------------------------------------------------------
-conc :: Choice a => Pull a -> Pull a -> Pull a 
+conc :: (ASize l, Choice a) => Pull l a -> Pull l a -> Pull l a 
 conc a1 a2 = mkPullArray (n1+n2)
                $ \ix -> ifThenElse (ix <* (fromIntegral n1)) 
                        (a1 ! ix) 
@@ -131,42 +137,38 @@ conc a1 a2 = mkPullArray (n1+n2)
 ---------------------------------------------------------------------------
 -- zipp unzipp
 ---------------------------------------------------------------------------
-unzipp :: Pull (a,b) -> (Pull a, Pull b)       
+unzipp :: ASize l =>  Pull l (a,b) -> (Pull l a, Pull l b)       
 unzipp arr = (mkPullArray (len arr) (\ix -> fst (arr ! ix)) ,
               mkPullArray (len arr) (\ix -> snd (arr ! ix)) )
               
-zipp :: (Pull a, Pull b) -> Pull (a, b)             
+zipp :: ASize l => (Pull l a, Pull l b) -> Pull l (a, b)             
 zipp (arr1,arr2) =  Pull (min (len arr1) (len arr2))
                       $ \ix -> (arr1 ! ix, arr2 ! ix) 
 
-unzipp3 :: Pull (a,b,c) 
-           -> (Pull a, Pull b, Pull c)       
+unzipp3 :: ASize l => Pull l (a,b,c) 
+           -> (Pull l a, Pull l b, Pull l c)       
 unzipp3 arr = (fmap (\(x,_,_) -> x) arr,
                fmap (\(_,y,_) -> y) arr,
                fmap (\(_,_,z) -> z)  arr) 
 
 
-zipp3 :: (Pull a, Pull b, Pull c) 
-         -> Pull (a,b,c)             
+zipp3 :: ASize l =>  (Pull l a, Pull l b, Pull l c) 
+         -> Pull l (a,b,c)             
 zipp3 (arr1,arr2,arr3) = 
   mkPullArray (minimum [len arr1, len arr2, len arr3])
   (\ix -> (arr1 ! ix, arr2 ! ix, arr3 ! ix))
     
 
 
-zipWith :: (a -> b -> c) -> Pull a -> Pull b -> Pull c
+zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
 zipWith op a1 a2 =  
   mkPullArray (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))
-                   
-
-zipWithG :: (a -> b -> c) -> GlobPull a -> GlobPull b -> GlobPull c
-zipWithG op a1 a2 = GlobPull $ \ix -> (a1 ! ix) `op` (a2 ! ix) 
-                   
+                                      
 ---------------------------------------------------------------------------
 -- pair 
 ---------------------------------------------------------------------------
-pair :: Pull a -> Pull (a,a)
+pair :: ASize l => Pull l a -> Pull l (a,a)
 pair (Pull n ixf) = 
   mkPullArray n' (\ix -> (ixf (ix*2),ixf (ix*2+1))) 
   where 
@@ -174,7 +176,7 @@ pair (Pull n ixf) =
 
 
 
-unpair :: Choice a => Pull (a,a) -> Pull a
+unpair :: ASize l => Choice a => Pull l (a,a) -> Pull l a
 unpair arr = 
     let n = len arr
     in  mkPullArray (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
@@ -188,7 +190,8 @@ unpair arr =
 
 binSplit = twoK
 
-twoK ::Int -> (Pull a -> Pull b) -> Pull a -> Pull b 
+-- See if this should be specifically for Static size pull arrays
+twoK ::Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
 twoK 0 f = f  -- divide 0 times and apply f
 twoK n f =  (\arr -> 
               let arr' = mkPullArray lt (\i -> (f (mkPullArray  m (\j -> (arr ! (g i j)))) ! (h i))) 
@@ -206,78 +209,65 @@ twoK n f =  (\arr ->
 ---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
--- IxMap Class
----------------------------------------------------------------------------
-class IxMap a where 
-  ixMap :: (Exp Word32 -> Exp Word32) 
-           -> a e 
-           -> a e
-
-instance IxMap Push where
-  ixMap f (Push n p) = Push n (ixMap' f p)
-
-
-instance IxMap Pull where 
-  ixMap f (Pull n ixf) =  Pull n (ixf . f) 
-
-
-instance IxMap GlobPull where 
-  ixMap f (GlobPull ixf) =  GlobPull (ixf . f) 
-
--- like fmap but the function is applied to indices.. 
-ixMap' :: (Exp Word32 -> Exp Word32) 
-          -> ((a -> Exp Word32 -> TProgram ()) -> BProgram ()) 
-          -> ((a -> Exp Word32 -> TProgram ()) -> BProgram ()) 
-ixMap' f p = \wf -> p (\a ix -> wf a (f ix))
-
-
----------------------------------------------------------------------------
 -- Concatenate on Push arrays 
 ---------------------------------------------------------------------------
-concP :: (Pushable arr1,
-          Pushable arr2) => (arr1 a, arr2 a) -> Push a     
-concP (arr1,arr2) = 
-  mkPushArray  (n1+n2)
+concP :: (Array arr1, Array arr2, ASize l,
+          Pushable arr1, Pushable arr2)
+         => PT t -> arr1 l a -> arr2 l a -> Push t l a     
+concP pt arr1 arr2 = 
+  mkPushArray  (n1 + n2)
   $ \wf ->
   do
     parr1 wf
-    parr2 $ \a i -> wf a (fromIntegral n1 + i)
+    parr2 $ \a i -> wf a (sizeConv n1 + i)
   
-  where 
-    (Push n1 parr1) = push arr1
-    (Push n2 parr2) = push arr2
+  where
+    n1 = len arr1 
+    n2 = len arr2 
+    (Push _ parr1) = push pt arr1
+    (Push _ parr2) = push pt arr2
+
+
+-- More general versions of this can be imagined 
+mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
+mergeL _ arr1 arr2 | len arr1 /= len arr2 = error "incorrect lengths" 
+mergeL f arr1 arr2 =
+  Push (len arr1) $ \wf ->
+  do
+    ForAll (sizeConv (len arr1)) $
+      \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
 
 
 ----------------------------------------------------------------------------
 --
-unpairP :: Pushable arr => arr (a,a) -> Push a
-unpairP arr =
-  Push n $ \k -> pushf (everyOther k)
-  where
-    parr@(Push n pushf) = push arr
+--unpairP :: Pushable arr => arr (a,a) -> Push a
+--unpairP arr =
+--  Push n $ \k -> pushf (everyOther k)
+--  where
+--    parr@(Push n pushf) = push arr
 
-everyOther :: (a -> Exp Word32 -> TProgram ()) 
-              -> (a,a) -> Exp Word32 -> TProgram ()
-everyOther wf (a,b) ix = wf a (ix * 2) >> wf b (ix * 2 + 1)  
+--everyOther :: (a -> Exp Word32 -> TProgram ()) 
+--              -> (a,a) -> Exp Word32 -> TProgram ()
+--everyOther wf (a,b) ix = wf a (ix * 2) >> wf b (ix * 2 + 1)  
 
 ---------------------------------------------------------------------------
 -- zipP
 ---------------------------------------------------------------------------
-zipP :: Pushable arr  => arr a -> arr a -> Push a  
-zipP arr1 arr2 =
-  Push (n1+n2)
-  $ \func -> p1 (\a ix -> func a (2*ix)) >>
-             p2 (\a ix -> func a (2*ix + 1))
-         
-  where 
-    (Push n1 p1) = push arr1
-    (Push n2 p2) = push arr2
+--zipP :: Pushable arr  => arr a -> arr a -> Push a  
+--zipP arr1 arr2 =
+--  Push (n1+n2)
+--  $ \func -> p1 (\a ix -> func a (2*ix)) >>
+--             p2 (\a ix -> func a (2*ix + 1))
+--         
+--  where 
+--    (Push n1 p1) = push arr1
+--    (Push n2 p2) = push arr2
 
 
 ---------------------------------------------------------------------------
 -- ***                          GLOBAL ARRAYS                        *** --
 ---------------------------------------------------------------------------
-
+{- 
 -- A very experimenental instance of mapG 
 mapG' :: (Pull a -> BProgram (Pull b))
         -> Word32
@@ -341,13 +331,18 @@ mapDist f n (GlobPull ixf) bix =
   let pully = Pull n (\ix -> ixf (bix * fromIntegral n + ix))
   in  f pully 
 
+-} 
+
 ---------------------------------------------------------------------------
 -- See if having an Assignable/Allocable class is enough to generalise
 -- the code below to pairs etc of Exp
 ---------------------------------------------------------------------------
 -- Experimental (Improve upon this if it works)
 -- I think this code looks quite horrific right now.
--- The potentially unnecessary assignments are pretty bad. 
+-- The potentially unnecessary assignments are pretty bad.
+
+{- 
+    
 class ToGProgram a where
   type Global a
   toGProgram :: (Exp Word32 -> BProgram a) -> GProgram (Global a)
@@ -447,7 +442,7 @@ instance (Scalar a, Scalar b) => ToGProgram (Pull (Exp a), Pull (Exp b)) where
 
           
       return (gp1,gp2)
-
+-} 
 --------------------------------------------------------------------------- 
         
 

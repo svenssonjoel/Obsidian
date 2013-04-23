@@ -1,4 +1,4 @@
-{- Joel Svensson 2012
+{- Joel Svensson 2012,2013
 
    Notes:
    2013-01-08: removed number-of-blocks field from ForAllBlocks
@@ -6,7 +6,8 @@
 -}
 
 {-# LANGUAGE GADTs,
-             FlexibleInstances #-} 
+             FlexibleInstances,
+             EmptyDataDecls #-} 
 
 
 module Obsidian.Program  where 
@@ -18,6 +19,7 @@ import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Atomic
+import Obsidian.Names
 
 -- Package value-supply
 import Data.Supply
@@ -30,19 +32,29 @@ data Thread
 data Block
 data Grid 
 
+data PT a where
+  Thread :: PT Thread
+  Block  :: PT Block
+  Grid   :: PT Grid 
+
 type Identifier = Int 
+
+---------------------------------------------------------------------------
+-- Obsidian
+---------------------------------------------------------------------------
+data Obsidian a = Obsidian (Program Grid a)
+      
 
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
 data Program t a where
-
-  -- Time to talk to Josef about all the changes I make here. 
+  
   Identifier :: Program t Identifier 
   
   Assign :: Scalar a
             => Name
-            -> (Exp Word32)
+            -> [Exp Word32]
             -> (Exp a)
             -> Program Thread ()
            
@@ -53,19 +65,18 @@ data Program t a where
               -> Atomic a
               -> Program Thread (Exp a)
 
-  -- TODO: Code generation for this.
-  -- May want this at all levels. (Grid, Block, Thread)
   Cond :: Exp Bool
-          -> Program Thread ()
-          -> Program Thread ()
+          -> Program t ()
+          -> Program t ()
   
-  -- DONE: Code generation for this.            
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
-            -> Program Thread () 
-
-  ForAll :: (Maybe Word32) 
-            -> (Exp Word32 -> Program Thread ())
-            -> Program Block () 
+  -- DONE: Code generation for this.
+  -- TODO: Generalize this loop! (Replace Thread with t) 
+  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
+            -> Program t a
+ 
+  ForAll :: (Exp Word32) 
+            -> (Exp Word32 -> Program Thread a)
+            -> Program Block a 
 
   {-
      I'm not sure about this constructor.
@@ -76,16 +87,21 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32 -> Program Block ()) 
-                  -> Program Grid () 
+  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block a) 
+                  -> Program Grid a
+
+  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
+                   -> Program Grid a 
 
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> Program t () 
-  
-  -- Very experimental AllocateG (Add CodeGen support)
-  AllocateG :: Exp Word32 -> Type -> Program Grid Name 
-  -- I'm not sure exactly what scope AllocateG should have. 
 
+  -- TODO: Change the Liveness analysis to a two-pass algo
+  --       and remove the Allocate constructor. 
+  Allocate :: Name -> Word32 -> Type -> Program t () 
+
+  -- Automatic Variables
+  Declare :: Name -> Type -> Program t () 
+              
   {- About Output (Creates a named output array). 
      This is similar to Allocate but concerning global arrays.
 
@@ -103,6 +119,7 @@ data Program t a where
   ThreadFenceBlock :: Program Block () 
 
   -- Parallel composition of Programs
+  -- TODO: Will I use this ? 
   Par :: Program p () ->
          Program p () ->
          Program p () 
@@ -118,16 +135,29 @@ uniqueSM = do
   id <- Identifier
   return $ "arr" ++ show id 
 
+uniqueNamed pre = do
+  id <- Identifier
+  return $ pre ++ show id 
+
 ---------------------------------------------------------------------------
 -- forAll and forAllN
 ---------------------------------------------------------------------------
-forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
-forAll f = ForAll Nothing f
+--forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
+--forAll f = ForAll Nothing f
 
-forAllN :: Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
-forAllN n f = ForAll (Just n) f
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
+forAll n f = ForAll n f
 
 (*||*) = Par
+
+---------------------------------------------------------------------------
+-- SeqFor
+---------------------------------------------------------------------------
+seqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
+            -> Program t a
+seqFor (Literal 1) f = f 0
+seqFor n f = SeqFor n f
+
 
 ---------------------------------------------------------------------------
 -- forAllT
@@ -139,14 +169,14 @@ forAllN n f = ForAll (Just n) f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32 -> Program Thread ())
-           -> Program Grid ()
-forAllT f = ForAllBlocks
-            $ \bid -> ForAll Nothing
-                      $ \tid -> f (bid * BlockDim X + tid) 
+forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
+           -> Program Grid a
+forAllT n f = ForAllThreads n 
+            $ \gtid -> f gtid 
 
 
 
+forAllBlocks = ForAllBlocks
 
 ---------------------------------------------------------------------------
 -- Monad
@@ -197,17 +227,28 @@ printPrg' i (AtomicOp n ix e) =
 printPrg' i (Allocate id n t) =
   let newname = id -- "arr" ++ show id
   in ((),newname ++ " = malloc(" ++ show n ++ ");\n",i+1)
+printPrg' i (Declare id t) =
+  let newname = id -- "arr" ++ show id
+  in ((),show t ++ " " ++ newname ++ "\n",i+1)
 printPrg' i (Output t) =
   let newname = "globalOut" ++ show i
   in (newname,newname ++ " = new Global output;\n",i+1)
-printPrg' i (ForAll n f) =
-  let ((),prg2,i') = printPrg' i (f (variable "i"))
+printPrg' i (SeqFor n f) =
+  let (a,prg2,i') = printPrg' i (f (variable "i"))
       
-  in ( (),  
+  in ( a,  
+       "for (i in 0.." ++ show n ++ ")" ++
+       "{\n" ++ prg2 ++ "\n}",
+       i')
+     
+printPrg' i (ForAll n f) =
+  let (a,prg2,i') = printPrg' i (f (variable "i"))
+      
+  in ( a,  
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
-printPrg' i (ForAllBlocks f) =
+printPrg' i (ForAllBlocks n f) =
   let (d,prg2,i') = printPrg' i (f (variable "BIX"))
   in (d, 
       "blocks (i)" ++
