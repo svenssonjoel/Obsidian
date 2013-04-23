@@ -15,7 +15,7 @@ import Data.Word
 --------------------------------------------------------------------------- 
 mapG :: ASize l => (SPull a -> BProgram (SPull b))
         -> Pull l (SPull a)
-        -> Push Grid l b
+        -> Push l b
 mapG kern as =
   Push (blocks * fromIntegral n) $
   \wf ->
