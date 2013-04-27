@@ -17,16 +17,18 @@ mapG :: ASize l => (SPull a -> BProgram (SPull b))
         -> Pull l (SPull a)
         -> Push Grid l b
 mapG kern as =
-  Push (blocks * fromIntegral n) $
+  Push (blocks * fromIntegral rn) $
   \wf ->
     do
       forAllBlocks (sizeConv blocks) $ \bix -> do
         res <- kern (as ! bix)
         let (Push _ p) = push Block res
-            wf' a ix = wf a (bix * sizeConv n + ix)
+            wf' a ix = wf a (bix * sizeConv rn + ix)
         p wf'
   where
     blocks = len as
+    -- TODO: ensure this is not insane (runPrg functionality) 
+    rn = len $ fst $ runPrg 0 (kern (as ! 0))
     n = len (as ! 0)
 
 
@@ -60,7 +62,7 @@ zipWithG kern as bs =
       forAllBlocks (sizeConv blocks) $ \bix -> do
         res <- kern (as ! bix) (bs ! bix)
         let (Push _ p) = push Block res
-            wf' a ix = wf a (bix * sizeConv n + ix)
+            wf' a ix = wf a (bix * sizeConv rn + ix)
         p wf'
   where
     -- Is this ok?! (does it break?) 
