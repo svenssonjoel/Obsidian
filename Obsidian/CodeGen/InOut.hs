@@ -52,17 +52,77 @@ import Data.Int
 
 -} 
   
-type Inputs = [(Name,Type)] 
+type Inputs = [(Name,Type)]
 
-class ToProgram a b where
-  toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.IM)
-  
+
+--class ToProgramB a where
+--  toProgramB :: a -> (Inputs, CG.IM)
+
+
+--class ToProgram a b where
+--  toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.IM)
+
+class ToProgram a where
+  toProgram :: Int -> a -> Ips' a -> (Inputs,CG.IM)
+
+
 typeOf_ a = typeOf (Literal a)
+
+---------------------------------------------------------------------------
+-- Experimenting
+---------------------------------------------------------------------------
+--instance ToProgramB (GProgram a) where
+--  toProgramB prg = ([],CG.compileStep1 prg)
+
+--instance GlobalMemoryOps a => ToProgramB (Push Grid EWord32 a) where
+--  toProgramB parr = toProgramB (forceG parr)
+
+--instance GlobalMemoryOps a => ToProgramB (Push Grid Word32 a) where
+--  toProgramB parr = toProgramB (forceG parr)
+
 
 
 ---------------------------------------------------------------------------
 -- Base cases
 --------------------------------------------------------------------------- 
+instance ToProgram (GProgram a) where
+  toProgram i prg a = ([],CG.compileStep1 prg)
+
+instance GlobalMemoryOps a => ToProgram (Push Grid EWord32 a) where
+  toProgram i parr a = toProgram i (forceG parr) a
+
+
+instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
+  toProgram i f (a :-> rest) = ((nom,Pointer t):ins,prg)
+    where
+      (ins,prg) = toProgram (i+1) (f input) rest
+      nom  = "input" ++ show i
+      n    = "n" ++ show i
+      lengthVar = variable n
+      input = namedGlobal nom lengthVar
+      t     = typeOf_ (undefined :: t)
+  
+    --where nom = "s" ++ show i
+    --      input = variable nom
+     --     t = typeOf_ (undefined :: t)
+{-
+instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t))(GProgram a) where
+  toProgram i f (Pull n ixf) = ([(nom,Pointer t),(n,Word32)],CG.compileStep1 (f input)) 
+      where nom = "input" ++ show i
+            n   = "n" ++ show i 
+            lengthVar = variable n
+            input = namedGlobal nom lengthVar
+            t = typeOf_ (undefined :: t)
+
+instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
+  toProgram i f (Pull n ixf) = ([(nom,Pointer t){-,(n,Word32)-}],CG.compileStep1 (f input)) 
+      where nom = "input" ++ show i
+            --n   = "n" ++ show i 
+            --lengthVar = variable n
+            input = namedGlobal nom n -- lengthVar
+            t = typeOf_ (undefined :: t)
+-} 
+{- 
 instance (Scalar t) => ToProgram (Exp t) (GProgram a) where
   toProgram i f a = ([(nom,t)],CG.compileStep1 (f input))
     where nom = "s" ++ show i
@@ -84,6 +144,7 @@ instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
             --lengthVar = variable n
             input = namedGlobal nom n -- lengthVar
             t = typeOf_ (undefined :: t)
+
 
 ---------------------------------------------------------------------------
 -- More natural to work with these in some cases
@@ -131,7 +192,7 @@ instance (Scalar t, ToProgram b c) => ToProgram (Pull Word32 (Exp t)) (b -> c) w
       input = namedGlobal nom n --lengthVar
       t = typeOf_ (undefined :: t)
 
-
+-}
 ---------------------------------------------------------------------------
 -- heterogeneous lists of inputs 
 ---------------------------------------------------------------------------
@@ -142,14 +203,19 @@ infixr 5 :->
 
 ---------------------------------------------------------------------------
 -- Function types to input list types. 
---------------------------------------------------------------------------- 
-type family Ips a b
+---------------------------------------------------------------------------
+
+type family Ips' a
+
+type instance Ips' (a -> b)        = a :-> (Ips' b)
+type instance Ips' (Push Grid l b) = ()
+type instance Ips' (GProgram b)    = () 
+
+--type family Ips a b
  
--- type instance Ips a (GlobArray b) = Ips' a -- added Now 26
--- type instance Ips a (Final (GProgram b)) = a
-type instance Ips a (Push Grid l b) = a
-type instance Ips a (Pull l b) = a
-type instance Ips a (GProgram b) = a
-type instance Ips a (b -> c) =  a :-> Ips b c
+--type instance Ips a (Push Grid l b) = a
+--type instance Ips a (Pull l b) = a
+--type instance Ips a (GProgram b) = a
+--type instance Ips a (b -> c) =  a :-> Ips b c
 
 
