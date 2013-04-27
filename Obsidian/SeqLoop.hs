@@ -15,24 +15,25 @@ import Obsidian.Array
 import Obsidian.Memory
 import Obsidian.Names
 
--- TODO: Add suitable allocs
+import Data.Word
+
 -- TODO: Rename module to something better
 
 ---------------------------------------------------------------------------
 -- seqFold (actually reduce) 
 ---------------------------------------------------------------------------
 
-seqFold :: forall l a. (ASize l, MemoryOps a)
+seqFold :: (ASize l, MemoryOps a)
            => (a -> a -> a)
            -> a
            -> Pull l a
            -> Program Thread a
 seqFold op init arr = do
-  ns  <- names "v" (undefined :: a) 
-  allocateScalar ns (undefined :: a)
+  ns  <- names "v" init 
+  allocateScalar ns init
 
   assignScalar ns init  
-  -- Assign nom [] init  
+ 
   SeqFor n $ \ ix ->
     do
       assignScalar ns (readFrom ns `op`  (arr ! ix))
@@ -43,19 +44,36 @@ seqFold op init arr = do
   where 
     n = sizeConv$ len arr
 
+---------------------------------------------------------------------------
+-- Iterate
+---------------------------------------------------------------------------
+iterate :: MemoryOps a => EWord32 -> (a -> a) -> a -> Program Thread a
+iterate n f init =
+  do
+    ns <- names "v" (init)
+    allocateScalar ns (init)
+
+    assignScalar ns init
+    SeqFor n $ \ix ->
+      do
+        assignScalar ns $ f (readFrom ns)
+        return None
+
+    return $ readFrom ns
+
 
 ---------------------------------------------------------------------------
 -- Sequential scan
 ---------------------------------------------------------------------------
 
-seqScan :: forall l a. (ASize l, MemoryOps a)
+seqScan :: (ASize l, MemoryOps a)
            => (a -> a -> a)
            -> Pull l a
            -> Push Thread l a
 seqScan op (Pull n ixf)  =
   Push n $ \wf -> do
-    ns <- names "v" (undefined :: a) 
-    allocateScalar ns (undefined :: a)
+    ns <- names "v" (ixf 0) 
+    allocateScalar ns (ixf 0)
     assignScalar ns (ixf 0)
     wf (readFrom ns) 0 
     SeqFor (sizeConv (n-1)) $ \ix -> do
@@ -80,7 +98,7 @@ seqMap f arr =
 ---------------------------------------------------------------------------
 -- Sequential Map and scan (generalisation of map + accum) 
 ---------------------------------------------------------------------------
-
+{- 
 seqMapScan :: forall l a b acc. (ASize l, MemoryOps acc, MemoryOps b)
               => (acc -> a -> (acc,b))
               -> acc 
@@ -100,3 +118,4 @@ seqMapScan op acc (Pull n ixf)  =
       wf (a,b) ix                  
       assignScalar nacc a
       return None
+-} 

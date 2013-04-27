@@ -159,26 +159,29 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
 ---------------------------------------------------------------------------
 
 class GlobalMemoryOps a where
-  outputs   :: a -> GProgram Names
-  assignOut :: Names -> a -> Exp Word32 -> Program Thread ()
+  -- outputs   :: a -> GProgram Names
+  assignOut :: a -> Exp Word32 -> Program Thread ()
 
 
 instance Scalar a => GlobalMemoryOps (Exp a) where
-  outputs a =
+  --outputs a =
+  --  do
+  --    name <- Output $ Pointer $ typeOf a
+  --    return (Single name) 
+  assignOut  a ix =
     do
       name <- Output $ Pointer $ typeOf a
-      return (Single name) 
-  assignOut (Single name) a ix = Assign name [ix] a
+      Assign name [ix] a
 
 
 instance (GlobalMemoryOps a, GlobalMemoryOps b)
          => GlobalMemoryOps (a,b) where
-  outputs (a,b) =
+  --outputs (a,b) =
+  --  do
+  --    na <- outputs a
+  --    nb <- outputs b
+  --    return (Tuple [na,nb]) 
+  assignOut (a,b) ix =
     do
-      na <- outputs a
-      nb <- outputs b
-      return (Tuple [na,nb]) 
-  assignOut (Tuple [n1,n2]) (a,b) ix =
-    do
-      assignOut n1 a ix 
-      assignOut n2 b ix
+      assignOut a ix 
+      assignOut b ix

@@ -8,6 +8,7 @@
 {- Joel Svensson 2012, 2013 
 
    Notes:
+   2013-04-27: Something is broken. 
    2013-04-10: Looking at force and threads
    2013-01-27: globArrays nolonger exist
    2013-01-02: Added simple forceG for globArrays
@@ -35,7 +36,12 @@ import Data.Word
 -- Force local (requires static lengths!) 
 ---------------------------------------------------------------------------
 
-write :: forall p a. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
+--class Forceable arr where
+--  write :: arr Word32 a -> BProgram (Pull Word32 a)
+--  force 
+
+
+write :: (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
   -- snames <- names "arr" (undefined :: a)
 
@@ -51,18 +57,19 @@ write arr = do
   return $ pullFromS snames n
 
   
-force :: forall p a. (Array p, Pushable p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
+force :: (Array p, Pushable p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
 force arr = do
   rval <- write arr
   Sync
   return rval
 
 
-forceG :: forall l a. GlobalMemoryOps a
+forceG :: GlobalMemoryOps a
         => Push Grid l a
         -> GProgram () 
 forceG (Push _ p)  =
   do
-    output <- outputs (undefined :: a) 
-    p (\a e -> do {assignOut output a e; return (Single (Var,""))}) 
+    -- output <- outputs (undefined :: a) -- <- this line 
+   
+    p (\a e -> do {assignOut a e; return (Single (Var,""))}) 
     return ()

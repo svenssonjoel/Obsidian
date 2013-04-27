@@ -63,7 +63,7 @@ typeOf_ a = typeOf (Literal a)
 ---------------------------------------------------------------------------
 -- Base cases
 --------------------------------------------------------------------------- 
-instance (Scalar t) => ToProgram (Exp t) (GProgram b) where
+instance (Scalar t) => ToProgram (Exp t) (GProgram a) where
   toProgram i f a = ([(nom,t)],CG.compileStep1 (f input))
     where nom = "s" ++ show i
           input = variable nom

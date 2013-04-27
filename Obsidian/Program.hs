@@ -107,8 +107,11 @@ data Program t a where
 
      Since we cannot synchronize writes to a global array inside of an
      kernel, global arrays will only be written as outputs of the kernel
-  -} 
-  Output   :: Type -> Program Grid Name
+  -}
+
+  -- TODO: REMOVE THIS FROM THE AST,
+  -- Discover the outputs from the "Type" when doing a ToProgram
+  Output   :: Type -> Program t Name
   -- (Output may be replaced by AllocateG) 
   
   Sync     :: Program Block ()
