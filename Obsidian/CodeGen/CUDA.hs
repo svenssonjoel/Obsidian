@@ -56,7 +56,8 @@ kernelHead name ins outs =
 -- genKernel 
 ---------------------------------------------------------------------------
     
-genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String 
+--genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String
+genKernel :: ToProgram a => String -> a -> InputList a -> String     
 genKernel name kernel a = proto ++ ts ++ cuda 
   where
     (ins,im) = toProgram 0 kernel a

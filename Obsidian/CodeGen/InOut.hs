@@ -13,6 +13,10 @@
 
   Notes:
 
+  2013-04-28: Big Changes. Allows empty lists of inputs
+              that are represented by ().
+              TODO: Add Niklas modifications that allow tuples in input arrays.
+
   2013-01-24: Changes with the new Array types in mind
   2013-01-08: Edited
   2012-12-10: Edited
@@ -55,31 +59,11 @@ import Data.Int
 type Inputs = [(Name,Type)]
 
 
---class ToProgramB a where
---  toProgramB :: a -> (Inputs, CG.IM)
-
-
---class ToProgram a b where
---  toProgram :: Int -> (a -> b) -> Ips a b -> (Inputs,CG.IM)
-
 class ToProgram a where
-  toProgram :: Int -> a -> Ips' a -> (Inputs,CG.IM)
+  toProgram :: Int -> a -> InputList a -> (Inputs,CG.IM)
 
 
 typeOf_ a = typeOf (Literal a)
-
----------------------------------------------------------------------------
--- Experimenting
----------------------------------------------------------------------------
---instance ToProgramB (GProgram a) where
---  toProgramB prg = ([],CG.compileStep1 prg)
-
---instance GlobalMemoryOps a => ToProgramB (Push Grid EWord32 a) where
---  toProgramB parr = toProgramB (forceG parr)
-
---instance GlobalMemoryOps a => ToProgramB (Push Grid Word32 a) where
---  toProgramB parr = toProgramB (forceG parr)
-
 
 
 ---------------------------------------------------------------------------
@@ -93,7 +77,7 @@ instance GlobalMemoryOps a => ToProgram (Push Grid EWord32 a) where
 
 
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
-  toProgram i f (a :-> rest) = ((nom,Pointer t):ins,prg)
+  toProgram i f (a :- rest) = ((nom,Pointer t):ins,prg)
     where
       (ins,prg) = toProgram (i+1) (f input) rest
       nom  = "input" ++ show i
@@ -101,10 +85,16 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
       lengthVar = variable n
       input = namedGlobal nom lengthVar
       t     = typeOf_ (undefined :: t)
+
+instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
+  toProgram i f (a :- rest) = ((nom,Pointer t):ins,prg)
+    where
+      (ins,prg) = toProgram (i+1) (f input) rest
+      nom  = "input" ++ show i
+      input = namedGlobal nom (len a) 
+      t     = typeOf_ (undefined :: t)
   
-    --where nom = "s" ++ show i
-    --      input = variable nom
-     --     t = typeOf_ (undefined :: t)
+    
 {-
 instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t))(GProgram a) where
   toProgram i f (Pull n ixf) = ([(nom,Pointer t),(n,Word32)],CG.compileStep1 (f input)) 
@@ -196,26 +186,18 @@ instance (Scalar t, ToProgram b c) => ToProgram (Pull Word32 (Exp t)) (b -> c) w
 ---------------------------------------------------------------------------
 -- heterogeneous lists of inputs 
 ---------------------------------------------------------------------------
-data head :-> tail = head :-> tail
+data head :- tail = head :- tail
 
-infixr 5 :->
+infixr 5 :-
 
 
 ---------------------------------------------------------------------------
 -- Function types to input list types. 
 ---------------------------------------------------------------------------
 
-type family Ips' a
+type family InputList a
 
-type instance Ips' (a -> b)        = a :-> (Ips' b)
-type instance Ips' (Push Grid l b) = ()
-type instance Ips' (GProgram b)    = () 
-
---type family Ips a b
- 
---type instance Ips a (Push Grid l b) = a
---type instance Ips a (Pull l b) = a
---type instance Ips a (GProgram b) = a
---type instance Ips a (b -> c) =  a :-> Ips b c
-
+type instance InputList (a -> b)        = a :- (InputList b)
+type instance InputList (Push Grid l b) = ()
+type instance InputList (GProgram b)    = () 
 
