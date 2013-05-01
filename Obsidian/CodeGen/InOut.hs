@@ -74,7 +74,7 @@ typeOf_ a = typeOf (Literal a)
 instance ToProgram (GProgram a) where
   toProgram i prg a = ([],CG.compileStep1 prg)
 
-instance Scalar a => ToProgram (Push Grid EWord32 (Exp a)) where
+instance Scalar a => ToProgram (Push Grid l (Exp a)) where
   toProgram i (Push _ p) a =
     let prg = do
           output <- Output (typeOf_ (undefined :: a))
@@ -84,7 +84,7 @@ instance Scalar a => ToProgram (Push Grid EWord32 (Exp a)) where
     where
       assignOut out a ix = Assign out [ix] a
 
-instance (Scalar a, Scalar b) => ToProgram (Push Grid EWord32 (Exp a,Exp b)) where
+instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
   toProgram i (Push _ p) a =
     let prg = do
           out1 <- Output (typeOf_ (undefined :: a))
