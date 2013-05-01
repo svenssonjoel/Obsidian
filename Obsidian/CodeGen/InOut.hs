@@ -35,6 +35,8 @@ import Obsidian.Program
 import Obsidian.Force
 import Obsidian.Memory
 
+import Obsidian.Names -- PHASE OUT! 
+
 import qualified Obsidian.CodeGen.Program as CG 
 
 import Data.Word
@@ -72,8 +74,33 @@ typeOf_ a = typeOf (Literal a)
 instance ToProgram (GProgram a) where
   toProgram i prg a = ([],CG.compileStep1 prg)
 
-instance GlobalMemoryOps a => ToProgram (Push Grid EWord32 a) where
-  toProgram i parr a = toProgram i (forceG parr) a
+instance Scalar a => ToProgram (Push Grid EWord32 (Exp a)) where
+  toProgram i (Push _ p) a =
+    let prg = do
+          output <- Output (typeOf_ (undefined :: a))
+          p (\a ix -> do {assignOut output a ix; return (Single (Var, ""))})
+    in 
+     toProgram i prg a
+    where
+      assignOut out a ix = Assign out [ix] a
+
+instance (Scalar a, Scalar b) => ToProgram (Push Grid EWord32 (Exp a,Exp b)) where
+  toProgram i (Push _ p) a =
+    let prg = do
+          out1 <- Output (typeOf_ (undefined :: a))
+          out2 <- Output (typeOf_ (undefined :: b))
+          
+          p (\(a,b) ix -> do {assignOut (out1,out2) (a,b) ix; return (Single (Var, ""))})
+    in 
+     toProgram i prg a
+    where
+      assignOut (o1,o2) (a,b) ix =
+        do
+          Assign o1 [ix] a
+          Assign o2 [ix] b
+      
+
+
 
 
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where

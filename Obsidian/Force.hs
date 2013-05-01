@@ -19,7 +19,7 @@
 --  write_ should be internal use only
 module Obsidian.Force (write,
                        force,
-                       forceG
+                    --   forceG
                       ) where
 
 
@@ -29,7 +29,7 @@ import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Memory
-import Obsidian.Names
+import Obsidian.Names   -- PHASE OUT 
 
 import Data.Word
 ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ force arr = do
   Sync
   return rval
 
-
+{-
 forceG :: GlobalMemoryOps a
         => Push Grid l a
         -> GProgram () 
@@ -73,3 +73,4 @@ forceG (Push _ p)  =
    
     p (\a e -> do {assignOut a e; return (Single (Var,""))}) 
     return ()
+-}

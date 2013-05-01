@@ -8,7 +8,7 @@
 
 -} 
 
-module Obsidian.Memory (MemoryOps(..),GlobalMemoryOps(..),assignArrayN)  where
+module Obsidian.Memory (MemoryOps(..),assignArrayN)  where
 
 
 import Obsidian.Program
@@ -20,6 +20,8 @@ import Obsidian.Names
 
 import Data.Word
 
+
+-- TODO: REMOVE INSPECT AND EVERYTHIN ASSOCIATED WITH IT 
 class Inspect a where
   inspect :: a -> Tree (Either (Kind,Name) Type)
 
@@ -158,6 +160,7 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
 -- Global Memory
 ---------------------------------------------------------------------------
 
+{- 
 class GlobalMemoryOps a where
   -- outputs   :: a -> GProgram Names
   assignOut :: a -> Exp Word32 -> Program Thread ()
@@ -185,3 +188,4 @@ instance (GlobalMemoryOps a, GlobalMemoryOps b)
     do
       assignOut a ix 
       assignOut b ix
+-}
