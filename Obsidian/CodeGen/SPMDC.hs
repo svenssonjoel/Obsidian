@@ -124,6 +124,7 @@ data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign
                                     -- and might need attention during code gen
                                     -- I give them specific constructors. 
            | CFor    Name CExpr [SPMDC]  -- very simple loop for now.
+           | CBreak 
            | CIf     CExpr [SPMDC] [SPMDC]
            deriving (Eq,Ord,Show)
                     
@@ -175,7 +176,8 @@ cThreadFence = CThreadFence
 cThreadFenceBlock = CThreadFenceBlock
 cDeclAssign = CDeclAssign 
 cIf         = CIf 
-cFor        = CFor 
+cFor        = CFor
+cBreak      = CBreak
 --------------------------------------------------------------------------
 -- Printing 
 data PPConfig = PPConfig {ppKernelQ :: String, 
@@ -337,6 +339,8 @@ ppSPMDC ppc (CFor name e s) =
                 line (";") >> line (name ++ "++")) >>
   begin >> indent >> newline >> 
   ppSPMDCList ppc s >> unindent >> end
+ppSPMDC ppc CBreak =
+  line "break" >> cTermLn
 
 
 ppAtomicOp :: PPConfig -> CAtomicOp -> PP ()

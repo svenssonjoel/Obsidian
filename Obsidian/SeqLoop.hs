@@ -47,8 +47,8 @@ seqFold op init arr = do
 ---------------------------------------------------------------------------
 -- Iterate
 ---------------------------------------------------------------------------
-iterate :: MemoryOps a => EWord32 -> (a -> a) -> a -> Program Thread a
-iterate n f init =
+seqIterate :: MemoryOps a => EWord32 -> (a -> a) -> a -> Program Thread a
+seqIterate n f init =
   do
     ns <- names "v" (init)
     allocateScalar ns (init)
@@ -61,6 +61,30 @@ iterate n f init =
 
     return $ readFrom ns
 
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
+-- | iterate a function until some condition holds or the maximum number
+--   of iterations is reached
+seqUntilBound :: MemoryOps a
+                 => EWord32
+                 -> (a -> a)
+                 -> (a -> EBool)
+                 -> a
+                 -> Program Thread a
+seqUntilBound n f p init =
+  do 
+    ns <- names "v" (init)
+    allocateScalar ns (init)
+
+    assignScalar ns init
+    SeqFor n $ \ix ->
+      do
+        assignScalar ns $ f (readFrom ns)
+        Cond (p (readFrom ns)) Break
+        return None
+
+    return $ readFrom ns
 
 ---------------------------------------------------------------------------
 -- Sequential scan
