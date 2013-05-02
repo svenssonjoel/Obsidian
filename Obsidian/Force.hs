@@ -1,4 +1,4 @@
-
+{-# LANGUAGE ScopedTypeVariables #-}
 {- Joel Svensson 2012, 2013 
 
    Notes: 
@@ -30,20 +30,20 @@ import Data.Word
 ---------------------------------------------------------------------------
 
 
-write :: (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
+write :: forall a p. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
-  -- snames <- names "arr" (undefined :: a)
+  snames <- names "arr" (undefined :: a)
 
   -- Here I know that this pattern match will succeed
   let n = len arr
   
-  -- allocateArray snames (undefined :: a) n
+  allocateArray snames (undefined :: a) n
 
   let (Push m p) = push Block arr
 
-  snames <- p (assignArrayN n) 
+  p (assignArray snames) 
       
-  return $ pullFromS snames n
+  return $ pullFrom snames n
 
   
 force :: (Array p, Pushable p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)

@@ -6,9 +6,11 @@
    This Module became quite messy.
    TODO: CLEAN IT UP! 
 
+   notes: 2013-05-02: Cleaned out inspect. 
+
 -} 
 
-module Obsidian.Memory (MemoryOps(..),assignArrayN)  where
+module Obsidian.Memory (MemoryOps(..))  where
 
 
 import Obsidian.Program
@@ -22,67 +24,67 @@ import Data.Word
 
 
 -- TODO: REMOVE INSPECT AND EVERYTHIN ASSOCIATED WITH IT 
-class Inspect a where
-  inspect :: a -> Tree (Either (Kind,Name) Type)
+-- class Inspect a where
+--   inspect :: a -> Tree (Either (Kind,Name) Type)
 
-instance Scalar a => Inspect (Exp a) where
-  inspect (Index (name,[])) = Single (Left (Var,name))
-  inspect (Index (name,[ix])) | isid ix =  Single (Left (Arr,name))
-  inspect _ = Single $ Right (typeOf (undefined :: Exp a)) 
+-- instance Scalar a => Inspect (Exp a) where
+--   inspect (Index (name,[])) = Single (Left (Var,name))
+--   inspect (Index (name,[ix])) | isid ix =  Single (Left (Arr,name))
+--   inspect _ = Single $ Right (typeOf (undefined :: Exp a)) 
 
-instance (Inspect a, Inspect b) => Inspect (a,b) where
-  inspect (a,b) = Tuple [inspect a, inspect b]
+-- instance (Inspect a, Inspect b) => Inspect (a,b) where
+--   inspect (a,b) = Tuple [inspect a, inspect b]
 
-instance (Inspect a, Inspect b, Inspect c) => Inspect (a,b,c) where
-  inspect (a,b,c) = Tuple [inspect a, inspect b, inspect c]
+-- instance (Inspect a, Inspect b, Inspect c) => Inspect (a,b,c) where
+--   inspect (a,b,c) = Tuple [inspect a, inspect b, inspect c]
 
-isid (ThreadIdx X) = True
-isid _ = False
+-- isid (ThreadIdx X) = True
+-- isid _ = False
 
 ---------------------------------------------------------------------------
 -- Local Memory
 ---------------------------------------------------------------------------
-class Inspect a => MemoryOps a where
+class MemoryOps a where
   names          :: String -> a -> Program t Names
   allocateArray  :: Names -> a -> Word32 -> Program t ()
   allocateScalar :: Names -> a -> Program t () 
   assignArray    :: Names -> a -> Exp Word32 -> TProgram ()
-  assignArrayS   :: Tree (Either (Kind,Name) (Kind,Name))
-                    -> a
-                    -> Exp Word32
-                    -> TProgram (Tree (Kind,Name)) 
+  -- assignArrayS   :: Tree (Either (Kind,Name) (Kind,Name))
+  --                   -> a
+  --                  -> Exp Word32
+  --                  -> TProgram (Tree (Kind,Name)) 
   assignScalar   :: Names -> a -> TProgram () 
   pullFrom       :: Names -> Word32 -> Pull Word32 a
   readFrom       :: Names -> a
 
-  pullFromS      :: Tree (Kind,Name) -> Word32 -> Pull Word32 a
+  --pullFromS      :: Tree (Kind,Name) -> Word32 -> Pull Word32 a
 
 ---------------------------------------------------------------------------
 -- Derived
 ---------------------------------------------------------------------------
-assignArrayN :: MemoryOps a =>
-                Word32 -> a -> Exp Word32 -> TProgram (Tree (Kind,Name))
-assignArrayN n a ix  =
-  do
-    names <- allocateNeeded n insp
-    assignArrayS names a ix
-    -- return names
-  where
-    insp = inspect a
+-- assignArrayN :: MemoryOps a =>
+--                 Word32 -> a -> Exp Word32 -> TProgram (Tree (Kind,Name))
+-- assignArrayN n a ix  =
+--   do
+--     names <- allocateNeeded n insp
+--     assignArrayS names a ix
+--     -- return names
+--   where
+--     insp = inspect a
 
 
-allocateNeeded :: Word32 -> Tree (Either (Kind,Name) Type) -> TProgram (Tree (Either (Kind,Name) (Kind,Name)))
-allocateNeeded n None = return None
-allocateNeeded n a@(Single (Left (k,nom))) = return $ Single (Left (k,nom))
-allocateNeeded n (Single (Right t)) =
-  do
-    name <- uniqueNamed "arr"
-    Allocate name (n * typeSize t) (Pointer t)
-    return $ Single (Right (Arr,name))
-allocateNeeded n (Tuple xs) =
-  do
-    ns <- mapM (allocateNeeded n) xs
-    return $ Tuple ns 
+-- allocateNeeded :: Word32 -> Tree (Either (Kind,Name) Type) -> TProgram (Tree (Either (Kind,Name) (Kind,Name)))
+-- allocateNeeded n None = return None
+-- allocateNeeded n a@(Single (Left (k,nom))) = return $ Single (Left (k,nom))
+-- allocateNeeded n (Single (Right t)) =
+--   do
+--     name <- uniqueNamed "arr"
+--     Allocate name (n * typeSize t) (Pointer t)
+--     return $ Single (Right (Arr,name))
+-- allocateNeeded n (Tuple xs) =
+--   do
+--     ns <- mapM (allocateNeeded n) xs
+--     return $ Tuple ns 
     
 
 ---------------------------------------------------------------------------
@@ -96,11 +98,11 @@ instance Scalar a => MemoryOps (Exp a) where
   allocateScalar (Single name) a =
     Declare name (typeOf a) 
   assignArray  (Single name) a ix = Assign name [ix] a
-  assignArrayS (Single (Left (k,name))) a ix = return $ Single (k,name)
-  assignArrayS (Single (Right (k,name))) a ix =
-    do 
-      Assign name [ix] a -- ? 
-      return $ Single (k,name)
+  --assignArrayS (Single (Left (k,name))) a ix = return $ Single (k,name)
+  --assignArrayS (Single (Right (k,name))) a ix =
+  --  do 
+  --    Assign name [ix] a -- ? 
+  --    return $ Single (k,name)
     
   
 
@@ -110,8 +112,8 @@ instance Scalar a => MemoryOps (Exp a) where
   pullFrom (Single name) n = Pull n (\i -> index name i) 
   readFrom (Single name) = variable name
 
-  pullFromS (Single (Var,name)) n = Pull n $ \_ -> variable name
-  pullFromS (Single (Arr,name)) n = Pull n (\i -> index name i) 
+  --pullFromS (Single (Var,name)) n = Pull n $ \_ -> variable name
+  --pullFromS (Single (Arr,name)) n = Pull n (\i -> index name i) 
 
 instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   names pre (a,b) =
@@ -132,11 +134,11 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
       assignArray ns1 a ix 
       assignArray ns2 b ix
 
-  assignArrayS (Tuple [ns1,ns2]) (a,b) ix =
-    do
-      nas1 <- assignArrayS ns1 a ix 
-      nas2 <- assignArrayS ns2 b ix
-      return $ Tuple [nas1,nas2]
+  --assignArrayS (Tuple [ns1,ns2]) (a,b) ix =
+  --  do
+  --    nas1 <- assignArrayS ns1 a ix 
+  --    nas2 <- assignArrayS ns2 b ix
+  --    return $ Tuple [nas1,nas2]
   assignScalar (Tuple [ns1,ns2]) (a,b) =
     do
       assignScalar ns1 a 
@@ -150,10 +152,10 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
         p2 = readFrom ns2
     in (p1,p2)
 
-  pullFromS (Tuple [ns1,ns2]) n =
-    let p1 = pullFromS ns1 n
-        p2 = pullFromS ns2 n
-    in Pull n (\ix -> (p1 ! ix, p2 ! ix))
+  --pullFromS (Tuple [ns1,ns2]) n =
+  --  let p1 = pullFromS ns1 n
+  --      p2 = pullFromS ns2 n
+  --  in Pull n (\ix -> (p1 ! ix, p2 ! ix))
 
 
 ---------------------------------------------------------------------------

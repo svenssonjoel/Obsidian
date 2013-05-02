@@ -103,7 +103,7 @@ seqScan op (Pull n ixf)  =
     SeqFor (sizeConv (n-1)) $ \ix -> do
       wf (readFrom ns) ix                  
       assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
-      return None
+     
                  
 ---------------------------------------------------------------------------
 -- Sequential Map (here for uniformity) 

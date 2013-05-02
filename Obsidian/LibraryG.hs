@@ -101,31 +101,31 @@ zipWithT threadf as bs =
 ---------------------------------------------------------------------------
 -- Experimental
 ---------------------------------------------------------------------------
-zipWithG' :: forall a b c l. (ASize l, MemoryOps c)
-             => (SPull a -> SPull b -> BProgram (SPull c))
-             -> Pull l (SPull a)
-             -> Pull l (SPull b)
-             -> GProgram (Push Grid l c)
-zipWithG' kern as bs =
-  do
-    snames <- forAllBlocks (sizeConv n) $ \bix ->
-      do
-        res <- kern (as ! bix) (bs ! bix)
-        let (Push _ p) = push Block res
-        p (assignArrayN n)
-    let pully = Pull blocks $ \bix -> (pullFromS snames n :: Pull Word32 c)
+-- zipWithG' :: forall a b c l. (ASize l, MemoryOps c)
+--              => (SPull a -> SPull b -> BProgram (SPull c))
+--              -> Pull l (SPull a)
+--              -> Pull l (SPull b)
+--              -> GProgram (Push Grid l c)
+-- zipWithG' kern as bs =
+--   do
+--     snames <- forAllBlocks (sizeConv n) $ \bix ->
+--       do
+--         res <- kern (as ! bix) (bs ! bix)
+--         let (Push _ p) = push Block res
+--         p (assignArrayN n)
+--     let pully = Pull blocks $ \bix -> (pullFromS snames n :: Pull Word32 c)
         
-    return $ Push (blocks * fromIntegral n) $
-      \wf ->
-      do
-        forAllBlocks (sizeConv blocks) $ \bix ->
-          forAll (sizeConv n) $ \tix ->
-            do
-              wf ((pully ! bix) ! tix) (bix * (sizeConv n) + tix)
+--     return $ Push (blocks * fromIntegral n) $
+--       \wf ->
+--       do
+--         forAllBlocks (sizeConv blocks) $ \bix ->
+--           forAll (sizeConv n) $ \tix ->
+--             do
+--               wf ((pully ! bix) ! tix) (bix * (sizeConv n) + tix)
       
-  where
-    n = min m k 
-    -- Assume uniformity
-    m = len (as ! 0)
-    k = len (bs ! 0)
-    blocks = (min (len as) (len bs))
+--   where
+--     n = min m k 
+--     -- Assume uniformity
+--     m = len (as ! 0)
+--     k = len (bs ! 0)
+--     blocks = (min (len as) (len bs))
