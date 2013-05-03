@@ -35,6 +35,8 @@ import Obsidian.Program
 import Obsidian.Force
 import Obsidian.Memory
 
+import Obsidian.Names -- PHASE OUT! 
+
 import qualified Obsidian.CodeGen.Program as CG 
 
 import Data.Word
@@ -72,10 +74,31 @@ typeOf_ a = typeOf (Literal a)
 instance ToProgram (GProgram a) where
   toProgram i prg () = ([],CG.compileStep1 prg)
 
-instance GlobalMemoryOps a => ToProgram (Push Grid EWord32 a) where
-  toProgram i parr () = toProgram i (forceG parr) ()
+instance Scalar a => ToProgram (Push Grid l (Exp a)) where
+  toProgram i (Push _ p) a =
+    let prg = do
+          output <- Output (typeOf_ (undefined :: a))
+          p (\a ix -> assignOut output a ix)
+    in 
+     toProgram i prg a
+    where
+      assignOut out a ix = Assign out [ix] a
 
-
+instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
+  toProgram i (Push _ p) a =
+    let prg = do
+          out1 <- Output (typeOf_ (undefined :: a))
+          out2 <- Output (typeOf_ (undefined :: b))
+          
+          p (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
+    in 
+     toProgram i prg a
+    where
+      assignOut (o1,o2) (a,b) ix =
+        do
+          Assign o1 [ix] a
+          Assign o2 [ix] b
+      
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,Pointer t):ins,prg)
     where
@@ -95,94 +118,6 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
       t     = typeOf_ (undefined :: t)
   
     
-{-
-instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t))(GProgram a) where
-  toProgram i f (Pull n ixf) = ([(nom,Pointer t),(n,Word32)],CG.compileStep1 (f input)) 
-      where nom = "input" ++ show i
-            n   = "n" ++ show i 
-            lengthVar = variable n
-            input = namedGlobal nom lengthVar
-            t = typeOf_ (undefined :: t)
-
-instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
-  toProgram i f (Pull n ixf) = ([(nom,Pointer t){-,(n,Word32)-}],CG.compileStep1 (f input)) 
-      where nom = "input" ++ show i
-            --n   = "n" ++ show i 
-            --lengthVar = variable n
-            input = namedGlobal nom n -- lengthVar
-            t = typeOf_ (undefined :: t)
--} 
-{- 
-instance (Scalar t) => ToProgram (Exp t) (GProgram a) where
-  toProgram i f a = ([(nom,t)],CG.compileStep1 (f input))
-    where nom = "s" ++ show i
-          input = variable nom
-          t = typeOf_ (undefined :: t)
-
-instance (Scalar t) => ToProgram (Pull (Exp Word32) (Exp t)) (GProgram a) where
-  toProgram i f (Pull n ixf) = ([(nom,Pointer t),(n,Word32)],CG.compileStep1 (f input)) 
-      where nom = "input" ++ show i
-            n   = "n" ++ show i 
-            lengthVar = variable n
-            input = namedGlobal nom lengthVar
-            t = typeOf_ (undefined :: t)
-
-instance (Scalar t) => ToProgram (Pull Word32 (Exp t)) (GProgram a) where
-  toProgram i f (Pull n ixf) = ([(nom,Pointer t){-,(n,Word32)-}],CG.compileStep1 (f input)) 
-      where nom = "input" ++ show i
-            --n   = "n" ++ show i 
-            --lengthVar = variable n
-            input = namedGlobal nom n -- lengthVar
-            t = typeOf_ (undefined :: t)
-
-
----------------------------------------------------------------------------
--- More natural to work with these in some cases
----------------------------------------------------------------------------
-instance (ToProgram b (GProgram ()),
-          GlobalMemoryOps a)
-          => ToProgram b (Push Grid Word32 a) where
-  toProgram i f arr = toProgram i (forceG . f)  arr
-
-instance (ToProgram b (GProgram ()),
-          GlobalMemoryOps a)
-          => ToProgram b (Push Grid EWord32 a) where
-  toProgram i f arr = toProgram i (forceG . f)  arr
-
-
----------------------------------------------------------------------------
--- Recursive cases
---------------------------------------------------------------------------- 
-instance (Scalar t, ToProgram b c) => ToProgram (Exp t) (b -> c) where
-  toProgram i f (a :-> rest) = ((nom,t):ins,prg)
-    where
-      (ins,prg) = toProgram (i+1) (f input) rest
-      nom = "s" ++ show i
-      input = variable nom
-      t = typeOf_ (undefined :: t)
-
-instance (Scalar t, ToProgram b c) => ToProgram (Pull (Exp Word32) (Exp t)) (b -> c) where
-  toProgram i f ((Pull n ixf) :-> rest) = ((nom,Pointer t):(n,Word32):ins,prg)
-    where
-      (ins,prg) = toProgram (i+1) (f input) rest
-      nom = "input" ++ show i
-      n   = "n" ++ show i
-      lengthVar = variable n
-      input = namedGlobal nom lengthVar
-      t = typeOf_ (undefined :: t)
-
-
-instance (Scalar t, ToProgram b c) => ToProgram (Pull Word32 (Exp t)) (b -> c) where
-  toProgram i f ((Pull n ixf) :-> rest) = ((nom,Pointer t){-:(n,Word32)-}:ins,prg)
-    where
-      (ins,prg) = toProgram (i+1) (f input) rest
-      nom = "input" ++ show i
-      --n   = "n" ++ show i
-      --lengthVar = variable n
-      input = namedGlobal nom n --lengthVar
-      t = typeOf_ (undefined :: t)
-
--}
 ---------------------------------------------------------------------------
 -- heterogeneous lists of inputs 
 ---------------------------------------------------------------------------

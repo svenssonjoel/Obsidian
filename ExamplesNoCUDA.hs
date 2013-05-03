@@ -19,7 +19,7 @@ import qualified Prelude as P
 ---------------------------------------------------------------------------
 -- Util 
 ---------------------------------------------------------------------------
-quickPrint :: ToProgram a b => (a -> b) -> Ips a b -> IO ()
+quickPrint :: ToProgram prg => prg-> InputList prg -> IO ()
 quickPrint prg input =
   putStrLn $ CUDA.genKernel "kernel" prg input 
  
@@ -76,7 +76,7 @@ sklanskyG logbs op arr =
 
 getSklansky =
   quickPrint (sklanskyG 8 (+))
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+             ((undefined :: Pull (Exp Word32) EInt32) :- ())
 
 ---------------------------------------------------------------------------
 -- kStone (TEST THAT THIS IS REALLY A SCAN!) 
@@ -149,7 +149,7 @@ atomicOp n e1 a = AtomicOp n e1 a >> return ()
 
 getHist =
   quickPrint histogram
-             (undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32)
+             ((undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32) :- ())
   
 reconstruct :: Pull EWord32 EWord32 -> Push Grid EWord32 EInt32
 reconstruct arr = Push (len arr) f
@@ -161,8 +161,8 @@ reconstruct arr = Push (len arr) f
                      k (word32ToInt32 gix) (ix + startIx)
                  
 getRec =
-  quickPrint (forceG . reconstruct)
-             (undefinedGlobal (variable "X") :: Pull (EWord32) EWord32)
+  quickPrint reconstruct
+             ((undefinedGlobal (variable "X") :: Pull (EWord32) EWord32) :- ())
 
 
 ---------------------------------------------------------------------------
@@ -321,8 +321,8 @@ toMatrix n m arr = Pull n $ \i -> Pull m $ \j -> arr ! (i * (sizeConv m) + j)
 
 getMM =
   quickPrint matMulIn
-             ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :->
-              (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
+             ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :-
+              (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat) :- ())
 
 {-
 getMM2 =
@@ -335,7 +335,7 @@ getMM2 =
 inc :: SPull EFloat -> SPull EFloat
 inc  = fmap (+1)
 
-getIncP = putStrLn $ genKernel "incP" incP input
+getIncP = putStrLn $ genKernel "incP" incP (input :- ())
 
 input :: DPull EFloat
 input = namedGlobal "apa" (variable "X")

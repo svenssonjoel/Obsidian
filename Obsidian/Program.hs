@@ -1,6 +1,8 @@
 {- Joel Svensson 2012,2013
 
    Notes:
+   2013-04-02: Added a Break statement to the language.
+               Use it to break out of sequential loops.
    2013-01-08: removed number-of-blocks field from ForAllBlocks
 
 -}
@@ -73,6 +75,7 @@ data Program t a where
   -- TODO: Generalize this loop! (Replace Thread with t) 
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
             -> Program t a
+  Break  :: Program Thread () 
  
   ForAll :: (Exp Word32) 
             -> (Exp Word32 -> Program Thread a)
@@ -196,7 +199,7 @@ type BProgram = Program Block
 type GProgram = Program Grid 
 
 ---------------------------------------------------------------------------
--- runPrg (fix types here, Integer!)
+-- runPrg (RETHINK!) 
 ---------------------------------------------------------------------------
 runPrg :: Int -> Program t a -> (a,Int)
 runPrg i Identifier = (i,i+1)
@@ -213,7 +216,7 @@ runPrg i (Assign _ _ a) = ((),i) -- Probaby wrong..
 runPrg i (AtomicOp _ _ _) = (variable ("new"++show i),i+1)
      
 ---------------------------------------------------------------------------
--- printPrg
+-- printPrg (REIMPLEMENT) xs
 ---------------------------------------------------------------------------
 printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 

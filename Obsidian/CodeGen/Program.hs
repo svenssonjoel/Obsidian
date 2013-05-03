@@ -46,6 +46,7 @@ data Statement t = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Ex
                | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
                | SCond (Exp Bool) (IMList t) 
                | SSeqFor String (Exp Word32) (IMList t)
+               | SBreak 
                  -- See if it is possible to get away
                  -- with only one kind of ForAll (plus maybe some flag) 
                | SForAll (Exp Word32) (IMList t) 
@@ -91,7 +92,9 @@ cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
     nom = "i" ++ show (supplyValue i1)
     v = variable nom
     p = f v
-    (a,im) = cs1 i2 p 
+    (a,im) = cs1 i2 p
+
+cs1 i (P.Break) = ((), out SBreak)
     
 cs1 i (P.ForAll n f) = (a,out (SForAll n im))
   where

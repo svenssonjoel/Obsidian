@@ -133,6 +133,7 @@ mmSPMDC' mm (CFunc name es) = cFunc name (map (mmCExpr mm) es)
 mmSPMDC' mm CSync           = CSync
 mmSPMDC' mm (CIf   e s1 s2) = cIf (mmCExpr mm e) (mmSPMDC mm s1) (mmSPMDC mm s2)
 mmSPMDC' mm (CFor name e s) = cFor name (mmCExpr mm e) (mmSPMDC mm s)
+mmSPMDC' mm CBreak = cBreak 
 mmSPMDC' mm (CDeclAssign t nom e) = cDeclAssign t nom (mmCExpr mm e)
 mmSPMDC' mm a@(CDecl t nom) = a
 mmSPMDC' mm a = error $ "mmSPMDC': " ++ show a
@@ -184,6 +185,8 @@ imToSPMDC nt im = concatMap (process nt) im
 
     process nt (SSeqFor name e im,_) =
       [cFor name (expToCExp e) (imToSPMDC nt im)]
+    process nt (SBreak,_) =
+      [cBreak]
 
     process nt (SForAll (Literal n) im,_) =
       if (n < nt) 

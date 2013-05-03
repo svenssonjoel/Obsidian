@@ -113,6 +113,10 @@ cl im = mapM process im
             ns  = s `Set.union` l
         put ns
         return (SSeqFor nom n iml,ns) 
+    process (SBreak,_) = 
+      do 
+        s <- get 
+        return (SBreak,s)
 
 
     process (SForAll n im,_) =  
