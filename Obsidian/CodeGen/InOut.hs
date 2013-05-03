@@ -70,10 +70,10 @@ typeOf_ a = typeOf (Literal a)
 -- Base cases
 --------------------------------------------------------------------------- 
 instance ToProgram (GProgram a) where
-  toProgram i prg a = ([],CG.compileStep1 prg)
+  toProgram i prg () = ([],CG.compileStep1 prg)
 
 instance GlobalMemoryOps a => ToProgram (Push Grid EWord32 a) where
-  toProgram i parr a = toProgram i (forceG parr) a
+  toProgram i parr () = toProgram i (forceG parr) ()
 
 
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
