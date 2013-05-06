@@ -72,7 +72,7 @@ data Program t a where
           -> Program t ()
   
   -- DONE: Code generation for this.
-  -- TODO: Generalize this loop! (Replace Thread with t) 
+  -- DONE: Generalize this loop! (Replace Thread with t) 
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
             -> Program t a
   Break  :: Program Thread () 
@@ -110,10 +110,10 @@ data Program t a where
 
      Since we cannot synchronize writes to a global array inside of an
      kernel, global arrays will only be written as outputs of the kernel
-  -}
 
-  -- TODO: REMOVE THIS FROM THE AST,
-  -- Discover the outputs from the "Type" when doing a ToProgram
+     Also used this when doing 
+  -}
+  
   Output   :: Type -> Program t Name
   -- (Output may be replaced by AllocateG) 
   
@@ -126,9 +126,9 @@ data Program t a where
 
   -- Parallel composition of Programs
   -- TODO: Will I use this ? 
-  Par :: Program p () ->
-         Program p () ->
-         Program p () 
+  --Par :: Program p () ->
+  --       Program p () ->
+  --       Program p () 
 
   -- Monad
   Return :: a -> Program t a
@@ -154,7 +154,7 @@ uniqueNamed pre = do
 forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
 forAll n f = ForAll n f
 
-(*||*) = Par
+-- (*||*) = Par
 
 ---------------------------------------------------------------------------
 -- SeqFor

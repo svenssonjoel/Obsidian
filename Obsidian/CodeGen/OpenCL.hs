@@ -3,7 +3,10 @@
 
    OpenCL code generation.
 
-   Joel Svensson 2012 
+   Joel Svensson 2012
+
+
+   TODO: This module is hopelessly outdated! update it. 
 -} 
 
 module Obsidian.CodeGen.OpenCL (genKernel) where 

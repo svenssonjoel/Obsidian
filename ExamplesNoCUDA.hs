@@ -19,7 +19,7 @@ import qualified Prelude as P
 ---------------------------------------------------------------------------
 -- Util 
 ---------------------------------------------------------------------------
-quickPrint :: ToProgram prg => prg-> InputList prg -> IO ()
+quickPrint :: ToProgram prg => prg -> InputList prg -> IO ()
 quickPrint prg input =
   putStrLn $ CUDA.genKernel "kernel" prg input 
  

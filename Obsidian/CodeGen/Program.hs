@@ -8,10 +8,6 @@
 
    Notes:
      2013-03-17: Codegeneration is changing
-
-
-
-
 -} 
 
 
@@ -107,10 +103,17 @@ cs1 i (P.ForAllBlocks n f) = (a,out (SForAllBlocks n im))
     (a,im) = cs1 i p
 
 
--- Warning: Every thread will ALWAYS need to perform a conditional
---     (Only in special case is the conditional not needed) 
--- TRY To express all library functions using ForAllBlocks + ForAll
--- For more flexibility and probably in the end performance. 
+{- 
+   Warning: Every thread will ALWAYS need to perform a conditional
+       (Only in special case is the conditional not needed) 
+   TRY To express all library functions using ForAllBlocks + ForAll
+   For more flexibility and probably in the end performance.
+
+   If we only consider the limited form of Obsidian programs
+   Pull a1 -> Pull a2 -> ... -> Push Grid an
+   this is not a problem. But when we allow people to drop down to
+   the low level (like in counting sort, this is not general enough) 
+-}     
 cs1 i (P.ForAllThreads n f) = (a,out (SForAllThreads n im)) 
   where
     p = f (BlockIdx X * BlockDim X + ThreadIdx X)
