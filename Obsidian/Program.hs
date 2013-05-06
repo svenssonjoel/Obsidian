@@ -73,13 +73,13 @@ data Program t a where
   
   -- DONE: Code generation for this.
   -- DONE: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
-            -> Program t a
+  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
+            -> Program t ()
   Break  :: Program Thread () 
  
   ForAll :: (Exp Word32) 
-            -> (Exp Word32 -> Program Thread a)
-            -> Program Block a 
+            -> (Exp Word32 -> Program Thread ())
+            -> Program Block ()
 
   {-
      I'm not sure about this constructor.
@@ -90,11 +90,11 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block a) 
-                  -> Program Grid a
+  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block ()) 
+                  -> Program Grid ()
 
-  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
-                   -> Program Grid a 
+  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
+                   -> Program Grid ()
 
   -- Allocate shared memory in each MP
 
@@ -151,7 +151,7 @@ uniqueNamed pre = do
 --forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 --forAll f = ForAll Nothing f
 
-forAll :: Exp Word32 -> (Exp Word32 -> Program Thread a) -> Program Block a
+forAll :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
 forAll n f = ForAll n f
 
 -- (*||*) = Par
@@ -159,8 +159,8 @@ forAll n f = ForAll n f
 ---------------------------------------------------------------------------
 -- SeqFor
 ---------------------------------------------------------------------------
-seqFor :: Exp Word32 -> (Exp Word32 -> Program t a)
-            -> Program t a
+seqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
+            -> Program t ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f
 
@@ -175,8 +175,8 @@ seqFor n f = SeqFor n f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread a)
-           -> Program Grid a
+forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
+           -> Program Grid ()
 forAllT n f = ForAllThreads n 
             $ \gtid -> f gtid 
 
@@ -199,22 +199,37 @@ type BProgram = Program Block
 type GProgram = Program Grid 
 
 ---------------------------------------------------------------------------
--- runPrg (RETHINK!) 
+-- runPrg (RETHINK!) (Works for Block programs, but all?)
 ---------------------------------------------------------------------------
 runPrg :: Int -> Program t a -> (a,Int)
 runPrg i Identifier = (i,i+1)
+
+-- Maybe these two are the most interesting cases!
+-- Return may for example give an array. 
 runPrg i (Return a) = (a,i)
 runPrg i (Bind m f) =
   let (a,i') = runPrg i m
-  in runPrg i' (f a) 
+  in runPrg i' (f a)
+     
 runPrg i (Sync) = ((),i)
 runPrg i (ForAll n ixf) =
   let (p,i') = runPrg i (ixf (variable "tid")) 
-  in  (p,i') 
-runPrg i (Allocate id _ _ ) = ((),i)
+  in  (p,i')
+-- What can this boolean depend upon ? its quite general!
+--  (we know p returns a ()... ) 
+runPrg i (Cond b p) = ((),i) 
+runPrg i (Declare _ _) = ((),i)
+runPrg i (Allocate _ _ _ ) = ((),i)
 runPrg i (Assign _ _ a) = ((),i) -- Probaby wrong.. 
 runPrg i (AtomicOp _ _ _) = (variable ("new"++show i),i+1)
-     
+
+{- What do I want from runPrg ?
+
+   # I want to it to "work" for all block programs (no exceptions)
+   # I want a BProgram (Pull a) to return a Pull array of "correct length)
+-}
+
+                            
 ---------------------------------------------------------------------------
 -- printPrg (REIMPLEMENT) xs
 ---------------------------------------------------------------------------

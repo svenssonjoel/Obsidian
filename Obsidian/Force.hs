@@ -1,4 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+
+
 {- Joel Svensson 2012, 2013 
 
    Notes: 
@@ -22,7 +24,8 @@ import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Memory
-import Obsidian.Names   -- PHASE OUT 
+
+import Obsidian.Names
 
 import Data.Word
 ---------------------------------------------------------------------------
@@ -32,12 +35,12 @@ import Data.Word
 
 write :: forall a p. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
 write arr = do 
-  snames <- names "arr" (undefined :: a)
+  (snames :: Names a)  <- names "arr" --(undefined :: a)
 
   -- Here I know that this pattern match will succeed
   let n = len arr
   
-  allocateArray snames (undefined :: a) n
+  allocateArray snames {-(undefined :: a)-} n
 
   let (Push m p) = push Block arr
 

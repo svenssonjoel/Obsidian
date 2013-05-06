@@ -15,8 +15,6 @@ module Obsidian.CodeGen.Memory
         sharedMem,  
         Address,
         Bytes,
-        --mapMemory,
-        -- NEW
         mmIM) 
        where 
 

@@ -17,7 +17,6 @@ import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
-import Obsidian.Names
 
 import Data.List
 import Data.Word

@@ -1,20 +1,14 @@
-
+{-# LANGUAGE GADTs #-}
 
 module Obsidian.Names where
 
 import Obsidian.Globs
 
-data Tree a = None
-            | Single a
-            | Tuple [Tree a]
+-- data Names = None
+--           | Single Name
+--           | Tuple [Names] 
 
-type Names = Tree Name
-
-type NameInfo = Tree (Kind,Name)
-
-data Kind = Var | Arr
-
-instance Functor Tree where
-  fmap f None = None
-  fmap f (Single a) = Single $ f a
-  fmap f (Tuple ts) = Tuple $ map (fmap f) ts
+data Names a where
+  Single :: Name -> Names a
+  Tuple  :: Names a -> Names b -> Names (a,b)
+  
