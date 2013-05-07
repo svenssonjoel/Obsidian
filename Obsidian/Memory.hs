@@ -85,6 +85,46 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
         p2 = readFrom ns2
     in (p1,p2)
 
+
+instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
+  names pre {-(a,b)-} =
+    do
+      (a :: Names a) <- names pre --a
+      (b :: Names b) <- names pre --b
+      (c :: Names c) <- names pre --b
+      return $ Triple a b c
+  allocateArray (Triple ns1 ns2 ns3) {-(a,b)-} n =
+    do 
+      allocateArray ns1 {-a-} n
+      allocateArray ns2 {-b-} n
+      allocateArray ns3 {-b-} n
+  allocateScalar (Triple ns1 ns2 ns3) {-(a,b)-} =
+    do
+      allocateScalar ns1 {-a-}
+      allocateScalar ns2 {-b-}
+      allocateScalar ns3 {-b-} 
+  assignArray (Triple ns1 ns2 ns3) (a,b,c) ix =
+    do
+      assignArray ns1 a ix 
+      assignArray ns2 b ix
+      assignArray ns3 c ix
+
+  assignScalar (Triple ns1 ns2 ns3) (a,b,c) =
+    do
+      assignScalar ns1 a 
+      assignScalar ns2 b
+      assignScalar ns3 c
+      
+  pullFrom (Triple ns1 ns2 ns3) n =
+    let p1 = pullFrom ns1 n
+        p2 = pullFrom ns2 n
+        p3 = pullFrom ns3 n
+    in Pull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
+  readFrom (Triple ns1 ns2 ns3)  =
+    let p1 = readFrom ns1
+        p2 = readFrom ns2
+        p3 = readFrom ns3
+    in (p1,p2,p3)
  
 ---------------------------------------------------------------------------
 -- Global Memory

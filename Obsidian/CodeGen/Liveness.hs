@@ -113,6 +113,14 @@ cl im = mapM process im
             ns  = s `Set.union` l
         put ns
         return (SSeqFor nom n iml,ns) 
+    process (SSeqWhile b im,_) = 
+      do 
+        s <- get 
+        let iml = computeLiveness1 s im 
+            l   = safeHead iml 
+            ns  = s `Set.union` l
+        put ns 
+        return (SSeqWhile b iml,ns)
     process (SBreak,_) = 
       do 
         s <- get 

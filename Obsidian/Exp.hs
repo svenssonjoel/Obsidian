@@ -3,6 +3,7 @@
              FlexibleContexts,
              FlexibleInstances, 
              UndecidableInstances,
+             OverlappingInstances,
              RankNTypes #-} 
 
 {- Joel Svensson 2012 -} 
@@ -191,6 +192,8 @@ data Op a where
   -- Boolean 
   And :: Op ((Bool,Bool) -> Bool) 
   Or  :: Op ((Bool,Bool) -> Bool)
+
+  Not :: Op (Bool -> Bool) 
   
   -- Bitwise 
   BitwiseAnd :: Bits a => Op ((a,a) -> a) 
@@ -229,7 +232,9 @@ data Op a where
   FDiv :: Floating a => Op ((a, a) -> a) -- "acoshf"
 
   Int32ToWord32 :: Op (Int32 -> Word32)
-  Word32ToInt32 :: Op (Word32 -> Int32) 
+  Word32ToInt32 :: Op (Word32 -> Int32)
+  Word32ToFloat :: Op (Word32 -> Float)
+  Word32ToWord8 :: Op (Word32 -> Word8) 
   
 
 ---------------------------------------------------------------------------
@@ -273,6 +278,10 @@ collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++
 ---------------------------------------------------------------------------
 int32ToWord32 = UnOp Int32ToWord32
 word32ToInt32 = UnOp Word32ToInt32
+
+word32ToFloat = UnOp Word32ToFloat
+
+word32ToWord8 = UnOp Word32ToWord8
 
 ---------------------------------------------------------------------------
 -- 
@@ -537,6 +546,7 @@ instance Num (Exp Float) where
   fromInteger a = Literal (fromInteger a)
 
 instance Fractional (Exp Float) where
+  (/) (Literal a) (Literal b) = Literal (a/b)
   (/) a b = BinOp FDiv a b
   recip a = (Literal 1) / a
   fromRational a = Literal (fromRational a)
@@ -584,7 +594,57 @@ instance Floating (Exp Float) where
   --(/) (Literal 1) (UnOp Sqrt b) = UnOp RSqrt b -- Optimisation.
 
   
+---------------------------------------------------------------------------
+-- Word8 Instances
+---------------------------------------------------------------------------
+instance (Scalar a ,Num a) => Num (Exp a) where 
+  (+) a (Literal 0) = a
+  (+) (Literal 0) a = a
+  (+) (Literal a) (Literal b) = Literal (a+b)
+
+  -- Added 15 Jan 2013
+  (+) (BinOp Mul (BinOp Div x (Literal a)) (Literal b))
+       (BinOp Mod y (Literal c))
+        | x == y && a == b && b == c = x 
+      -- This spots the kind of indexing that occurs from 
+      --  converting a bix tix view to and from gix view
+        
+  -- Added 2 oct 2012
+  (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
+  (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
+ 
+  (+) a b = BinOp Add a b  
   
+  (-) a (Literal 0) = a 
+  (-) (Literal a) (Literal b) = Literal (a - b) 
+  (-) a b = BinOp Sub a b 
+  
+  (*) a (Literal 1) = a 
+  (*) (Literal 1) a = a
+  (*) _ (Literal 0) = Literal 0
+  (*) (Literal 0) _ = Literal 0
+  (*) (Literal a) (Literal b) = Literal (a*b) 
+  (*) a b = BinOp Mul a b 
+  
+  signum = error "signum: not implemented for Exp a"
+  abs = error "abs: not implemented for Exp a" 
+  fromInteger a = Literal (fromInteger a) 
+   
+instance (Scalar a, Real a) => Real (Exp a) where 
+  toRational = error "toRational: not implemented for Exp a" 
+  
+
+instance (Scalar a, Enum a) => Enum (Exp a) where
+  toEnum = error "toEnum: not implemented for Exp a" 
+  fromEnum = error "fromEnum: not implemented for Exp a" 
+
+instance (Scalar a, Integral a) => Integral (Exp a) where
+  mod (Literal a) (Literal b) = Literal (a `mod` b) 
+  mod a b = BinOp Mod a b
+  div _ (Literal 0) = error "Division by zero in expression" 
+  div a b = BinOp Div a b
+  quotRem = error "quotRem: not implemented for Exp a" 
+  toInteger = error "toInteger: not implemented for Exp a"
   
 ---------------------------------------------------------------------------
   
@@ -605,6 +665,7 @@ infixr 2 ||*
 (&&*) a b = BinOp And a b 
 (||*) a b = BinOp Or a b 
 
+notE = UnOp Not
 ---------------------------------------------------------------------------
 -- Choice class
 ---------------------------------------------------------------------------
@@ -654,7 +715,7 @@ printOp Gt  = " > "
 printOp GEq = " >= " 
 
 printOp And = " && "
-printOp Or  = " || " 
+printOp Or  = " || "
 
 printOp Min = " Min "
 printOp Max = " Max " 
@@ -740,6 +801,8 @@ expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expT
 
 expToCExpGeneral (UnOp Word32ToInt32 e) = cCast (expToCExp e) CInt32
 expToCExpGeneral (UnOp Int32ToWord32 e) = cCast (expToCExp e) CWord32
+expToCExpGeneral (UnOp Word32ToFloat e) = cCast (expToCExp e) CFloat
+expToCExpGeneral (UnOp Word32ToWord8 e) = cCast (expToCExp e) CWord8 
 
 expToCExpGeneral e@(BinOp Min e1 e2) = cFuncExpr "min" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
 expToCExpGeneral e@(BinOp Max e1 e2) = cFuncExpr "max" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
@@ -812,4 +875,5 @@ binOpToCBinOp ShiftR     = CShiftR
 -- notice min and max is not here ! 
 
 unOpToCUnOp   BitwiseNeg = CBitwiseNeg
+unOpToCUnOp   Not = CNot 
   

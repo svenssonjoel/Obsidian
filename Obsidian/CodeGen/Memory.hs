@@ -136,6 +136,7 @@ mmIM im memory memmap = r im (memory,memmap)
     process (SForAllBlocks n im,_) m mm = mmIM im m mm
     -- Another tricky case. 
     process (SSeqFor _ n im,_) m mm = mmIM im m mm
+    process (SSeqWhile b im,_) m mm = mmIM im m mm 
     -- Yet another tricky case.
     process (SForAll n im,_) m mm = mmIM im m mm 
     -- The worst of them all.

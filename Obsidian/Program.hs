@@ -75,6 +75,12 @@ data Program t a where
   -- DONE: Generalize this loop! (Replace Thread with t) 
   SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
             -> Program t ()
+  SeqWhile :: Exp Bool ->
+              Program t () ->
+              Program t () 
+  
+
+            
   Break  :: Program Thread () 
  
   ForAll :: (Exp Word32) 

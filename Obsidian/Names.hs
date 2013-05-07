@@ -11,4 +11,4 @@ import Obsidian.Globs
 data Names a where
   Single :: Name -> Names a
   Tuple  :: Names a -> Names b -> Names (a,b)
-  
+  Triple :: Names a -> Names b -> Names c -> Names (a,b,c) 

@@ -102,7 +102,7 @@ data CBinOp = CAdd | CSub | CMul | CDiv | CMod
             | CShiftL | CShiftR 
             deriving (Eq,Ord,Show) 
                      
-data CUnOp = CBitwiseNeg
+data CUnOp = CBitwiseNeg | CNot 
            deriving (Eq,Ord,Show)
 
 data CAtomicOp = CAtomicAdd | CAtomicInc
@@ -124,7 +124,8 @@ data SPMDC = CAssign CExpr [CExpr] CExpr  -- array or scalar assign
                                     -- and might need attention during code gen
                                     -- I give them specific constructors. 
            | CFor    Name CExpr [SPMDC]  -- very simple loop for now.
-           | CBreak 
+           | CBreak
+           | CWhile CExpr [SPMDC] 
            | CIf     CExpr [SPMDC] [SPMDC]
            deriving (Eq,Ord,Show)
                     
@@ -178,6 +179,7 @@ cDeclAssign = CDeclAssign
 cIf         = CIf 
 cFor        = CFor
 cBreak      = CBreak
+cWhile      = CWhile
 --------------------------------------------------------------------------
 -- Printing 
 data PPConfig = PPConfig {ppKernelQ :: String, 
@@ -242,7 +244,7 @@ ppValue (Int8Val i)   = line$ show i
 ppValue (Int16Val i)  = line$ show i
 ppValue (Int32Val i)  = line$ show i
 ppValue (Int64Val i)  = line$ show i
-ppValue (FloatVal f)  = line$ show f 
+ppValue (FloatVal f)  = line$ show f ++ "f"  
 ppValue (DoubleVal d) = line$ show d
 ppValue (Word8Val  w) = line$ show w 
 ppValue (Word16Val w) = line$ show w
@@ -269,7 +271,8 @@ ppBinOp CBitwiseXor = line$ "^"
 ppBinOp CShiftL     = line$ "<<" 
 ppBinOp CShiftR     = line$ ">>"
                      
-ppUnOp CBitwiseNeg = line$ "~"       
+ppUnOp CBitwiseNeg = line$ "~"
+ppUnOp CNot        = line$ "!"
 -- May be incorrect.
 --ppUnOp CInt32ToWord32 = line$ "(uint32_t)"
 --ppUnOp CWord32ToInt32 = line$ "(int32_t)" 
@@ -332,6 +335,12 @@ ppSPMDC ppc (CIf e xs ys) =
   line "else " >> begin >> indent >> newline >> 
   ppSPMDCList ppc ys >>  unindent >> end
 -- TODO: Clean up here
+ppSPMDC ppc (CWhile b s) =
+  line "while " >>
+  wrap "(" ")" (ppCExpr ppc b) >> 
+  begin >> indent >> newline >> 
+  ppSPMDCList ppc s >> unindent >> end
+
 ppSPMDC ppc (CFor name e s) =
   line "for " >>
   wrap "(" ")" (line ("int " ++ name ++ " = 0;") >>

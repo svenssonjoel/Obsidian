@@ -77,7 +77,7 @@ instance ToProgram (GProgram a) where
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
   toProgram i (Push _ p) a =
     let prg = do
-          output <- Output (typeOf_ (undefined :: a))
+          output <- Output $ Pointer $ typeOf_ (undefined :: a)
           p (\a ix -> assignOut output a ix)
     in 
      toProgram i prg a
@@ -87,8 +87,8 @@ instance Scalar a => ToProgram (Push Grid l (Exp a)) where
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
   toProgram i (Push _ p) a =
     let prg = do
-          out1 <- Output (typeOf_ (undefined :: a))
-          out2 <- Output (typeOf_ (undefined :: b))
+          out1 <- Output $ Pointer $ typeOf_ (undefined :: a)
+          out2 <- Output $ Pointer $ typeOf_ (undefined :: b)
           
           p (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
     in 
