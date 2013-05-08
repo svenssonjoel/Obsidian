@@ -12,7 +12,9 @@ import Data.Word
 
 ---------------------------------------------------------------------------
 -- 
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
+-- Same change as in genB (vs genB').
+-- May give you the 2 elt per thread Power. 
 mapG :: ASize l => (SPull a -> BProgram (SPull b))
         -> Pull l (SPull a)
         -> Push Grid l b

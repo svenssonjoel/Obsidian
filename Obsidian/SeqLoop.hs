@@ -88,34 +88,34 @@ seqUntilBound n f p init =
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------    
+-- seqUntil :: MemoryOps a
+--                  => (a -> a)
+--                  -> (a -> EBool)
+--                  -> a
+--                  -> Program Thread a
+-- seqUntil f p init =
+--   do 
+--     (ns :: Names a) <- names "v" -- init
+--     allocateScalar ns -- init
+
+--     assignScalar ns init
+--     SeqFor (-1) $ \_ ->
+--       do
+--         Cond (notE (p (readFrom ns))) Break
+--         (tmp :: Names a) <- names "t"
+--         allocateScalar tmp
+--         assignScalar tmp (readFrom ns) 
+--         assignScalar ns $ f (readFrom tmp)
+        
+
+--     return $ readFrom ns
+
 seqUntil :: MemoryOps a
                  => (a -> a)
                  -> (a -> EBool)
                  -> a
                  -> Program Thread a
 seqUntil f p init =
-  do 
-    (ns :: Names a) <- names "v" -- init
-    allocateScalar ns -- init
-
-    assignScalar ns init
-    SeqFor (-1) $ \_ ->
-      do
-        Cond (notE (p (readFrom ns))) Break
-        (tmp :: Names a) <- names "t"
-        allocateScalar tmp
-        assignScalar tmp (readFrom ns) 
-        assignScalar ns $ f (readFrom tmp)
-        
-
-    return $ readFrom ns
-
-seqUntil' :: MemoryOps a
-                 => (a -> a)
-                 -> (a -> EBool)
-                 -> a
-                 -> Program Thread a
-seqUntil' f p init =
   do 
     (ns :: Names a) <- names "v" -- init
     allocateScalar ns -- init

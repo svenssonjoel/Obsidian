@@ -229,7 +229,7 @@ data Op a where
   ATanH :: Floating a => Op (a -> a) -- "atanhf"
   ACosH :: Floating a => Op (a -> a) -- "acoshf"
   -- There is no "div" in "Num" but it's already defined above. 
-  FDiv :: Floating a => Op ((a, a) -> a) -- "acoshf"
+  FDiv :: Floating a => Op ((a, a) -> a) 
 
   Int32ToWord32 :: Op (Int32 -> Word32)
   Word32ToInt32 :: Op (Word32 -> Int32)
