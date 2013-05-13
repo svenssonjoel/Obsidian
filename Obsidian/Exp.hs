@@ -276,12 +276,22 @@ collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++
 ---------------------------------------------------------------------------
 -- Typecasts
 ---------------------------------------------------------------------------
-int32ToWord32 = UnOp Int32ToWord32
-word32ToInt32 = UnOp Word32ToInt32
+-- int32ToWord32 = UnOp Int32ToWord32
+-- word32ToInt32 = UnOp Word32ToInt32
 
-word32ToFloat = UnOp Word32ToFloat
+-- word32ToFloat = UnOp Word32ToFloat
 
-word32ToWord8 = UnOp Word32ToWord8
+-- word32ToWord8 = UnOp Word32ToWord8
+
+i32ToW32 = UnOp Int32ToWord32
+w32ToI32 = UnOp Word32ToInt32
+
+w32ToF = UnOp Word32ToFloat
+
+w32ToW8 = UnOp Word32ToWord8
+
+
+
 
 ---------------------------------------------------------------------------
 -- 

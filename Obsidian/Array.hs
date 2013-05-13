@@ -98,6 +98,7 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
+  
 class Pushable a where 
   push  :: ASize s => PT t -> a s e -> Push t s e
   -- Push using m threads

@@ -13,8 +13,6 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------
--- Same change as in genB (vs genB').
--- May give you the 2 elt per thread Power. 
 mapG :: ASize l => (SPull a -> BProgram (SPull b))
         -> Pull l (SPull a)
         -> Push Grid l b
@@ -32,6 +30,24 @@ mapG kern as =
     -- TODO: ensure this is not insane (runPrg functionality) 
     rn = len $ fst $ runPrg 0 (kern (as ! 0))
     n = len (as ! 0)
+
+mapG' :: ASize l => (SPull a -> BProgram (SPush Block b))
+        -> Pull l (SPull a)
+        -> Push Grid l b
+mapG' kern as =
+  Push (blocks * fromIntegral rn) $
+  \wf ->
+    do
+      forAllBlocks (sizeConv blocks) $ \bix -> do
+        (Push _ p) <- kern (as ! bix)
+        let wf' a ix = wf a (bix * sizeConv rn + ix)
+        p wf'
+  where
+    blocks = len as
+    -- TODO: ensure this is not insane (runPrg functionality) 
+    rn = len $ fst $ runPrg 0 (kern (as ! 0))
+    n = len (as ! 0)
+
 
 
 mapT :: (SPull a -> TProgram (SPull b))

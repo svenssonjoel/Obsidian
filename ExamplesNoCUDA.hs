@@ -142,7 +142,7 @@ bKung op arr = undefined
 histogram :: Pull EWord32 EInt32 -> GProgram ()
 histogram arr = do
   global <- Output $ Pointer Word32
-  forAllT (len arr) $ \gix -> atomicOp global (int32ToWord32 (arr ! gix)) AtomicInc
+  forAllT (len arr) $ \gix -> atomicOp global (i32ToW32 (arr ! gix)) AtomicInc
 
   
 atomicOp n e1 a = AtomicOp n e1 a >> return () 
@@ -158,7 +158,7 @@ reconstruct arr = Push (len arr) f
                let startIx = arr ! gix
                in  SeqFor (arr ! (gix+1) - startIx) $ \ix ->
                    do 
-                     k (word32ToInt32 gix) (ix + startIx)
+                     k (w32ToI32 gix) (ix + startIx)
                  
 getRec =
   quickPrint reconstruct

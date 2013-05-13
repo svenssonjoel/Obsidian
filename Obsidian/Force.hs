@@ -15,7 +15,7 @@
 -}
 
 --  write should be internal use only
-module Obsidian.Force (force) where
+module Obsidian.Force (force,write) where
 
 
 import Obsidian.Program

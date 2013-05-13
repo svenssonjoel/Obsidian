@@ -60,56 +60,7 @@ seqIterate n f init =
 
 ---------------------------------------------------------------------------
 -- 
----------------------------------------------------------------------------
--- | iterate a function until some condition holds or the maximum number
---   of iterations is reached
-seqUntilBound :: MemoryOps a
-                 => EWord32
-                 -> (EWord32 -> a -> a)
-                 -> (EWord32 -> a -> EBool)
-                 -> a
-                 -> Program Thread a
-seqUntilBound n f p init =
-  do 
-    (ns :: Names a) <- names "v" -- init
-    allocateScalar ns -- init
-
-    assignScalar ns init
-    SeqFor n $ \ix ->
-      do
-        (tmp :: Names a) <- names "t"
-        allocateScalar tmp
-        assignScalar tmp (readFrom ns) 
-        assignScalar ns $ f ix (readFrom tmp)
-        Cond (p ix (readFrom ns)) Break
-
-    return $ readFrom ns
-    
----------------------------------------------------------------------------
--- 
 ---------------------------------------------------------------------------    
--- seqUntil :: MemoryOps a
---                  => (a -> a)
---                  -> (a -> EBool)
---                  -> a
---                  -> Program Thread a
--- seqUntil f p init =
---   do 
---     (ns :: Names a) <- names "v" -- init
---     allocateScalar ns -- init
-
---     assignScalar ns init
---     SeqFor (-1) $ \_ ->
---       do
---         Cond (notE (p (readFrom ns))) Break
---         (tmp :: Names a) <- names "t"
---         allocateScalar tmp
---         assignScalar tmp (readFrom ns) 
---         assignScalar ns $ f (readFrom tmp)
-        
-
---     return $ readFrom ns
-
 seqUntil :: MemoryOps a
                  => (a -> a)
                  -> (a -> EBool)
@@ -127,9 +78,30 @@ seqUntil f p init =
         allocateScalar tmp
         assignScalar tmp (readFrom ns) 
         assignScalar ns $ f (readFrom tmp)
-        
-
+    
     return $ readFrom ns
+
+
+seqUntil' :: MemoryOps a
+                 => (a -> a)
+                 -> (a -> EBool)
+                 -> a
+                 -> SPush Thread a
+seqUntil' f p init =
+  Push 1 $ \wf -> 
+  do 
+    (ns :: Names a) <- names "v" 
+    allocateScalar ns 
+
+    assignScalar ns init
+    SeqWhile (p (readFrom ns)) $ 
+      do
+        (tmp :: Names a) <- names "t"
+        allocateScalar tmp
+        assignScalar tmp (readFrom ns) 
+        assignScalar ns $ f (readFrom tmp)
+    wf (readFrom ns) 0 
+  
 ---------------------------------------------------------------------------
 -- Sequential scan
 ---------------------------------------------------------------------------
