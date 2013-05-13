@@ -65,6 +65,23 @@ mapT threadf as =
 
   where
     n = len as
+    m = len (as ! 0)
+
+
+mapT' :: (SPull a -> TProgram (SPush Thread b))
+        -> SPull (SPull a)
+        -> SPush Block b
+mapT' threadf as =
+  Push (n * m) $
+  \wf ->
+    do
+      forAll (sizeConv n) $ \tix -> do
+        (Push _ p) <- threadf (as ! tix)
+        let wf' a ix = wf a (tix * sizeConv m + ix)
+        p wf'      
+
+  where
+    n = len as
     m = len (as ! 0) 
 ---------------------------------------------------------------------------
 -- 

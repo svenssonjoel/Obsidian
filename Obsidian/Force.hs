@@ -15,7 +15,7 @@
 -}
 
 --  write should be internal use only
-module Obsidian.Force (force,write) where
+module Obsidian.Force (force,force',write) where
 
 
 import Obsidian.Program
@@ -55,3 +55,13 @@ force arr = do
   Sync
   return rval
 
+-- Is there an issue with force and Push arrays ?
+--  # Threads can write at other locations than thread id!
+--  # what does pullFrom do ? (does it make sense!)
+-- We are in some sense assuming well-behaved push arrays here !
+--  # can we force a 32 element push array without syncing?
+
+
+force' :: MemoryOps a => SPull a -> BProgram (SPull a) 
+force' arr | len arr < 32 = write arr 
+force' arr = force arr

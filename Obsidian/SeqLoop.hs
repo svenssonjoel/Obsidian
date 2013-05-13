@@ -42,6 +42,30 @@ seqFold op init arr = do
   where 
     n = sizeConv$ len arr
 
+seqFold' :: (ASize l, MemoryOps a)
+           => (a -> a -> a)
+           -> a
+           -> Pull l a
+           -> Push Thread l a
+seqFold' op init arr =
+  Push 1 $ \wf -> 
+  do
+    (ns :: Names a)  <- names "v" -- init 
+    allocateScalar ns -- init
+
+    assignScalar ns init  
+ 
+    SeqFor n $ \ ix ->
+      do
+        assignScalar ns (readFrom ns `op`  (arr ! ix))
+    
+    wf (readFrom ns) 0 
+  where 
+    n = sizeConv$ len arr
+
+-- 
+
+
 ---------------------------------------------------------------------------
 -- Iterate
 ---------------------------------------------------------------------------
