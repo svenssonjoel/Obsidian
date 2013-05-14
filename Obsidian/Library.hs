@@ -159,7 +159,6 @@ zipp3 (arr1,arr2,arr3) =
   (\ix -> (arr1 ! ix, arr2 ! ix, arr3 ! ix))
     
 
-
 zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
 zipWith op a1 a2 =  
   mkPullArray (min (len a1) (len a2))

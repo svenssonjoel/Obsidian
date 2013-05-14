@@ -13,28 +13,28 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------
-mapG :: ASize l => (SPull a -> BProgram (SPull b))
+-- mapG :: ASize l => (SPull a -> BProgram (SPull b))
+--         -> Pull l (SPull a)
+--         -> Push Grid l b
+-- mapG kern as =
+--   Push (blocks * fromIntegral rn) $
+--   \wf ->
+--     do
+--       forAllBlocks (sizeConv blocks) $ \bix -> do
+--         res <- kern (as ! bix)
+--         let (Push _ p) = push Block res
+--             wf' a ix = wf a (bix * sizeConv rn + ix)
+--         p wf'
+--   where
+--     blocks = len as
+--     -- TODO: ensure this is not insane (runPrg functionality) 
+--     rn = len $ fst $ runPrg 0 (kern (as ! 0))
+--     n = len (as ! 0)
+
+mapG :: ASize l => (SPull a -> BProgram (SPush Block b))
         -> Pull l (SPull a)
         -> Push Grid l b
 mapG kern as =
-  Push (blocks * fromIntegral rn) $
-  \wf ->
-    do
-      forAllBlocks (sizeConv blocks) $ \bix -> do
-        res <- kern (as ! bix)
-        let (Push _ p) = push Block res
-            wf' a ix = wf a (bix * sizeConv rn + ix)
-        p wf'
-  where
-    blocks = len as
-    -- TODO: ensure this is not insane (runPrg functionality) 
-    rn = len $ fst $ runPrg 0 (kern (as ! 0))
-    n = len (as ! 0)
-
-mapG' :: ASize l => (SPull a -> BProgram (SPush Block b))
-        -> Pull l (SPull a)
-        -> Push Grid l b
-mapG' kern as =
   Push (blocks * fromIntegral rn) $
   \wf ->
     do
@@ -50,38 +50,40 @@ mapG' kern as =
 
 
 
-mapT :: (SPull a -> TProgram (SPull b))
+-- mapT :: (SPull a -> TProgram (SPull b))
+--         -> SPull (SPull a)
+--         -> SPush Block b
+-- mapT threadf as =
+--   Push (n * rn) $
+--   \wf ->
+--     do
+--       forAll (sizeConv n) $ \tix -> do
+--         res <- threadf (as ! tix)
+--         let (Push _ p) = push Thread res
+--             wf' a ix = wf a (tix * sizeConv rn + ix)
+--         p wf'      
+
+--   where
+--     n = len as
+--     rn = len $ fst $ runPrg 0 (threadf (as ! 0))
+--     m = len (as ! 0)
+
+
+mapB :: (SPull a -> TProgram (SPush Thread b))
         -> SPull (SPull a)
         -> SPush Block b
-mapT threadf as =
-  Push (n * m) $
-  \wf ->
-    do
-      forAll (sizeConv n) $ \tix -> do
-        res <- threadf (as ! tix)
-        let (Push _ p) = push Thread res
-            wf' a ix = wf a (tix * sizeConv m + ix)
-        p wf'      
-
-  where
-    n = len as
-    m = len (as ! 0)
-
-
-mapT' :: (SPull a -> TProgram (SPush Thread b))
-        -> SPull (SPull a)
-        -> SPush Block b
-mapT' threadf as =
-  Push (n * m) $
+mapB threadf as =
+  Push (n * rn) $
   \wf ->
     do
       forAll (sizeConv n) $ \tix -> do
         (Push _ p) <- threadf (as ! tix)
-        let wf' a ix = wf a (tix * sizeConv m + ix)
+        let wf' a ix = wf a (tix * sizeConv rn + ix)
         p wf'      
 
   where
     n = len as
+    rn = len $ fst $ runPrg 0 (threadf (as ! 0))
     m = len (as ! 0) 
 ---------------------------------------------------------------------------
 -- 

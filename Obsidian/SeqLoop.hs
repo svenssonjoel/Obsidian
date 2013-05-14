@@ -20,98 +20,82 @@ import Data.Word
 -- TODO: Rename module to something better
 
 ---------------------------------------------------------------------------
--- seqFold (actually reduce) 
+-- seqReduce (actually reduce) 
 ---------------------------------------------------------------------------
-
-seqFold :: (ASize l, MemoryOps a)
+seqReduce :: (ASize l, MemoryOps a)
            => (a -> a -> a)
-           -> a
-           -> Pull l a
-           -> Program Thread a
-seqFold op init arr = do
-  (ns :: Names a)  <- names "v" -- init 
-  allocateScalar ns -- init
-
-  assignScalar ns init  
- 
-  SeqFor n $ \ ix ->
-    do
-      assignScalar ns (readFrom ns `op`  (arr ! ix))
-    
-  return $ readFrom ns
-  where 
-    n = sizeConv$ len arr
-
-seqFold' :: (ASize l, MemoryOps a)
-           => (a -> a -> a)
-           -> a
            -> Pull l a
            -> Push Thread l a
-seqFold' op init arr =
+seqReduce op arr =
   Push 1 $ \wf -> 
   do
-    (ns :: Names a)  <- names "v" -- init 
-    allocateScalar ns -- init
+    (ns :: Names a)  <- names "v" 
+    allocateScalar ns 
 
     assignScalar ns init  
  
-    SeqFor n $ \ ix ->
+    SeqFor (n-1) $ \ ix ->
       do
-        assignScalar ns (readFrom ns `op`  (arr ! ix))
+        assignScalar ns (readFrom ns `op`  (arr ! (ix + 1)))
     
     wf (readFrom ns) 0 
   where 
     n = sizeConv$ len arr
+    init = arr ! 0 
 
--- 
-
+-- TODO: This is dangerous when array lengths are unknown! 
 
 ---------------------------------------------------------------------------
 -- Iterate
 ---------------------------------------------------------------------------
-seqIterate :: MemoryOps a => EWord32 -> (EWord32 -> a -> a) -> a -> Program Thread a
+seqIterate :: (ASize l, MemoryOps a)
+              => EWord32
+              -> (EWord32 -> a -> a)
+              -> a
+              -> Push Thread l a
 seqIterate n f init =
+  Push 1 $  \wf -> 
   do
-    (ns :: Names a)  <- names "v" -- init
-    allocateScalar ns -- init
+    (ns :: Names a)  <- names "v" 
+    allocateScalar ns 
 
     assignScalar ns init
     SeqFor n $ \ix ->
       do
         assignScalar ns $ f ix (readFrom ns)
 
-    return $ readFrom ns
+    wf (readFrom ns) 0 
 
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------    
-seqUntil :: MemoryOps a
-                 => (a -> a)
-                 -> (a -> EBool)
-                 -> a
-                 -> Program Thread a
-seqUntil f p init =
-  do 
-    (ns :: Names a) <- names "v" -- init
-    allocateScalar ns -- init
+-- seqUntil :: MemoryOps a
+--                  => (a -> a)
+--                  -> (a -> EBool)
+--                  -> a
+--                  -> Program Thread a
+-- seqUntil f p init =
+--   do 
+--     (ns :: Names a) <- names "v" 
+--     allocateScalar ns 
 
-    assignScalar ns init
-    SeqWhile (p (readFrom ns)) $ 
-      do
-        (tmp :: Names a) <- names "t"
-        allocateScalar tmp
-        assignScalar tmp (readFrom ns) 
-        assignScalar ns $ f (readFrom tmp)
+--     assignScalar ns init
+--     SeqWhile (p (readFrom ns)) $ 
+--       do
+--         (tmp :: Names a) <- names "t"
+--         allocateScalar tmp
+--         assignScalar tmp (readFrom ns) 
+--         assignScalar ns $ f (readFrom tmp)
     
-    return $ readFrom ns
+--     return $ readFrom ns
 
 
-seqUntil' :: MemoryOps a
-                 => (a -> a)
-                 -> (a -> EBool)
-                 -> a
-                 -> SPush Thread a
-seqUntil' f p init =
+seqUntil :: (ASize l, MemoryOps a) 
+            => (a -> a)
+            -> (a -> EBool)
+            -> a
+            -> Push Thread l a
+seqUntil f p init =
   Push 1 $ \wf -> 
   do 
     (ns :: Names a) <- names "v" 
@@ -149,7 +133,7 @@ seqScan op (Pull n ixf)  =
 -- Sequential Map (here for uniformity) 
 ---------------------------------------------------------------------------
 
-seqMap :: forall l a b. ASize l
+seqMap :: ASize l
           => (a -> b)
           -> Pull l a
           -> Push Thread l b
