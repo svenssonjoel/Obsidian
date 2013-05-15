@@ -15,8 +15,7 @@
 
 -}
 
---  write should be internal use only
-module Obsidian.Force (force,force',write) where
+module Obsidian.Force (force,unsafeForce,unsafeWrite) where
 
 
 import Obsidian.Program
@@ -34,10 +33,10 @@ import Data.Word
 ---------------------------------------------------------------------------
 
 class Write p where
-  write :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
+  unsafeWrite :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
 
 instance Write Pull where
-  write arr = do 
+  unsafeWrite arr = do 
     (snames :: Names a)  <- names "arr" 
 
     -- Here I know that this pattern match will succeed
@@ -52,7 +51,7 @@ instance Write Pull where
     return $ pullFrom snames n
 
 instance Write (Push Block) where
-  write (Push m p) = do 
+  unsafeWrite (Push m p) = do 
     (snames :: Names a)  <- names "arr" 
 
     allocateArray snames  m
@@ -62,7 +61,7 @@ instance Write (Push Block) where
     return $ pullFrom snames m
 
 instance Write (Push Thread) where
-  write (Push m p) = do 
+  unsafeWrite (Push m p) = do 
     (snames :: Names a)  <- names "arr" 
 
     allocateArray snames  m
@@ -75,7 +74,7 @@ instance Write (Push Thread) where
   
 force :: (Array p, Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
 force arr = do
-  rval <- write arr
+  rval <- unsafeWrite arr
   Sync
   return rval
 
@@ -86,6 +85,6 @@ force arr = do
 --  # can we force a 32 element push array without syncing?
 
 
-force' :: MemoryOps a => SPull a -> BProgram (SPull a) 
-force' arr | len arr < 32 = write arr 
-force' arr = force arr
+unsafeForce :: MemoryOps a => SPull a -> BProgram (SPull a) 
+unsafeForce arr | len arr < 32 = unsafeWrite arr 
+unsafeForce arr = force arr

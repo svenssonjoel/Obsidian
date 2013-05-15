@@ -39,8 +39,8 @@ import System.IO.Unsafe
 --type instance Below Block = Thread
 
 
--- A hierarchy! (Step a.. Succ) 
-data Step a -- A step in the hiearchy
+-- A hierarchy! 
+data Step a -- A step in the hierarchy
 
 type Thread = Step () 
 type Block  = Step Thread 
