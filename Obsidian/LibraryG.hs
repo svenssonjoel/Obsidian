@@ -1,6 +1,7 @@
 
 {-# LANGUAGE ScopedTypeVariables,
-             FlexibleInstances #-}
+             FlexibleInstances,
+             TypeSynonymInstances #-}
 
 module Obsidian.LibraryG where
 
@@ -98,3 +99,36 @@ instance PZipWith (Step (Step ())) where
       k = len (bs ! 0)
       blocks = min (len as) (len bs) 
 
+
+---------------------------------------------------------------------------
+-- Generate Class  
+---------------------------------------------------------------------------
+class Generate t where
+  generate :: ASize s
+              => s
+              -- Requires an SPush in the generator function. 
+              -> (EWord32 -> Program t (SPush t b))
+              -> Push (Step t)  s b
+
+
+instance Generate Thread where
+  generate n f =
+    Push (n * fromIntegral inner) $ \wf ->
+    forAll (sizeConv n) $ \tid ->
+    do
+      (Push _ p) <- f tid 
+      let wf' a ix = wf a (tid * fromIntegral inner + ix)
+      p wf' 
+    where
+      inner = len $ fst  $ runPrg 0 ( f 0)
+
+instance Generate Block where
+  generate n f =
+    Push (n * fromIntegral inner) $ \wf ->
+    forAllBlocks (sizeConv n) $ \bid ->
+    do
+      (Push _ p) <- f bid
+      let wf' a ix = wf a (bid * fromIntegral inner + ix)
+      p wf' 
+    where
+      inner = len $ fst  $ runPrg 0 ( f 0)             
