@@ -52,6 +52,7 @@ input1 = namedGlobal "apa" (variable "X")
 ---------------------------------------------------------------------------
 -- Scans 
 ---------------------------------------------------------------------------
+{-
 sklansky :: (Choice a, MemoryOps a)
             => Int
             -> (a -> a -> a)
@@ -77,10 +78,11 @@ sklanskyG logbs op arr =
 getSklansky =
   quickPrint (sklanskyG 8 (+))
              ((undefined :: Pull (Exp Word32) EInt32) :- ())
-
+-} 
 ---------------------------------------------------------------------------
 -- kStone (TEST THAT THIS IS REALLY A SCAN!) 
 ---------------------------------------------------------------------------
+{- 
 kStone :: (Choice a, MemoryOps a) 
           => Int -> (a -> a -> a) -> Pull Word32 a -> BProgram (Pull Word32 a)
 kStone 0 op arr = return arr
@@ -104,7 +106,7 @@ kStoneP n op arr =
         r2 = zipWith op res r1 
     force (concP Block r1' r2) 
  
-
+-} 
 
 --kStoneG logbs op =
 --join . liftM forceG . liftG . fmap (kStone logbs op) . splitUp (2^logbs)
@@ -292,6 +294,7 @@ matMul x y = liftG
 
 --matMul2 :: Num a 
 --          => SMatrix a -> SMatrix a -> Push Grid Word32 a
+{- 
 matMul :: (Num c, MemoryOps c)
           => SPull (SPull c)
           -> SPull (SPull c) -> SPush Grid c
@@ -302,16 +305,16 @@ matMul x y = zipWithG body (replicate n x) (replicate m (transpose y))
     body a b = force (zipWithT cell a b)
     cell i j = do
       let arr = zipWith (*) i j 
-      r <- seqFold (+) 0 arr
+      r <- seqReduce (+) arr
       return (singleton r) 
-              
+-}               
 --  where cell i j = seqFold (+) 0 $ zipWith (*) (x ! i) (y' ! j) 
 --        y' = transpose y
 --        n  = len x
 --        m  = len y'
 
 
- 
+ {- 
 matMulIn  a b = matMul (toMatrix 256 256 a) (toMatrix 256 256 b)
 
 
@@ -324,6 +327,7 @@ getMM =
              ((undefinedGlobal (256*256) {-(variable "X")-} :: Pull Word32 EFloat) :-
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat) :- ())
 
+-} 
 {-
 getMM2 =
   quickPrint matMulIn2
@@ -331,7 +335,7 @@ getMM2 =
               (undefinedGlobal (256*256) {-(variable "Y")-} :: Pull Word32 EFloat))
 -}
 
-
+{- 
 inc :: SPull EFloat -> SPull EFloat
 inc  = fmap (+1)
 
@@ -363,3 +367,4 @@ bitBlockXor l r i = i `xor` (((b `shiftL` (l-r)) - b)`shiftL` 1)
 vperm l m r = bitBlockXor (l-1) (r+l-m-1) . swapBitBlocks l m r
 
 vperm2 l m r = swapBitBlocks l (r+l-m) r . bitBlockXor (l-1) (r+l-m-1)
+-} 

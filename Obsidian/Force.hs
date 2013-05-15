@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,
+             FlexibleInstances #-}
 
 
 {- Joel Svensson 2012, 2013 
@@ -32,24 +33,47 @@ import Data.Word
 -- Force local (requires static lengths!) 
 ---------------------------------------------------------------------------
 
+class Write p where
+  write :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
 
-write :: forall a p. (Array p, Pushable p, MemoryOps a) => p Word32 a -> BProgram (Pull Word32 a)
-write arr = do 
-  (snames :: Names a)  <- names "arr" --(undefined :: a)
+instance Write Pull where
+  write arr = do 
+    (snames :: Names a)  <- names "arr" 
 
-  -- Here I know that this pattern match will succeed
-  let n = len arr
-  
-  allocateArray snames {-(undefined :: a)-} n
-
-  let (Push m p) = push Block arr
-
-  p (assignArray snames) 
+    -- Here I know that this pattern match will succeed
+    let n = len arr
       
-  return $ pullFrom snames n
+    allocateArray snames  n
+
+    let (Push m p) = push arr
+
+    p (assignArray snames) 
+      
+    return $ pullFrom snames n
+
+instance Write (Push Block) where
+  write (Push m p) = do 
+    (snames :: Names a)  <- names "arr" 
+
+    allocateArray snames  m
+
+    p (assignArray snames) 
+      
+    return $ pullFrom snames m
+
+instance Write (Push Thread) where
+  write (Push m p) = do 
+    (snames :: Names a)  <- names "arr" 
+
+    allocateArray snames  m
+
+    forAll 1 $ \_ ->         --One thread
+      p (assignArray snames) 
+      
+    return $ pullFrom snames m
 
   
-force :: (Array p, Pushable p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
+force :: (Array p, Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
 force arr = do
   rval <- write arr
   Sync

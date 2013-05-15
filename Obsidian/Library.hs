@@ -112,13 +112,13 @@ evens = fst . evenOdds
 odds  = snd . evenOdds
 
 -- opposite of evenOdds 
-shuffle :: ASize l => PT t -> Pull l a -> Pull l a -> Push t l a
-shuffle Block a1 a2 =
-  Push (len a1 + len a2) $
-    \ wf -> ForAll (sizeConv (len a1)) $
-            \ tid -> do
-              wf (a1 ! tid) (tid * 2) 
-              wf (a2 ! tid) (tid * 2 + 1) 
+--shuffle :: ASize l => PT t -> Pull l a -> Pull l a -> Push t l a
+--shuffle Block a1 a2 =
+--  Push (len a1 + len a2) $
+--    \ wf -> ForAll (sizeConv (len a1)) $
+--            \ tid -> do
+--              wf (a1 ! tid) (tid * 2) 
+--              wf (a2 ! tid) (tid * 2 + 1) 
 
 
 ---------------------------------------------------------------------------
@@ -210,11 +210,12 @@ twoK n f =  (\arr ->
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 
 ---------------------------------------------------------------------------
+{-
 concP :: (Array arr1, Array arr2, ASize l,
           Pushable arr1, Pushable arr2)
          => PT t -> arr1 l a -> arr2 l a -> Push t l a     
 concP pt arr1 arr2 = 
-  mkPushArray  (n1 + n2)
+  mkPushArray (n1 + n2)
   $ \wf ->
   do
     parr1 wf
@@ -225,7 +226,7 @@ concP pt arr1 arr2 =
     n2 = len arr2 
     (Push _ parr1) = push pt arr1
     (Push _ parr2) = push pt arr2
-
+-}
 
 -- More general versions of this can be imagined 
 mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a

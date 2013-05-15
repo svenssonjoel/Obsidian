@@ -98,16 +98,27 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-  
+
+class Pushable t where
+  push :: ASize s => Pull s e -> Push t s e 
+
+instance Pushable Thread where
+  push (Pull n ixf) =
+    Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
+
+instance Pushable Block where
+  push (Pull n ixf) =
+    Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
+                                                
+--instance Pushable' Grid where 
+--  push Grid (Pull n ixf) =
+--    Push n $ \wf -> ForAllThreads (sizeConv n) $ \i -> wf (ixf i) i
+
+                                                       
+
+{- 
 class Pushable a where 
   push  :: ASize s => PT t -> a s e -> Push t s e
-  -- Push using m threads
-  --  m must be a divisor of nm  (TODO: error otherwise) 
-  --pushN :: Word32 -> a e -> Push e
-
-  -- push grouped elements to adjacent indices using
-  -- one thread per group. 
-  --pushF :: a [e] -> Push e 
  
 instance Pushable (Push Thread) where 
   push Thread = id
@@ -129,6 +140,7 @@ instance Pushable Pull where
     Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i 
   push Grid (Pull n ixf) =
     Push n $ \wf -> ForAllThreads (sizeConv n) $ \i -> wf (ixf i) i 
+-} 
 
 {-  pushN m (Pull nm ixf) =
     Push nm -- There are still nm elements (info for alloc) 

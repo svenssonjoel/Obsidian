@@ -9,7 +9,7 @@
 
 {-# LANGUAGE GADTs,
              FlexibleInstances,
-             EmptyDataDecls #-} 
+             TypeOperators #-} 
 
 
 module Obsidian.Program  where 
@@ -30,23 +30,29 @@ import System.IO.Unsafe
 ---------------------------------------------------------------------------
 -- Thread/Block/Grid 
 ---------------------------------------------------------------------------
-data Thread
-data Block
-data Grid 
+--data Thread
+--data Block
+--data Grid
 
-data PT a where
-  Thread :: PT Thread
-  Block  :: PT Block
-  Grid   :: PT Grid 
+--type family Below a
+
+--type instance Below Grid = Block
+--type instance Below Block = Thread
+
+
+-- A hierarchy! (Step a.. Succ) 
+data Step a -- A step in the hiearchy
+
+type Thread = Step () 
+type Block  = Step Thread 
+type Grid   = Step Block  
 
 type Identifier = Int 
 
 ---------------------------------------------------------------------------
 -- Obsidian
 ---------------------------------------------------------------------------
-data Obsidian a = Obsidian (Program Grid a)
       
-
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
