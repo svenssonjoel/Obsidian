@@ -1,6 +1,5 @@
 
 {-# LANGUAGE ScopedTypeVariables,
-             TypeOperators,
              FlexibleInstances #-}
 
 module Obsidian.LibraryG where
@@ -21,6 +20,20 @@ class PMap t where
          -> Pull l (SPull a)
          -> Push (Step t) l b
 
+instance PMap (Step ()) where
+  pMap threadf as =
+    Push (n * fromIntegral rn) $
+    \wf ->
+    do
+      forAll (sizeConv n) $ \tix -> do
+        (Push _ p) <- threadf (as ! tix)
+        let wf' a ix = wf a (tix * sizeConv rn + ix)
+        p wf'      
+    where
+      n = len as
+      rn = len $ fst $ runPrg 0 (threadf (as ! 0))
+      m = len (as ! 0)
+      
 instance PMap (Step (Step ())) where
   pMap kern as =
     Push (blocks * fromIntegral rn) $
@@ -35,19 +48,7 @@ instance PMap (Step (Step ())) where
       rn = len $ fst $ runPrg 0 (kern (as ! 0))
       n = len (as ! 0)
 
-instance PMap (Step ()) where
-  pMap threadf as =
-    Push (n * fromIntegral rn) $
-    \wf ->
-    do
-      forAll (sizeConv n) $ \tix -> do
-        (Push _ p) <- threadf (as ! tix)
-        let wf' a ix = wf a (tix * sizeConv rn + ix)
-        p wf'      
-    where
-      n = len as
-      rn = len $ fst $ runPrg 0 (threadf (as ! 0))
-      m = len (as ! 0) 
+
 
 ---------------------------------------------------------------------------
 -- ZipWith Class 

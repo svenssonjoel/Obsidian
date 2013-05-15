@@ -8,8 +8,7 @@
 -}
 
 {-# LANGUAGE GADTs,
-             FlexibleInstances,
-             TypeOperators #-} 
+             FlexibleInstances  #-} 
 
 
 module Obsidian.Program  where 
