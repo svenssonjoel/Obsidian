@@ -29,15 +29,6 @@ import System.IO.Unsafe
 ---------------------------------------------------------------------------
 -- Thread/Block/Grid 
 ---------------------------------------------------------------------------
---data Thread
---data Block
---data Grid
-
---type family Below a
-
---type instance Below Grid = Block
---type instance Below Block = Thread
-
 
 -- A hierarchy! 
 data Step a -- A step in the hierarchy
@@ -78,18 +69,18 @@ data Program t a where
   
   -- DONE: Code generation for this.
   -- DONE: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
-            -> Program t ()
+  SeqFor :: EWord32 -> (EWord32 -> Program Thread ())
+            -> Program Thread ()
   SeqWhile :: Exp Bool ->
-              Program t () ->
-              Program t () 
+              Program Thread () ->
+              Program Thread () 
   
 
             
   Break  :: Program Thread () 
  
-  ForAll :: (Exp Word32) 
-            -> (Exp Word32 -> Program Thread ())
+  ForAll :: EWord32 
+            -> (EWord32 -> Program Thread ())
             -> Program Block ()
 
   {-
@@ -101,7 +92,7 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: (Exp Word32) -> (Exp Word32 -> Program Block ()) 
+  ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
                   -> Program Grid ()
 
   ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
@@ -111,7 +102,7 @@ data Program t a where
 
   -- TODO: Change the Liveness analysis to a two-pass algo
   --       and remove the Allocate constructor. 
-  Allocate :: Name -> Word32 -> Type -> Program t () 
+  Allocate :: Name -> Word32 -> Type -> Program Block () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
@@ -170,8 +161,8 @@ forAll n f = ForAll n f
 ---------------------------------------------------------------------------
 -- SeqFor
 ---------------------------------------------------------------------------
-seqFor :: Exp Word32 -> (Exp Word32 -> Program t ())
-            -> Program t ()
+seqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
+            -> Program Thread ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f
 

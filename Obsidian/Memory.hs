@@ -28,7 +28,7 @@ import Data.Word
 ---------------------------------------------------------------------------
 class MemoryOps a where
   names          :: String -> Program t (Names a) 
-  allocateArray  :: Names a -> Word32 -> Program t ()
+  allocateArray  :: Names a -> Word32 -> Program Block ()
   allocateScalar :: Names a -> Program t () 
   assignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
   assignScalar   :: Names a -> a -> TProgram () 

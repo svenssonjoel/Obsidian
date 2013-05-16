@@ -368,3 +368,11 @@ vperm l m r = bitBlockXor (l-1) (r+l-m-1) . swapBitBlocks l m r
 
 vperm2 l m r = swapBitBlocks l (r+l-m) r . bitBlockXor (l-1) (r+l-m-1)
 -} 
+
+
+convToPush :: SPull a -> SPush Block a
+convToPush arr =
+  Push n $ \wf ->
+   forAll (fromIntegral n) $ \tid -> wf (arr ! tid) tid
+  where
+    n = len arr                             
