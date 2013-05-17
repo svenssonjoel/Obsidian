@@ -1,7 +1,5 @@
 
-{-# LANGUAGE ScopedTypeVariables,
-             FlexibleInstances,
-             TypeSynonymInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Obsidian.LibraryG where
 

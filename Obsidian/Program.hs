@@ -7,8 +7,8 @@
 
 -}
 
-{-# LANGUAGE GADTs,
-             FlexibleInstances  #-} 
+{-# LANGUAGE GADTs #-}
+             
 
 
 module Obsidian.Program  where 
@@ -40,10 +40,6 @@ type Block  = Step Thread
 type Grid   = Step Block  
 
 type Identifier = Int 
-
----------------------------------------------------------------------------
--- Obsidian
----------------------------------------------------------------------------
       
 ---------------------------------------------------------------------------
 -- Program datatype
@@ -70,9 +66,10 @@ data Program t a where
           -> Program t ()
   
   -- DONE: Code generation for this.
-  -- DONE: Generalize this loop! (Replace Thread with t) 
+  -- TODO: Generalize this loop! (Replace Thread with t) 
   SeqFor :: EWord32 -> (EWord32 -> Program Thread ())
             -> Program Thread ()
+            
   SeqWhile :: Exp Bool ->
               Program Thread () ->
               Program Thread () 
@@ -150,20 +147,15 @@ uniqueNamed pre = do
   return $ pre ++ show id 
 
 ---------------------------------------------------------------------------
--- forAll and forAllN
+-- forAll 
 ---------------------------------------------------------------------------
---forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
---forAll f = ForAll Nothing f
-
-forAll :: Exp Word32 -> (Exp Word32 -> Program t ()) -> Program (Step t) ()
+forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 forAll n f = ForAll n f
-
--- (*||*) = Par
 
 ---------------------------------------------------------------------------
 -- SeqFor
 ---------------------------------------------------------------------------
-seqFor :: Exp Word32 -> (Exp Word32 -> Program Thread ())
+seqFor :: EWord32 -> (EWord32 -> Program Thread ())
             -> Program Thread ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f
@@ -179,7 +171,7 @@ seqFor n f = SeqFor n f
 -- that performs local computations is impossible.
 -- Using the hardcoded BlockDim may turn out to be a problem when
 -- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
+forAllT :: EWord32 -> (EWord32 -> Program Thread ())
            -> Program Grid ()
 forAllT n f = ForAllThreads n 
             $ \gtid -> f gtid 
