@@ -33,7 +33,9 @@ import System.IO.Unsafe
 -- A hierarchy! 
 data Step a -- A step in the hierarchy
 
-type Thread = Step () 
+data Zero
+  
+type Thread = Step Zero 
 type Block  = Step Thread 
 type Grid   = Step Block  
 
@@ -80,8 +82,8 @@ data Program t a where
   Break  :: Program Thread () 
  
   ForAll :: EWord32 
-            -> (EWord32 -> Program Thread ())
-            -> Program Block ()
+            -> (EWord32 -> Program t ())
+            -> Program (Step t) ()
 
   {-
      I'm not sure about this constructor.
@@ -92,8 +94,8 @@ data Program t a where
      Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
      should be split into two kernels. 
   -} 
-  ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
-                  -> Program Grid ()
+  --ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
+  --                -> Program Grid ()
 
   ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
                    -> Program Grid ()
@@ -153,7 +155,7 @@ uniqueNamed pre = do
 --forAll :: (Exp Word32 -> Program Thread ()) -> Program Block () 
 --forAll f = ForAll Nothing f
 
-forAll :: Exp Word32 -> (Exp Word32 -> Program Thread ()) -> Program Block ()
+forAll :: Exp Word32 -> (Exp Word32 -> Program t ()) -> Program (Step t) ()
 forAll n f = ForAll n f
 
 -- (*||*) = Par
@@ -184,7 +186,7 @@ forAllT n f = ForAllThreads n
 
 
 
-forAllBlocks = ForAllBlocks
+forAllBlocks = forAll
 
 ---------------------------------------------------------------------------
 -- Monad
@@ -271,12 +273,12 @@ printPrg' i (ForAll n f) =
        "par (i in 0.." ++ show n ++ ")" ++
        "{\n" ++ prg2 ++ "\n}",
        i')
-printPrg' i (ForAllBlocks n f) =
-  let (d,prg2,i') = printPrg' i (f (variable "BIX"))
-  in (d, 
-      "blocks (i)" ++
-      "{\n" ++ prg2 ++ "\n}",
-      i')
+--printPrg' i (ForAllBlocks n f) =
+--  let (d,prg2,i') = printPrg' i (f (variable "BIX"))
+--  in (d, 
+--      "blocks (i)" ++
+--      "{\n" ++ prg2 ++ "\n}",
+--      i')
 printPrg' i (Return a) = (a,"MonadReturn;\n",i)
 printPrg' i (Bind m f) =
   let (a1, str1,i1) = printPrg' i m
