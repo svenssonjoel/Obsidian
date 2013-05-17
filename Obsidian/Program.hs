@@ -67,8 +67,8 @@ data Program t a where
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: EWord32 -> (EWord32 -> Program Thread ())
-            -> Program Thread ()
+  SeqFor :: EWord32 -> (EWord32 -> Program t ())
+            -> Program t ()
             
   SeqWhile :: Exp Bool ->
               Program Thread () ->
@@ -82,15 +82,6 @@ data Program t a where
             -> (EWord32 -> Program t ())
             -> Program (Step t) ()
 
-  {-
-     I'm not sure about this constructor.
-     As I see it programs from which we generate a kernel
-     must be wrapped in one of these ForAllBlocks.
-     Programs with sequences of 'ForAllBlocks' are problematic.
-
-     Maybe a (ForAllBlocks n f *>* ForAllBlocks m g) Program
-     should be split into two kernels. 
-  -} 
   --ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
   --                -> Program Grid ()
 

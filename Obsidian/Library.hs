@@ -32,7 +32,7 @@ import qualified Obsidian.CodeGen.Program as P
 import Data.Bits 
 import Data.Word
 
-import Prelude hiding (splitAt,zipWith,replicate)
+import Prelude hiding (splitAt,zipWith,replicate,reverse)
 
 
 
@@ -41,8 +41,8 @@ import Prelude hiding (splitAt,zipWith,replicate)
 -- Reverse an array by indexing in it backwards
 ---------------------------------------------------------------------------
   
-rev :: ASize l => Pull l a -> Pull l a 
-rev arr = mkPullArray n (\ix -> arr ! ((sizeConv m) - ix))  
+reverse :: ASize l => Pull l a -> Pull l a 
+reverse arr = mkPullArray n (\ix -> arr ! ((sizeConv m) - ix))  
    where m = n-1
          n = len arr
          

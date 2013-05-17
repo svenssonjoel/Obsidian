@@ -109,6 +109,32 @@ instance Pushable Thread where
 instance Pushable Block where
   push (Pull n ixf) =
     Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
+
+
+class PushableN t where
+  pushN :: ASize s => Word32 -> Pull s e -> Push t s e
+
+instance PushableN Block where
+  pushN n (Pull m ixf) =
+    Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \tix ->
+    seqFor (fromIntegral n) $ \ix -> wf (ixf (tix * fromIntegral n + ix))
+                                             (tix * fromIntegral n + ix) 
+ 
+    
+instance PushableN Grid where
+  pushN n (Pull m ixf) =
+    Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
+    forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
+                                              (bix * fromIntegral n + tix) 
+ 
+    
+  
+
+pushGrid :: Word32 ->  DPull a -> DPush Grid a
+pushGrid m (Pull n ixf) =
+  Push n $ \ wf -> ForAll (n `div` fromIntegral m) $ \bix ->
+   ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
+                                             (bix * fromIntegral m + tix) 
                                                 
 --instance Pushable' Grid where 
 --  push Grid (Pull n ixf) =

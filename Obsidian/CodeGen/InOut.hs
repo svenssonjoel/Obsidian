@@ -100,7 +100,7 @@ instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
           Assign o2 [ix] b
       
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
-  toProgram i f (a :- rest) = ((nom,Pointer t):ins,prg)
+  toProgram i f (a :- rest) = ((nom,Pointer t):(n,Word32):ins,prg)
     where
       (ins,prg) = toProgram (i+1) (f input) rest
       nom  = "input" ++ show i
@@ -114,9 +114,18 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
     where
       (ins,prg) = toProgram (i+1) (f input) rest
       nom  = "input" ++ show i
-      input = namedGlobal nom (len a) 
+      input = namedGlobal nom  (len a) 
       t     = typeOf_ (undefined :: t)
-  
+
+instance (ToProgram b, Scalar t) => ToProgram ((Exp t) -> b) where
+  toProgram i f (a :- rest) = ((nom,t):ins,prg)
+    where
+      (ins,prg) = toProgram (i+1) (f input) rest
+      nom  = "input" ++ show i
+      input = variable nom -- namedGlobal nom (len a) 
+      t     = typeOf_ (undefined :: t)
+
+
     
 ---------------------------------------------------------------------------
 -- heterogeneous lists of inputs 
