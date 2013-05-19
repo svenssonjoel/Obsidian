@@ -31,6 +31,26 @@ pMap f as =
       rn = len $ fst $ runPrg 0 (f (as ! 0))
       m = len (as ! 0)
 
+
+-- Experimental 
+pMap' :: ASize l
+         => (SPull a -> Program t (SPush t b))
+         -> Pull l (SPull a)
+         -> Pull l (SPush t b) 
+pMap' f as =
+  mkPullArray n $ \bix -> 
+    Push (fromIntegral rn) $
+      \wf ->
+      do 
+        (Push _ p) <- f (as ! bix) 
+        let wf' a ix = wf a (bix * sizeConv rn + ix)
+        p wf'     
+  where
+    n = len as
+    rn = len $ fst $ runPrg 0 (f (as ! 0))
+    m = len (as ! 0)
+
+
 ---------------------------------------------------------------------------
 -- Parallel ZipWith 
 ---------------------------------------------------------------------------
