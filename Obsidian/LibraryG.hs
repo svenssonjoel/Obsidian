@@ -50,7 +50,16 @@ pMap' f as =
     rn = len $ fst $ runPrg 0 (f (as ! 0))
     m = len (as ! 0)
 
-
+pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
+pConcat arr =
+  Push (n * fromIntegral rn) $ \wf ->
+  do
+    forAll (sizeConv n) $ \bix ->
+      let (Push _ p) = arr ! bix
+      in p wf
+  where
+    n  = len arr
+    rn = len $ arr ! 0
 ---------------------------------------------------------------------------
 -- Parallel ZipWith 
 ---------------------------------------------------------------------------
