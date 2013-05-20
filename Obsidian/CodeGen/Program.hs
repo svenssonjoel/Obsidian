@@ -39,31 +39,29 @@ type IM = IMList ()
 out a = [(a,())]
 
 
-data Statement t = forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
-               | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
-               | SCond (Exp Bool) (IMList t) 
-               | SSeqFor String (Exp Word32) (IMList t)
-               | SBreak
-               | SSeqWhile (EBool) (IMList t)
-                 -- See if it is possible to get away
-                 -- with only one kind of ForAll (plus maybe some flag) 
-               | SForAll (Exp Word32) (IMList t) 
-               | SForAllBlocks (Exp Word32) (IMList t)
-                 -- a special loop over all threads..
-               | SForAllThreads (Exp Word32) (IMList t)
+data Statement t =
+  forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
+  | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
+  | SCond (Exp Bool) (IMList t) 
+  | SSeqFor String (Exp Word32) (IMList t)
+  | SBreak
+  | SSeqWhile (EBool) (IMList t)
+    
+  | SForAll (Exp Word32) (IMList t) 
+  | SForAllBlocks (Exp Word32) (IMList t)
 
-                 -- Memory Allocation..
-               | SAllocate Name Word32 Type
-               | SDeclare  Name Type
-               | SOutput   Name Type
+    -- a special loop over all threads..
+  | SForAllThreads (Exp Word32) (IMList t)
+    
+    -- Memory Allocation..
+  | SAllocate Name Word32 Type
+  | SDeclare  Name Type
+  | SOutput   Name Type
 
-                 -- Synchronisation
-               | SSynchronize
+    -- Synchronisation
+  | SSynchronize
 
-                 -- ProgramPar and ProgramSeq does not exist
-                -- at this level (the par or seq info is lost!)
-               
-
+    
 -- compileStep1 :: P.Program t a -> IM
 -- compileStep1 p = snd $ cs1 ns p
 --   where

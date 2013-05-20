@@ -57,6 +57,8 @@ data Push p s a =
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: EWord32 -> a}
 
+data Pull s a = Pull s (EWord32 -> a) 
+
 mkPushArray :: s -> ((a -> EWord32 -> TProgram ())
                              -> Program t ()) -> Push t s a
 mkPushArray n p = Push n p 

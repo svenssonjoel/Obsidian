@@ -32,10 +32,9 @@ import System.IO.Unsafe
 
 -- A hierarchy! 
 data Step a -- A step in the hierarchy
-
 data Zero
   
-type Thread = Step Zero 
+type Thread = Zero 
 type Block  = Step Thread 
 type Grid   = Step Block  
 
