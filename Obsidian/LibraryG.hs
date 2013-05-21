@@ -70,15 +70,15 @@ pConcat arr =
 pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
            -> Pull l (SPull a)
            -> Pull l (SPull b)
-           -> Push (Step t) l c
+           -> Pull l (SPush t c)
 pZipWith f as bs =
-    Push (instances * fromIntegral rn) $
+  Pull instances $ \ bix -> 
+    Push (fromIntegral rn) $
     \wf ->
     do
-      forAll (sizeConv instances) $ \tix -> do
-        (Push _ p) <- f (as ! tix) (bs ! tix) 
-        let wf' a ix = wf a (tix * sizeConv n + ix)
-        p wf'      
+      (Push _ p) <- f (as ! bix) (bs ! bix) 
+      let wf' a ix = wf a (bix * sizeConv n + ix)
+      p wf'      
 
     where
       -- Is this ok?! (does it break?) 
@@ -88,6 +88,29 @@ pZipWith f as bs =
       m  = len (as ! 0)
       k  = len (bs ! 0)
       instances = min (len as) (len bs) 
+
+
+-- pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
+--            -> Pull l (SPull a)
+--            -> Pull l (SPull b)
+--            -> Push (Step t) l c
+-- pZipWith f as bs =
+--     Push (instances * fromIntegral rn) $
+--     \wf ->
+--     do
+--       forAll (sizeConv instances) $ \tix -> do
+--         (Push _ p) <- f (as ! tix) (bs ! tix) 
+--         let wf' a ix = wf a (tix * sizeConv n + ix)
+--         p wf'      
+
+--     where
+--       -- Is this ok?! (does it break?) 
+--       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
+--       n = min m k 
+
+--       m  = len (as ! 0)
+--       k  = len (bs ! 0)
+--       instances = min (len as) (len bs) 
 
 
 ---------------------------------------------------------------------------
