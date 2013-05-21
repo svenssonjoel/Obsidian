@@ -91,7 +91,7 @@ data Program t a where
   --ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
   --                -> Program Grid ()
 
-  ForAllThreads :: (Exp Word32) -> (Exp Word32 -> Program Thread ())
+  ForAllThreads :: (EWord32) -> (EWord32 -> Program Thread ())
                    -> Program Grid ()
 
   -- Allocate shared memory in each MP
