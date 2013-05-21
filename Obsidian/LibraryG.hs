@@ -14,30 +14,33 @@ import Data.Word
 -- Parallel mapping  
 ---------------------------------------------------------------------------
 
+-- pConcatMap :: ASize l
+--          => (SPull a -> Program t (SPush t b))
+--          -> Pull l (SPull a)
+--          -> Push (Step t) l b
+-- pConcatMap f as = 
+--   Push (n * fromIntegral rn) $
+--     \wf ->
+--     do
+--       forAll (sizeConv n) $ \tix -> do
+--         (Push _ p) <- f (as ! tix)
+--         let wf' a ix = wf a (tix * sizeConv rn + ix)
+--         p wf'      
+--     where
+--       n = len as
+--       rn = len $ fst $ runPrg 0 (f (as ! 0))
+--       m = len (as ! 0)
+
+pConcatMap f = pConcat . pMap f
+
+---------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------- 
 pMap :: ASize l
          => (SPull a -> Program t (SPush t b))
          -> Pull l (SPull a)
-         -> Push (Step t) l b
-pMap f as = 
-  Push (n * fromIntegral rn) $
-    \wf ->
-    do
-      forAll (sizeConv n) $ \tix -> do
-        (Push _ p) <- f (as ! tix)
-        let wf' a ix = wf a (tix * sizeConv rn + ix)
-        p wf'      
-    where
-      n = len as
-      rn = len $ fst $ runPrg 0 (f (as ! 0))
-      m = len (as ! 0)
-
-
--- Experimental 
-pMap' :: ASize l
-         => (SPull a -> Program t (SPush t b))
-         -> Pull l (SPull a)
          -> Pull l (SPush t b) 
-pMap' f as =
+pMap f as =
   mkPullArray n $ \bix -> 
     Push (fromIntegral rn) $
       \wf ->

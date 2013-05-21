@@ -52,7 +52,12 @@ instance ASize (Exp Word32) where
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 data Push p s a =
-  Push s ((a -> Exp Word32 -> TProgram ()) -> Program p ())
+  Push s ((a -> EWord32 -> TProgram ()) -> Program p ())
+
+-- Is this useful for anything ? 
+data PPush t s a =
+  PPush s ((a -> EWord32 ->  Program (Below t) ()) -> Program t ())
+
 
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: EWord32 -> a}

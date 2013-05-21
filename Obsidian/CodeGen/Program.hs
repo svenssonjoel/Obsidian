@@ -78,11 +78,11 @@ class Compile t where
   compile :: Supply Int -> P.Program t a -> (a,IM)
 
 -- Compile Thread program 
-instance Compile (Step Zero)  where 
+instance Compile Zero  where 
   compile s p = cs s p 
 
 -- Compile Block program 
-instance Compile (Step (Step Zero)) where
+instance Compile (Step Zero) where
   compile s (P.ForAll n f) = (a,out (SForAll n im))
     where
       p = f (ThreadIdx X)
@@ -90,7 +90,7 @@ instance Compile (Step (Step Zero)) where
   compile s p = cs s p 
 
 -- Compile a Grid Program 
-instance Compile (Step (Step (Step (Zero)))) where
+instance Compile (Step (Step (Zero))) where
   compile s (P.ForAll n f) = (a, out (SForAllBlocks n im))
     where 
       p = f (BlockIdx X)
@@ -159,81 +159,84 @@ cs i (P.Bind p f) = (b,im1 ++ im2)
 
 cs i (P.Return a) = (a,[])
 
+-- The nested ForAll case. 
+cs i p = error $ P.printPrg p -- compile i p 
+
 ---------------------------------------------------------------------------
 -- Old cs1
 --------------------------------------------------------------------------- 
-cs1 :: Supply Int -> P.Program t a -> (a,IM) 
-cs1 i P.Identifier = (supplyValue i, [])
+-- cs1 :: Supply Int -> P.Program t a -> (a,IM) 
+-- cs1 i P.Identifier = (supplyValue i, [])
 
-cs1 i (P.Assign name ix e) =
-  ((),out (SAssign name ix e))
+-- cs1 i (P.Assign name ix e) =
+--   ((),out (SAssign name ix e))
  
-cs1 i (P.AtomicOp name ix at) = (v,out im)
-  where 
-    nom = "a" ++ show (supplyValue i)
-    v = variable nom
-    im = SAtomicOp nom name ix at
+-- cs1 i (P.AtomicOp name ix at) = (v,out im)
+--   where 
+--     nom = "a" ++ show (supplyValue i)
+--     v = variable nom
+--     im = SAtomicOp nom name ix at
       
-cs1 i (P.Cond bexp p) = ((),out (SCond bexp im)) 
-  where ((),im) = cs1 i p
+-- cs1 i (P.Cond bexp p) = ((),out (SCond bexp im)) 
+--   where ((),im) = cs1 i p
 
-cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
-  where
-    (i1,i2) = split2 i
-    nom = "i" ++ show (supplyValue i1)
-    v = variable nom
-    p = f v
-    (a,im) = cs1 i2 p
-cs1 i (P.SeqWhile b p) = (a, out (SSeqWhile b im))
-  where
-    (a,im) = cs1 i p
+-- cs1 i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
+--   where
+--     (i1,i2) = split2 i
+--     nom = "i" ++ show (supplyValue i1)
+--     v = variable nom
+--     p = f v
+--     (a,im) = cs1 i2 p
+-- cs1 i (P.SeqWhile b p) = (a, out (SSeqWhile b im))
+--   where
+--     (a,im) = cs1 i p
 
-cs1 i (P.Break) = ((), out SBreak)
+-- cs1 i (P.Break) = ((), out SBreak)
     
-cs1 i (P.ForAll n f) = (a,out (SForAll n im))
-  where
-    p = f (ThreadIdx X)  
-    (a,im) = cs1 i p 
+-- cs1 i (P.ForAll n f) = (a,out (SForAll n im))
+--   where
+--     p = f (ThreadIdx X)  
+--     (a,im) = cs1 i p 
 
---cs1 i (P.ForAllBlocks n f) = (a,out (SForAllBlocks n im)) 
---  where
---    p = f (BlockIdx X)
---    (a,im) = cs1 i p
-
-
-{- 
-   Warning: Every thread will ALWAYS need to perform a conditional
-       (Only in special case is the conditional not needed) 
-   TRY To express all library functions using ForAllBlocks + ForAll
-   For more flexibility and probably in the end performance.
-
-   If we only consider the limited form of Obsidian programs
-   Pull a1 -> Pull a2 -> ... -> Push Grid an
-   this is not a problem. But when we allow people to drop down to
-   the low level (like in counting sort, this is not general enough) 
--}     
-cs1 i (P.ForAllThreads n f) = (a,out (SForAllThreads n im)) 
-  where
-    p = f (BlockIdx X * BlockDim X + ThreadIdx X)
-    (a,im) = cs1 i p
+-- --cs1 i (P.ForAllBlocks n f) = (a,out (SForAllBlocks n im)) 
+-- --  where
+-- --    p = f (BlockIdx X)
+-- --    (a,im) = cs1 i p
 
 
-cs1 i (P.Allocate id n t) = ((),out (SAllocate id n t))
-cs1 i (P.Declare  id t)   = ((),out (SDeclare id t))
--- Output works in a different way! (FIX THIS!)
---  Uniformity! (Allocate Declare Output) 
-cs1 i (P.Output   t)      = (nom,out (SOutput nom t))
-  where nom = "output" ++ show (supplyValue i) 
-cs1 i (P.Sync)            = ((),out (SSynchronize))
+-- {- 
+--    Warning: Every thread will ALWAYS need to perform a conditional
+--        (Only in special case is the conditional not needed) 
+--    TRY To express all library functions using ForAllBlocks + ForAll
+--    For more flexibility and probably in the end performance.
+
+--    If we only consider the limited form of Obsidian programs
+--    Pull a1 -> Pull a2 -> ... -> Push Grid an
+--    this is not a problem. But when we allow people to drop down to
+--    the low level (like in counting sort, this is not general enough) 
+-- -}     
+-- cs1 i (P.ForAllThreads n f) = (a,out (SForAllThreads n im)) 
+--   where
+--     p = f (BlockIdx X * BlockDim X + ThreadIdx X)
+--     (a,im) = cs1 i p
 
 
-cs1 i (P.Bind p f) = (b,im1 ++ im2) 
-  where
-    (s1,s2) = split2 i
-    (a,im1) = cs1 s1 p
-    (b,im2) = cs1 s2 (f a)
+-- cs1 i (P.Allocate id n t) = ((),out (SAllocate id n t))
+-- cs1 i (P.Declare  id t)   = ((),out (SDeclare id t))
+-- -- Output works in a different way! (FIX THIS!)
+-- --  Uniformity! (Allocate Declare Output) 
+-- cs1 i (P.Output   t)      = (nom,out (SOutput nom t))
+--   where nom = "output" ++ show (supplyValue i) 
+-- cs1 i (P.Sync)            = ((),out (SSynchronize))
 
-cs1 i (P.Return a) = (a,[])
+
+-- cs1 i (P.Bind p f) = (b,im1 ++ im2) 
+--   where
+--     (s1,s2) = split2 i
+--     (a,im1) = cs1 s1 p
+--     (b,im2) = cs1 s2 (f a)
+
+-- cs1 i (P.Return a) = (a,[])
 
 
 ---------------------------------------------------------------------------

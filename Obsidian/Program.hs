@@ -7,7 +7,7 @@
 
 -}
 
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs, TypeFamilies  #-}
              
 
 
@@ -37,6 +37,13 @@ data Zero
 type Thread = Zero 
 type Block  = Step Thread 
 type Grid   = Step Block  
+
+
+type family Below a
+
+type instance Below Zero = Zero
+type instance Below (Step Zero) = Zero
+type instance Below (Step (Step Zero)) = Step Zero 
 
 type Identifier = Int 
       
