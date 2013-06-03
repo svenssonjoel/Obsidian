@@ -7,7 +7,7 @@
 
 -}
 
-{-# LANGUAGE GADTs, TypeFamilies  #-}
+{-# LANGUAGE GADTs, TypeFamilies, EmptyDataDecls #-}
              
 
 
