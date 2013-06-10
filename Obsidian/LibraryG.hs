@@ -116,11 +116,10 @@ pZipWith f as bs =
 ---------------------------------------------------------------------------
 -- Parallel Generate 
 ---------------------------------------------------------------------------
-generate :: ASize s
-              => s
-              -- Requires an SPush in the generator function. 
+generate :: ASize l
+              => l
               -> (EWord32 -> Program t (SPush t b))
-              -> Push (Step t)  s b
+              -> Push (Step t)  l b
 generate n f =
     Push (n * fromIntegral inner) $ \wf ->
     forAll (sizeConv n) $ \tid ->

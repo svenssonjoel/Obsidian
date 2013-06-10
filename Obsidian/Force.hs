@@ -32,7 +32,7 @@ import Data.Word
 -- Force local (requires static lengths!) 
 ---------------------------------------------------------------------------
 
-class Write p where
+class Array p => Write p where
   unsafeWrite :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
 
 instance Write Pull where
@@ -72,7 +72,7 @@ instance Write (Push Thread) where
     return $ pullFrom snames m
 
   
-force :: (Array p, Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
+force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
 force arr = do
   rval <- unsafeWrite arr
   Sync

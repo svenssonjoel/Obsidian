@@ -9,7 +9,7 @@ import qualified Foreign.CUDA.Driver.Device as CUDA
 import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
-
+import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.CUDA
 import Obsidian.CodeGen.InOut
 import Obsidian.CodeGen.Common (genType,GenConfig(..))
@@ -110,7 +110,8 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture and compile a Obsidian function into a CUDA Function
 ---------------------------------------------------------------------------
-capture :: ToProgram a b => (a -> b) -> Ips a b -> CUDA Kernel 
+-- capture :: ToProgram a b => (a -> b) -> Ips a b -> CUDA Kernel
+capture :: ToProgram prg => prg -> InputList prg -> CUDA Kernel 
 capture f inputs =
   do
     i <- newIdent
@@ -120,7 +121,10 @@ capture f inputs =
     let kn     = "gen" ++ show i
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
-        prgThreads = getNThreads f inputs
+
+        (_,im) = toProgram 0 f inputs
+        (Left prgThreads) = numThreads im --getNThreads f inputs
+        -- (Right _) = numThreads im -- is not taken care of! 
         prgstr = genKernel kn f inputs 
         header = "#include <stdint.h>\n" -- more includes ? 
          
@@ -190,7 +194,7 @@ execute k nb sm {- stream -} a b = lift $
                     (fromIntegral (kThreadsPerBlock k), 1, 1)
                     (fromIntegral sm)
                     Nothing -- stream
-                    (toParamList a ++ toParamList b) -- params
+                    (toParamList a ++ [CUDA.VArg (0 :: Word32)] ++ toParamList b) -- params
 
 ---------------------------------------------------------------------------
 -- ParamList
@@ -199,12 +203,15 @@ execute k nb sm {- stream -} a b = lift $
 class ParamList a where
   toParamList :: a -> [CUDA.FunParam]
 
+--instance ParamList Word32 where
+--  toParamList a = [CUDA.VArg a] 
+
 instance ParamList (CUDA.DevicePtr a) where
   toParamList a = [CUDA.VArg a]
 
 
-instance (ParamList a, ParamList b) => ParamList (a :-> b) where
-  toParamList (a :-> b) = toParamList a ++ toParamList b 
+instance (ParamList a, ParamList b) => ParamList (a :- b) where
+  toParamList (a :- b) = toParamList a ++ toParamList b 
 
 
 ---------------------------------------------------------------------------

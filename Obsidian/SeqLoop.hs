@@ -125,8 +125,8 @@ seqScan op (Pull n ixf)  =
     assignScalar ns (ixf 0)
     wf (readFrom ns) 0 
     SeqFor (sizeConv (n-1)) $ \ix -> do
-      wf (readFrom ns) ix                  
       assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
+      wf (readFrom ns) (ix+1)                  
      
                  
 ---------------------------------------------------------------------------

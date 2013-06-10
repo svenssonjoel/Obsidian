@@ -62,6 +62,16 @@ halve arr = splitAt n2 arr
     n2 = n `div` 2
 
 ---------------------------------------------------------------------------
+-- everyNth 
+---------------------------------------------------------------------------
+
+everyNth :: ASize l => Word32 -> Word32 -> Pull l a -> Pull l a
+everyNth n m arr = mkPullArray n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegral m)
+  where
+    n' = len arr `div` (fromIntegral n) 
+  
+
+---------------------------------------------------------------------------
 -- replicate 
 ---------------------------------------------------------------------------
 replicate n a = mkPullArray n (\ix -> a)
@@ -192,16 +202,17 @@ binSplit = twoK
 -- See if this should be specifically for Static size pull arrays
 twoK ::Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
 twoK 0 f = f  -- divide 0 times and apply f
-twoK n f =  (\arr -> 
+twoK n f = \arr -> 
               let arr' = mkPullArray lt (\i -> (f (mkPullArray  m (\j -> (arr ! (g i j)))) ! (h i))) 
                   m    = (len arr `shiftR` n)   --pow of two           
                   g i j = i .&. (fromIntegral (complement (m-1))) .|. j  
                   h i   = i .&. (fromIntegral (nl2-1))   -- optimize 
 
-                  nl2   = (len (f (mkPullArray  m (\j -> arr ! variable "X"))))
+                  nl2   = len (f (mkPullArray  m (\j -> arr ! variable "X")))
                   lt    = nl2 `shiftL` n 
-              in arr')
- 
+              in arr'
+
+
 
 ---------------------------------------------------------------------------
 -- ***                          PUSHY LIBRARY                       *** ---

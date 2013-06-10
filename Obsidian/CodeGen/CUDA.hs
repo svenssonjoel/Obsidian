@@ -78,11 +78,11 @@ genKernel name kernel a = proto ++ ts ++ cuda
     
     body' = (if size m > 0 then (shared :) else id)  $ mmSPMDC mm spmd
 
-    em = snd $ execState (collectExps body') ( 0, Map.empty)
-    (decls,body'') = replacePass em body'
-    spdecls = declsToSPMDC decls 
+    --em = snd $ execState (collectExps body') ( 0, Map.empty)
+    --(decls,body'') = replacePass em body'
+    --spdecls = declsToSPMDC decls 
 
-    body = spdecls ++ body''
+    body = body' -- spdecls ++ body''
               
     swap (x,y) = (y,x)
     inputs = map ((\(t,n) -> (typeToCType t,n)) . swap) ins
