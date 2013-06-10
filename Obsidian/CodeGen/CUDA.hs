@@ -78,6 +78,7 @@ genKernel name kernel a = proto ++ ts ++ cuda
     
     body' = (if size m > 0 then (shared :) else id)  $ mmSPMDC mm spmd
 
+
     --em = snd $ execState (collectExps body') ( 0, Map.empty)
     --(decls,body'') = replacePass em body'
     --spdecls = declsToSPMDC decls 
