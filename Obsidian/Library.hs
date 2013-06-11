@@ -155,6 +155,9 @@ zipp :: ASize l => (Pull l a, Pull l b) -> Pull l (a, b)
 zipp (arr1,arr2) =  Pull (min (len arr1) (len arr2))
                       $ \ix -> (arr1 ! ix, arr2 ! ix) 
 
+zip :: ASize l =>  Pull l a -> Pull l b -> Pull l (a, b)    
+zip = curry zipp
+
 unzipp3 :: ASize l => Pull l (a,b,c) 
            -> (Pull l a, Pull l b, Pull l c)       
 unzipp3 arr = (fmap (\(x,_,_) -> x) arr,

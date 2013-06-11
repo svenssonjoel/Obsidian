@@ -37,8 +37,8 @@ pConcatMap f = pConcat . pMap f
 --
 --------------------------------------------------------------------------- 
 pMap :: ASize l
-         => (SPull a -> Program t (SPush t b))
-         -> Pull l (SPull a)
+         => (a -> Program t (SPush t b))
+         -> Pull l a
          -> Pull l (SPush t b) 
 pMap f as =
   mkPullArray n $ \bix -> 
@@ -51,7 +51,7 @@ pMap f as =
   where
     n = len as
     rn = len $ fst $ runPrg 0 (f (as ! 0))
-    m = len (as ! 0)
+    -- m = len (as ! 0)
 
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
@@ -67,9 +67,31 @@ pConcat arr =
 -- Parallel ZipWith 
 ---------------------------------------------------------------------------
 
-pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
-           -> Pull l (SPull a)
-           -> Pull l (SPull b)
+-- pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
+--            -> Pull l (SPull a)
+--            -> Pull l (SPull b)
+--            -> Pull l (SPush t c)
+-- pZipWith f as bs =
+--   Pull instances $ \ bix -> 
+--     Push (fromIntegral rn) $
+--     \wf ->
+--     do
+--       (Push _ p) <- f (as ! bix) (bs ! bix) 
+--       let wf' a ix = wf a (bix * sizeConv n + ix)
+--       p wf'      
+
+--     where
+--       -- Is this ok?! (does it break?) 
+--       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
+--       n = min m k 
+
+--       m  = len (as ! 0)
+--       k  = len (bs ! 0)
+--       instances = min (len as) (len bs) 
+
+pZipWith :: ASize l => (a -> b -> Program t (SPush t c))
+           -> Pull l a
+           -> Pull l b
            -> Pull l (SPush t c)
 pZipWith f as bs =
   Pull instances $ \ bix -> 
@@ -77,18 +99,14 @@ pZipWith f as bs =
     \wf ->
     do
       (Push _ p) <- f (as ! bix) (bs ! bix) 
-      let wf' a ix = wf a (bix * sizeConv n + ix)
+      let wf' a ix = wf a (bix * fromIntegral rn + ix) -- (bix * sizeConv n + ix)
       p wf'      
 
     where
       -- Is this ok?! (does it break?) 
       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
-      n = min m k 
-
-      m  = len (as ! 0)
-      k  = len (bs ! 0)
+   
       instances = min (len as) (len bs) 
-
 
 -- pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
 --            -> Pull l (SPull a)

@@ -126,7 +126,24 @@ seqScan op (Pull n ixf)  =
     wf (readFrom ns) 0 
     SeqFor (sizeConv (n-1)) $ \ix -> do
       assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
-      wf (readFrom ns) (ix+1)                  
+      wf (readFrom ns) (ix+1)
+
+
+
+seqScanCin :: (ASize l, MemoryOps a)
+           => (a -> a -> a)
+           -> a -- cin  
+           -> Pull l a
+           -> Push Thread l a
+seqScanCin op a (Pull n ixf) =
+  Push n $ \wf -> do
+    (ns :: Names a) <- names "v" -- (ixf 0) 
+    allocateScalar ns -- (ixf 0)
+    assignScalar ns a -- (ixf 0)
+    -- wf (readFrom ns) 0 
+    SeqFor (sizeConv  n) $ \ix -> do
+      assignScalar ns  $ readFrom ns `op` (ixf ix)
+      wf (readFrom ns) ix                  
      
                  
 ---------------------------------------------------------------------------
