@@ -148,3 +148,23 @@ generate n f =
     where
       inner = len $ fst  $ runPrg 0 ( f 0)     
 
+
+
+
+---------------------------------------------------------------------------
+-- load 
+---------------------------------------------------------------------------
+load :: ASize l => Word32 -> Pull l a -> Push Block l a 
+load n arr =
+  Push m $ \wf ->
+  forAll (sizeConv n') $ \tid ->
+  do
+    seqFor (fromIntegral n) $ \ix -> 
+      wf (arr ! (tid + (ix*n'))) (tid + (ix*n')) 
+
+  where
+    m = len arr
+    n' = sizeConv m `div` fromIntegral n
+
+store :: ASize l => Word32 -> Pull l a -> Push Block l a 
+store = load 

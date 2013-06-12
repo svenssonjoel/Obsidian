@@ -529,7 +529,8 @@ instance Enum (Exp Word32) where
 instance Integral (Exp Word32) where
   mod (Literal a) (Literal b) = Literal (a `mod` b) 
   mod a b = BinOp Mod a b
-  div _ (Literal 0) = error "Division by zero in expression" 
+  div _ (Literal 0) = error "Division by zero in expression"
+  div (Literal a) (Literal b) = Literal (a `div` b) 
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp Word32" 
   toInteger = error "toInteger: not implemented for Exp Word32"
