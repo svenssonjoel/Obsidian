@@ -152,8 +152,8 @@ forAll n f = ForAll n f
 ---------------------------------------------------------------------------
 -- SeqFor
 ---------------------------------------------------------------------------
-seqFor :: EWord32 -> (EWord32 -> Program Thread ())
-            -> Program Thread ()
+seqFor :: EWord32 -> (EWord32 -> Program t ())
+            -> Program t ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f
 

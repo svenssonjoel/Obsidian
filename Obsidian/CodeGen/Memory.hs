@@ -71,6 +71,7 @@ allocate m b =
                                 else fl
                       in  (updateMax (m {freeList = fl', 
                                          allocated = (a,b):allocated m}) ,a)
+    [] -> error "out of shared memory"
    
                           
 free :: Memory -> Address -> Memory

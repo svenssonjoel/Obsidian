@@ -224,6 +224,17 @@ twoK n f = \arr ->
 ---------------------------------------------------------------------------
 -- Concatenate on Push arrays 
 ---------------------------------------------------------------------------
+
+concP :: ASize l
+         => Push t l a -> Push t l a -> Push t l a 
+concP (Push n1 p1) (Push n2 p2) =
+  Push (n1 + n2) $ \wf ->
+  do
+    p1 wf
+    p2 $ \a i -> wf a (sizeConv n1 + i) 
+ 
+        
+
 {-
 concP :: (Array arr1, Array arr2, ASize l,
           Pushable arr1, Pushable arr2)

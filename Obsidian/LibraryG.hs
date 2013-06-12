@@ -63,6 +63,19 @@ pConcat arr =
   where
     n  = len arr
     rn = len $ arr ! 0
+
+-- No Code generation support for this! 
+sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
+sConcat arr =
+  Push (n * fromIntegral rn) $ \wf ->
+  do
+    seqFor (sizeConv n) $ \bix ->
+      let (Push _ p) = arr ! bix
+      in p wf
+  where 
+    n  = len arr
+    rn = len $ arr ! 0
+    
 ---------------------------------------------------------------------------
 -- Parallel ZipWith 
 ---------------------------------------------------------------------------
