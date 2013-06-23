@@ -30,7 +30,7 @@ type DPull = Pull EWord32
 type SPush t a = Push t Word32 a
 type DPush t a = Push t EWord32 a 
 ---------------------------------------------------------------------------
--- Create arrats
+-- Create arrays
 ---------------------------------------------------------------------------
 undefinedGlobal n = Pull n $ \gix -> undefined
 namedGlobal name n = Pull n $ \gix -> index name gix
@@ -140,75 +140,19 @@ pushGrid m (Pull n ixf) =
   Push n $ \ wf -> ForAll (n `div` fromIntegral m) $ \bix ->
    ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
                                              (bix * fromIntegral m + tix) 
-                                                
---instance Pushable' Grid where 
---  push Grid (Pull n ixf) =
---    Push n $ \wf -> ForAllThreads (sizeConv n) $ \i -> wf (ixf i) i
 
-                                                       
 
-{- 
-class Pushable a where 
-  push  :: ASize s => PT t -> a s e -> Push t s e
- 
-instance Pushable (Push Thread) where 
-  push Thread = id
-  push Block  = error "not implemented: Program transformation!"
-  push Grid   = error "not implemented: Program transformation!" 
-instance Pushable (Push Block) where 
-  push Block = id 
-  push Thread = error "not implemented: Program transformations!"
-  push Grid = error "not implemented: Program transformations!" 
-instance Pushable (Push Grid) where 
-  push Grid = id
-  push Thread = error "not implemented: Program transformations!"
-  push Block = error "not implemented: Program transformations!" 
-  
-instance Pushable Pull where
-  push Thread (Pull n ixf) =
-    Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
-  push Block (Pull n ixf) =
-    Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i 
-  push Grid (Pull n ixf) =
-    Push n $ \wf -> ForAllThreads (sizeConv n) $ \i -> wf (ixf i) i 
--} 
+---------------------------------------------------------------------------
+-- Mutable arrays 
+---------------------------------------------------------------------------
 
-{-  pushN m (Pull nm ixf) =
-    Push nm -- There are still nm elements (info for alloc) 
-    $ \wf ->
-    ForAll (Just m) 
-    $ \i ->
-    sequence_ [wf (ixf (i + fromIntegral (j * n))) (i + (fromIntegral (j * n)))
-              | j <- [0..n]] 
-    -- Force can still Allocate n elements for this Push array.
-    where
-      n = fromIntegral (nm `div` m)
+data Shared
+data Global
 
-  pushF (Pull n ixf) =
-    Push (n * m) $ \wf ->
-    ForAll (Just n) $ \i ->
-    sequence_ [wf ((ixf i) !! fromIntegral j)  (i * fromIntegral m + fromIntegral j)
-              | j <- [0..m]]
-    where 
-      m = fromIntegral$ length $ ixf 0
--} 
+-- Should it have Static or Dynamic Length ? 
+data Mutable s a = Mutable Word32 Name 
 
-{- ------------------------------------------------------------------------
-
-     m     m     m     m     m 
-  |-----|-----|-----|-----|-----| (n * m)
-
-   01234 01234 01234 01234 01234  k 
-
-  0     1     2     3     4       j
-
-  m threads, each writing n elements:
-  [(tid + (j*m) | j <- [0..n]] 
-
-  n threads, each writing m elements:
-  [(tid * m + k | k <- [0..m]] 
-
------------------------------------------------------------------------- -}   
+                                     
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------

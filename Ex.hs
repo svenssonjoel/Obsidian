@@ -18,7 +18,7 @@ import qualified Data.Vector.Storable as V
 
 import Control.Monad.State
 
-import Prelude hiding (zipWith,sum,replicate,take,drop)
+import Prelude hiding (zipWith,sum,replicate,take,drop,reverse)
 import qualified Prelude as P 
 
 ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ mapFusion arr =
 mapTest :: Pull Word32 EInt32 -> BProgram (SPush Block EInt32)
 mapTest arr =
   do
-    return $ push (fmap (+1) arr) 
+    return $ push $ reverse  $ fmap (+1) arr
   
 splitUp :: (ASize l, Num l)
            => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)
@@ -72,7 +72,7 @@ test = withCUDA $
        do
          kern <- capture mf (input1 :- ())
 
-         useVector (V.fromList (P.replicate 256 (7::Int32))) $ \ i1 ->
+         useVector (V.fromList [0..255::Int32]) $ \ i1 ->
            useVector (V.fromList (P.replicate 256 0)) $ \(o1 :: CUDA.DevicePtr Int32) -> 
            do
              execute kern 1 256 i1 o1
