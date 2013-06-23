@@ -5,6 +5,7 @@
 module Obsidian.Mutable ( Mutable
                         , new
                         , forceTo
+                        , writeTo
                         , pullFrom )  where 
 
 
@@ -44,10 +45,10 @@ new n = do
 
 
 ---------------------------------------------------------------------------
--- forceTo
+-- forceTo & writeTo
 ---------------------------------------------------------------------------
-forceTo :: Mem.MemoryOps a => Mutable a -> Pull Word32 a -> BProgram ()
-forceTo (Mutable n snames) arr | n <= m =
+writeTo :: Mem.MemoryOps a => Mutable a -> Pull Word32 a -> BProgram ()
+writeTo (Mutable n snames) arr | n <= m =
   do
     p (Mem.assignArray snames)
                                | otherwise = error "forceTo: Incompatible sizes" 
@@ -55,8 +56,9 @@ forceTo (Mutable n snames) arr | n <= m =
     (Push _ p) = push arr
     m = len arr
 
--- Add forceTo with offsets (why? just thought it might be useful) 
-
+-- Add forceTo with offsets (why? just thought it might be useful)
+forceTo :: Mem.MemoryOps a => Mutable a -> Pull Word32 a -> BProgram ()
+forceTo = writeTo
 ---------------------------------------------------------------------------
 -- pullFrom 
 ---------------------------------------------------------------------------

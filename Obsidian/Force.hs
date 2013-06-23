@@ -23,9 +23,11 @@ import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Types
 import Obsidian.Globs
-import Obsidian.Memory
+import Obsidian.Memory 
 
 import Obsidian.Names
+
+import qualified Obsidian.Mutable as M
 
 import Data.Word
 ---------------------------------------------------------------------------
@@ -36,19 +38,23 @@ class Array p => Write p where
   unsafeWrite :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
 
 instance Write Pull where
-  unsafeWrite arr = do 
-    (snames :: Names a)  <- names "arr" 
+  unsafeWrite arr =
+    do
+      (mut :: M.Mutable a) <- M.new (len arr)
+      M.writeTo mut arr
+      return $ M.pullFrom mut
+    -- (snames :: Names a)  <- names "arr" 
 
-    -- Here I know that this pattern match will succeed
-    let n = len arr
+    -- -- Here I know that this pattern match will succeed
+    -- let n = len arr
       
-    allocateArray snames  n
+    -- allocateArray snames  n
 
-    let (Push m p) = push arr
+    -- let (Push m p) = push arr
 
-    p (assignArray snames) 
+    -- p (assignArray snames) 
       
-    return $ pullFrom snames n
+    -- return $ pullFrom snames n
 
 instance Write (Push Block) where
   unsafeWrite (Push m p) = do 
