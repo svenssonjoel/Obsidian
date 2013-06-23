@@ -141,17 +141,6 @@ pushGrid m (Pull n ixf) =
    ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
                                              (bix * fromIntegral m + tix) 
 
-
----------------------------------------------------------------------------
--- Mutable arrays 
----------------------------------------------------------------------------
-
-data Shared
-data Global
-
--- Should it have Static or Dynamic Length ? 
-data Mutable s a = Mutable Word32 Name 
-
                                      
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
