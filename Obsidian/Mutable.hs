@@ -2,7 +2,10 @@
 
 {- Joel Svensson 2013 -}
 
-module Obsidian.Mutable (Mutable, new)  where 
+module Obsidian.Mutable ( Mutable
+                        , new
+                        , forceTo
+                        , pullFrom )  where 
 
 
 
@@ -13,8 +16,10 @@ import Obsidian.Program
 import qualified  Obsidian.Memory as Mem
 import Obsidian.Names
 import Obsidian.Array
+import Obsidian.Atomic 
 
 import Data.Word
+
 ---------------------------------------------------------------------------
 -- Mutable arrays 
 ---------------------------------------------------------------------------
@@ -59,3 +64,27 @@ forceTo (Mutable n snames) arr | n <= m =
 pullFrom :: Mem.MemoryOps a => Mutable a -> SPull a
 pullFrom (Mutable n snames) = Mem.pullFrom snames n  
 
+
+---------------------------------------------------------------------------
+-- Atomics
+---------------------------------------------------------------------------
+
+atomicInc :: Mutable EWord32 -> BProgram ()
+atomicInc (Mutable n noms) = mapNamesM_ f noms
+    where
+      f nom =
+        forAll (fromIntegral n) $ \tid -> 
+          AtomicOp nom tid AtomicInc  >> return ()
+
+
+-- Also exists for float and long long (Not implemented) 
+atomicAdd :: SPull EWord32 -> Mutable EWord32 -> BProgram ()
+atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
+                               | otherwise = error "atomicAdd: incompatible sizes" 
+  where
+    f nom =
+      forAll (fromIntegral m) $ \tid ->
+        AtomicOp nom tid (AtomicAdd (arr ! tid)) >> return ()
+    m = len arr    
+  
+    
