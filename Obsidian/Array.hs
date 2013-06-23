@@ -30,7 +30,7 @@ type DPull = Pull EWord32
 type SPush t a = Push t Word32 a
 type DPush t a = Push t EWord32 a 
 ---------------------------------------------------------------------------
--- Create arrats
+-- Create arrays
 ---------------------------------------------------------------------------
 undefinedGlobal n = Pull n $ \gix -> undefined
 namedGlobal name n = Pull n $ \gix -> index name gix
