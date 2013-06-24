@@ -31,7 +31,8 @@ import qualified Obsidian.Mutable as M
 
 import Data.Word
 ---------------------------------------------------------------------------
--- Force local (requires static lengths!) 
+-- Force local (requires static lengths!)
+-- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
 
 class Array p => Write p where
@@ -40,34 +41,21 @@ class Array p => Write p where
 instance Write Pull where
   unsafeWrite arr =
     do
-      (mut :: M.Mutable a) <- M.new (len arr)
-      M.writeTo mut arr
+      (mut :: M.Mutable M.Shared a) <- M.new (len arr)
+      M.writeTo mut parr
       return $ M.pullFrom mut
-    -- (snames :: Names a)  <- names "arr" 
-
-    -- -- Here I know that this pattern match will succeed
-    -- let n = len arr
-      
-    -- allocateArray snames  n
-
-    -- let (Push m p) = push arr
-
-    -- p (assignArray snames) 
-      
-    -- return $ pullFrom snames n
+   where parr = push arr 
 
 instance Write (Push Block) where
-  unsafeWrite (Push m p) = do 
-    (snames :: Names a)  <- names "arr" 
+  unsafeWrite arr  =
+    do
+      (mut :: M.Mutable M.Shared a) <- M.new (len arr)
+      M.writeTo mut arr 
+      return $ M.pullFrom mut 
 
-    allocateArray snames  m
-
-    p (assignArray snames) 
-      
-    return $ pullFrom snames m
-
+-- Still not using the Mutable arrays.. problematic 
 instance Write (Push Thread) where
-  unsafeWrite (Push m p) = do 
+  unsafeWrite (Push m p) = do
     (snames :: Names a)  <- names "arr" 
 
     allocateArray snames  m

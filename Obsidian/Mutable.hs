@@ -3,6 +3,8 @@
 {- Joel Svensson 2013 -}
 
 module Obsidian.Mutable ( Mutable
+                        , Shared
+                        , Global 
                         , new
                         , forceTo
                         , writeTo
@@ -24,18 +26,17 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- Mutable arrays 
 ---------------------------------------------------------------------------
-
---data Shared
---data Global
+data Shared
+data Global
 
 -- Starting with implementing only the shared mem kind
-data Mutable a = Mutable Word32 (Names a) 
+data Mutable s a = Mutable Word32 (Names a) 
 
 ---------------------------------------------------------------------------
--- Create Mutable arrays
+-- Create Mutable Shared memory arrays
 ---------------------------------------------------------------------------
 
-new :: Mem.MemoryOps a => Word32 -> BProgram (Mutable a)
+new :: Mem.MemoryOps a => Word32 -> BProgram (Mutable Shared a)
 new n = do
   (snames :: Names a) <- Mem.names "arr"
   Mem.allocateArray snames n
@@ -47,23 +48,22 @@ new n = do
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
-writeTo :: Mem.MemoryOps a => Mutable a -> Pull Word32 a -> BProgram ()
-writeTo (Mutable n snames) arr | n <= m =
-  do
-    p (Mem.assignArray snames)
-                               | otherwise = error "forceTo: Incompatible sizes" 
-  where
-    (Push _ p) = push arr
-    m = len arr
-
+writeTo :: Mem.MemoryOps a => Mutable Shared a -> Push Block Word32 a -> BProgram ()
+writeTo (Mutable n snames) (Push m p) 
+  | n <= m = p (Mem.assignArray snames)
+  | otherwise = error "forceTo: Incompatible sizes" 
+  
 -- Add forceTo with offsets (why? just thought it might be useful)
-forceTo :: Mem.MemoryOps a => Mutable a -> Pull Word32 a -> BProgram ()
-forceTo = writeTo
+forceTo :: Mem.MemoryOps a => Mutable Shared a -> Push Block Word32 a -> BProgram ()
+forceTo m arr =
+  do
+    writeTo m arr
+    Sync 
 ---------------------------------------------------------------------------
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: Mem.MemoryOps a => Mutable a -> SPull a
+pullFrom :: Mem.MemoryOps a => Mutable Shared a -> SPull a
 pullFrom (Mutable n snames) = Mem.pullFrom snames n  
 
 
@@ -71,7 +71,7 @@ pullFrom (Mutable n snames) = Mem.pullFrom snames n
 -- Atomics
 ---------------------------------------------------------------------------
 
-atomicInc :: Mutable EWord32 -> BProgram ()
+atomicInc :: Mutable s EWord32 -> BProgram ()
 atomicInc (Mutable n noms) = mapNamesM_ f noms
     where
       f nom =
@@ -80,7 +80,7 @@ atomicInc (Mutable n noms) = mapNamesM_ f noms
 
 
 -- Also exists for float and long long (Not implemented) 
-atomicAdd :: SPull EWord32 -> Mutable EWord32 -> BProgram ()
+atomicAdd :: SPull EWord32 -> Mutable s EWord32 -> BProgram ()
 atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
                                | otherwise = error "atomicAdd: incompatible sizes" 
   where
