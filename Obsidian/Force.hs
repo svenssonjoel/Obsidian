@@ -4,7 +4,8 @@
 
 {- Joel Svensson 2012, 2013 
 
-   Notes: 
+   Notes:
+   2013-06-24: Changed code. uses Obsidian.Mutable now
    2013-05-02: Removing things to do with forceG
                Removed the extensions (no longer needed) 
    2013-04-27: Something is broken. 

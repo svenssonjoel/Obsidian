@@ -23,6 +23,12 @@ import Obsidian.Atomic
 
 import Data.Word
 
+{-
+  Todo: Think about Global vs Shared.
+  Todo: Add creation of mutable global arrays. 
+ 
+-} 
+
 ---------------------------------------------------------------------------
 -- Mutable arrays 
 ---------------------------------------------------------------------------
@@ -32,6 +38,8 @@ data Global
 -- Starting with implementing only the shared mem kind
 data Mutable s a = Mutable Word32 (Names a) 
 
+type MShared a = Mutable Shared a
+type MGlobal a = Mutable Global a 
 ---------------------------------------------------------------------------
 -- Create Mutable Shared memory arrays
 ---------------------------------------------------------------------------
@@ -48,13 +56,19 @@ new n = do
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
-writeTo :: Mem.MemoryOps a => Mutable Shared a -> Push Block Word32 a -> BProgram ()
+writeTo :: Mem.MemoryOps a
+           => Mutable Shared a
+           -> Push Block Word32 a
+           -> BProgram ()
 writeTo (Mutable n snames) (Push m p) 
   | n <= m = p (Mem.assignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 
   
 -- Add forceTo with offsets (why? just thought it might be useful)
-forceTo :: Mem.MemoryOps a => Mutable Shared a -> Push Block Word32 a -> BProgram ()
+forceTo :: Mem.MemoryOps a
+           => Mutable Shared a
+           -> Push Block Word32 a
+           -> BProgram ()
 forceTo m arr =
   do
     writeTo m arr
