@@ -180,7 +180,7 @@ histogram mut arr =
   do
     forAll b $ \bid ->
       forAll 256 $ \tid -> 
-        atomicInc mut (arr ! (bid * 256 + tid))
+        atomicInc (arr ! (bid * 256 + tid))  mut
         
   where 
     b = fromIntegral (mutlen mut `div` 256)

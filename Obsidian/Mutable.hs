@@ -93,55 +93,50 @@ pullFrom (Mutable n snames) = Mem.pullFrom snames n
 ---------------------------------------------------------------------------
 -- Atomics
 ---------------------------------------------------------------------------
-{-
-  How would one implement large histogram using this ?
-
-  -- Need to be able to spread the atomicOp over many blocks.
-     Preferably using some slightly general construct. 
-  -- 
-
--} 
 -- | Increment atomically 
 atomicInc :: forall a s t . AtomicInc a
-             => Mutable s (Exp a)
-             -> EWord32  
+             => EWord32  
+             -> Mutable s (Exp a)
              -> TProgram ()
-atomicInc (Mutable n noms) ix = mapNamesM_ f noms
+atomicInc ix (Mutable n noms) = mapNamesM_ f noms
   where
     f nom = AtomicOp nom ix (AtomicInc  :: Atomic a) >> return ()
   
 
 -- | Add atomically 
-atomicAdd :: forall a s. AtomicAdd a => SPull (Exp a) -> Mutable Shared (Exp a) -> BProgram ()
-atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
-                               | otherwise = error "atomicAdd: incompatible sizes" 
+atomicAdd :: forall a s. AtomicAdd a
+             => EWord32
+             -> Exp a 
+             -> Mutable Shared (Exp a)
+             -> TProgram ()
+atomicAdd ix v (Mutable n noms) = mapNamesM_ f noms
   where
-    f nom =
-      forAll (fromIntegral m) $ \tid ->
-        AtomicOp nom tid (AtomicAdd (arr ! tid)) >> return ()
-    m = len arr    
+    f nom = AtomicOp nom ix (AtomicAdd v) >> return ()
+  
 
 -- | Subtract atomically     
-atomicSub :: forall a s. AtomicSub a => SPull (Exp a) -> Mutable s (Exp a) -> BProgram ()
-atomicSub arr (Mutable n noms) | m <= n = mapNamesM_ f noms
-                               | otherwise = error "atomicAdd: incompatible sizes" 
+atomicSub :: forall a s. AtomicSub a
+             => EWord32
+             -> Exp a
+             -> Mutable s (Exp a)
+             -> TProgram ()
+atomicSub ix v (Mutable n noms) = mapNamesM_ f noms
+                               
   where
-    f nom =
-      forAll (fromIntegral m) $ \tid ->
-        AtomicOp nom tid (AtomicSub (arr ! tid)) >> return ()
-    m = len arr     
+    f nom = AtomicOp nom ix (AtomicSub v) >> return ()
 
 
-atomicExch :: forall a s. AtomicSub a
-              => SPull (Exp a)
+-- Special case ? No. 
+atomicExch :: forall a s. AtomicExch a
+              => EWord32
+              -> Exp a
               -> Mutable s (Exp a)
-              -> BProgram (SPull (Exp a))
-atomicExch arr (Mutable n noms) | m <= n = undefined 
-                                | otherwise = error "atomicAdd: incompatible sizes" 
-  
+              -> TProgram (Exp a)
+atomicExch ix v  (Mutable n (Single nom)) = f nom
   where
-    m = len arr    
-
+    f nom = AtomicOp nom ix (AtomicExch v) 
+                         
+  
 {-
 
 ---------------------------------------------------------------------------

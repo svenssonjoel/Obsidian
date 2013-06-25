@@ -20,3 +20,4 @@ mapNamesM_ f (Tuple n1 n2) = mapNamesM_ f n1 >>
 mapNamesM_ f (Triple n1 n2 n3) = mapNamesM_ f n1 >>
                                  mapNamesM_ f n2 >>
                                  mapNamesM_ f n3
+
