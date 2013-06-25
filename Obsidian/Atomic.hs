@@ -7,7 +7,27 @@ module Obsidian.Atomic where
 
 import Obsidian.Exp
 import Data.Word
-       
+import Data.Int
+
+
+class Scalar a => AtomicInc a
+instance AtomicInc Word32
+
+class Scalar a => AtomicAdd a
+instance AtomicAdd Word32
+instance AtomicAdd Int32
+instance AtomicAdd Word64
+
+class Scalar a => AtomicSub a
+instance AtomicSub Word32
+instance AtomicSub Int32
+
+class Scalar a => AtomicExch a
+instance AtomicExch Word32
+instance AtomicExch Word64
+instance AtomicExch Int32
+
+
 
 ---------------------------------------------------------------------------
 -- Atomic operations 
@@ -16,8 +36,12 @@ data Atomic a where
 
   -- Cuda only allows AtomicInc on the Int type
   --  (todo: figure out if CUDA int is 32 or 64 bit) 
-  AtomicInc :: Atomic Word32
+  AtomicInc :: AtomicInc a => Atomic a
 
-  AtomicAdd :: EWord32 -> Atomic Word32
+  AtomicAdd :: AtomicAdd a => Exp a -> Atomic a
 
+  AtomicSub :: AtomicSub a => Exp a -> Atomic a 
+
+  AtomicExch :: AtomicExch a => Exp a -> Atomic a
+  
 printAtomic AtomicInc = "atomicInc"

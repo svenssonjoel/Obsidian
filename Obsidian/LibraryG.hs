@@ -11,25 +11,8 @@ import Obsidian.Memory
 import Data.Word
 
 ---------------------------------------------------------------------------
--- Parallel mapping  
+-- Parallel concatMap  
 ---------------------------------------------------------------------------
-
--- pConcatMap :: ASize l
---          => (SPull a -> Program t (SPush t b))
---          -> Pull l (SPull a)
---          -> Push (Step t) l b
--- pConcatMap f as = 
---   Push (n * fromIntegral rn) $
---     \wf ->
---     do
---       forAll (sizeConv n) $ \tix -> do
---         (Push _ p) <- f (as ! tix)
---         let wf' a ix = wf a (tix * sizeConv rn + ix)
---         p wf'      
---     where
---       n = len as
---       rn = len $ fst $ runPrg 0 (f (as ! 0))
---       m = len (as ! 0)
 
 pConcatMap f = pConcat . pMap f
 
@@ -51,7 +34,7 @@ pMap f as =
   where
     n = len as
     rn = len $ fst $ runPrg 0 (f (as ! 0))
-    -- m = len (as ! 0)
+
 
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
@@ -64,7 +47,7 @@ pConcat arr =
     n  = len arr
     rn = len $ arr ! 0
 
--- No Code generation support for this! 
+
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
 sConcat arr =
   Push (n * fromIntegral rn) $ \wf ->
@@ -79,28 +62,6 @@ sConcat arr =
 ---------------------------------------------------------------------------
 -- Parallel ZipWith 
 ---------------------------------------------------------------------------
-
--- pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
---            -> Pull l (SPull a)
---            -> Pull l (SPull b)
---            -> Pull l (SPush t c)
--- pZipWith f as bs =
---   Pull instances $ \ bix -> 
---     Push (fromIntegral rn) $
---     \wf ->
---     do
---       (Push _ p) <- f (as ! bix) (bs ! bix) 
---       let wf' a ix = wf a (bix * sizeConv n + ix)
---       p wf'      
-
---     where
---       -- Is this ok?! (does it break?) 
---       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
---       n = min m k 
-
---       m  = len (as ! 0)
---       k  = len (bs ! 0)
---       instances = min (len as) (len bs) 
 
 pZipWith :: ASize l => (a -> b -> Program t (SPush t c))
            -> Pull l a
@@ -120,28 +81,6 @@ pZipWith f as bs =
       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
    
       instances = min (len as) (len bs) 
-
--- pZipWith :: ASize l => (SPull a -> SPull b -> Program t (SPush t c))
---            -> Pull l (SPull a)
---            -> Pull l (SPull b)
---            -> Push (Step t) l c
--- pZipWith f as bs =
---     Push (instances * fromIntegral rn) $
---     \wf ->
---     do
---       forAll (sizeConv instances) $ \tix -> do
---         (Push _ p) <- f (as ! tix) (bs ! tix) 
---         let wf' a ix = wf a (tix * sizeConv n + ix)
---         p wf'      
-
---     where
---       -- Is this ok?! (does it break?) 
---       rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
---       n = min m k 
-
---       m  = len (as ! 0)
---       k  = len (bs ! 0)
---       instances = min (len as) (len bs) 
 
 
 ---------------------------------------------------------------------------

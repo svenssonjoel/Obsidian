@@ -84,17 +84,29 @@ pullFrom (Mutable n snames) = Mem.pullFrom snames n
 ---------------------------------------------------------------------------
 -- Atomics
 ---------------------------------------------------------------------------
+{-
+  How would one implement large histogram using this ?
 
-atomicInc :: Mutable s EWord32 -> BProgram ()
-atomicInc (Mutable n noms) = mapNamesM_ f noms
-    where
-      f nom =
-        forAll (fromIntegral n) $ \tid -> 
-          AtomicOp nom tid AtomicInc  >> return ()
+  -- Need to be able to spread the atomicOp over many blocks.
+     Preferably using some slightly general construct. 
+  -- 
 
+-} 
+-- | Increment atomically 
+atomicInc :: forall a s. AtomicInc a
+             => Mutable s (Exp a)
+             -> EWord32 -- Block size | 
+             -> EWord32 -- Block Id   | - a shape. 
+             -> BProgram ()
+atomicInc (Mutable n noms) bs bid = mapNamesM_ f noms
+  where
+    f nom =
+      forAll (fromIntegral n) $ \tid -> 
+      AtomicOp nom (bid * bs + tid) (AtomicInc  :: Atomic a) >> return ()
+  
 
--- Also exists for float and long long (Not implemented) 
-atomicAdd :: SPull EWord32 -> Mutable s EWord32 -> BProgram ()
+-- | Add atomically 
+atomicAdd :: forall a s. AtomicAdd a => SPull (Exp a) -> Mutable s (Exp a) -> BProgram ()
 atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
                                | otherwise = error "atomicAdd: incompatible sizes" 
   where
@@ -102,5 +114,106 @@ atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
       forAll (fromIntegral m) $ \tid ->
         AtomicOp nom tid (AtomicAdd (arr ! tid)) >> return ()
     m = len arr    
+
+-- | Subtract atomically     
+atomicSub :: forall a s. AtomicSub a => SPull (Exp a) -> Mutable s (Exp a) -> BProgram ()
+atomicSub arr (Mutable n noms) | m <= n = mapNamesM_ f noms
+                               | otherwise = error "atomicAdd: incompatible sizes" 
+  where
+    f nom =
+      forAll (fromIntegral m) $ \tid ->
+        AtomicOp nom tid (AtomicSub (arr ! tid)) >> return ()
+    m = len arr     
+
+
+atomicExch :: forall a s. AtomicSub a
+              => SPull (Exp a)
+              -> Mutable s (Exp a)
+              -> BProgram (SPull (Exp a))
+atomicExch arr (Mutable n noms) | m <= n = undefined 
+                                | otherwise = error "atomicAdd: incompatible sizes" 
   
-    
+  where
+    m = len arr    
+
+{-
+
+---------------------------------------------------------------------------
+atomicExch()
+
+int atomicExch(int* address, int val);
+unsigned int atomicExch(unsigned int* address,
+                        unsigned int val);
+unsigned long long int atomicExch(unsigned long long int* address,
+                                  unsigned long long int val);
+float atomicExch(float* address, float val);
+
+---------------------------------------------------------------------------
+atomicMin()
+
+int atomicMin(int* address, int val);
+unsigned int atomicMin(unsigned int* address,
+                       unsigned int val);
+unsigned long long int atomicMin(unsigned long long int* address,
+                                 unsigned long long int val);
+
+---------------------------------------------------------------------------
+atomicMax()
+
+int atomicMax(int* address, int val);
+unsigned int atomicMax(unsigned int* address,
+                       unsigned int val);
+unsigned long long int atomicMax(unsigned long long int* address,
+                                 unsigned long long int val);
+
+
+---------------------------------------------------------------------------
+atomicInc()
+
+unsigned int atomicInc(unsigned int* address,
+                       unsigned int val);
+
+---------------------------------------------------------------------------
+atomicDec()
+
+unsigned int atomicDec(unsigned int* address,
+                       unsigned int val);
+
+---------------------------------------------------------------------------
+atomicCAS()
+
+int atomicCAS(int* address, int compare, int val);
+unsigned int atomicCAS(unsigned int* address,
+                       unsigned int compare,
+                       unsigned int val);
+unsigned long long int atomicCAS(unsigned long long int* address,
+                                 unsigned long long int compare,
+                                 unsigned long long int val);
+
+---------------------------------------------------------------------------
+atomicAnd()
+
+int atomicAnd(int* address, int val);
+unsigned int atomicAnd(unsigned int* address,
+                       unsigned int val);
+unsigned long long int atomicAnd(unsigned long long int* address,
+                                 unsigned long long int val);
+
+---------------------------------------------------------------------------
+atomicOr()
+
+int atomicOr(int* address, int val);
+unsigned int atomicOr(unsigned int* address,
+                      unsigned int val);
+unsigned long long int atomicOr(unsigned long long int* address,
+                                unsigned long long int val);
+---------------------------------------------------------------------------
+atomicXor()
+
+int atomicXor(int* address, int val);
+unsigned int atomicXor(unsigned int* address,
+                       unsigned int val);
+unsigned long long int atomicXor(unsigned long long int* address,
+                                 unsigned long long int val);
+
+-} 
