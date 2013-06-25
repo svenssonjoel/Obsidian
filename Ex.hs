@@ -115,7 +115,7 @@ sklansky2
      -> Program Block (Push Block Word32 a)
 sklansky2 l f arr =
   do
-    (mut :: Mutable Shared a)  <- new (2^l) 
+    (mut :: Mutable Shared a)  <- newS $ push arr -- (2^l) 
     arr2 <- seq' [phase mut i f | i <- [0..(l-1)]] arr
     return $ push arr2
 seq' :: MemoryOps a
@@ -162,5 +162,37 @@ getScan2 n = namedPrint ("scanB" ++ show (2^n))  (mapScan2 n (+) . splitUp (2^n)
 namedPrint :: ToProgram a => String -> a -> InputList a -> IO ()
 namedPrint name prg input =
   putStrLn $ CUDA.genKernel name prg input
+
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
+
+
+---------------------------------------------------------------------------
+-- Shared memory histograms
+---------------------------------------------------------------------------
+
+histoLocal :: Mutable Shared EWord32 -> SPull EWord32 -> BProgram (SPull EWord32)
+histoLocal mut arr = undefined
+
+  
+histogram :: Mutable Global EWord32 -> DPull EWord32 -> GProgram ()
+histogram mut arr =
+  do
+    forAll b $ \bid ->
+      forAll 256 $ \tid -> 
+        atomicInc mut (arr ! (bid * 256 + tid))
+        
+  where 
+    b = fromIntegral (mutlen mut `div` 256)
+
+
+input2 :: DPull EWord32
+input2 = undefinedGlobal (variable "X")
+
+
+getFullHistogram = quickPrint (histogram (Mutable (4*256) (Single "apa"))) (input2 :- ())
+                               
+{-
+
+
+-}

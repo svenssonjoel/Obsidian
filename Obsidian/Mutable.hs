@@ -2,13 +2,16 @@
 
 {- Joel Svensson 2013 -}
 
-module Obsidian.Mutable ( Mutable
+module Obsidian.Mutable ( Mutable(Mutable) 
                         , Shared
                         , Global 
-                        , new
+                        , newS
                         , forceTo
                         , writeTo
-                        , pullFrom )  where 
+                        , pullFrom
+                        , atomicInc
+                        , mutlen -- hack
+                        )  where 
 
 
 
@@ -26,7 +29,8 @@ import Data.Word
 {-
   Todo: Think about Global vs Shared.
   Todo: Add creation of mutable global arrays. 
- 
+
+  Todo: Make mutable interface (atomic ops) very low-level 
 -} 
 
 ---------------------------------------------------------------------------
@@ -36,7 +40,9 @@ data Shared
 data Global
 
 -- Starting with implementing only the shared mem kind
-data Mutable s a = Mutable Word32 (Names a) 
+data Mutable s a = Mutable Word32 (Names a)
+
+mutlen (Mutable n _) = n
 
 type MShared a = Mutable Shared a
 type MGlobal a = Mutable Global a 
@@ -44,12 +50,15 @@ type MGlobal a = Mutable Global a
 -- Create Mutable Shared memory arrays
 ---------------------------------------------------------------------------
 
-new :: Mem.MemoryOps a => Word32 -> BProgram (Mutable Shared a)
-new n = do
+newS :: Mem.MemoryOps a => SPush Block a -> BProgram (Mutable Shared a)
+newS arr = do
   (snames :: Names a) <- Mem.names "arr"
   Mem.allocateArray snames n
-  return $ Mutable n snames 
-
+  let mut = Mutable n snames
+  forceTo mut arr
+  return $ mut -- Mutable n snames 
+  where
+    n = len arr
 
 
 
@@ -77,7 +86,7 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: Mem.MemoryOps a => Mutable Shared a -> SPull a
+pullFrom :: Mem.MemoryOps a => Mutable s a -> SPull  a
 pullFrom (Mutable n snames) = Mem.pullFrom snames n  
 
 
@@ -93,20 +102,17 @@ pullFrom (Mutable n snames) = Mem.pullFrom snames n
 
 -} 
 -- | Increment atomically 
-atomicInc :: forall a s. AtomicInc a
+atomicInc :: forall a s t . AtomicInc a
              => Mutable s (Exp a)
-             -> EWord32 -- Block size | 
-             -> EWord32 -- Block Id   | - a shape. 
-             -> BProgram ()
-atomicInc (Mutable n noms) bs bid = mapNamesM_ f noms
+             -> EWord32  
+             -> TProgram ()
+atomicInc (Mutable n noms) ix = mapNamesM_ f noms
   where
-    f nom =
-      forAll (fromIntegral n) $ \tid -> 
-      AtomicOp nom (bid * bs + tid) (AtomicInc  :: Atomic a) >> return ()
+    f nom = AtomicOp nom ix (AtomicInc  :: Atomic a) >> return ()
   
 
 -- | Add atomically 
-atomicAdd :: forall a s. AtomicAdd a => SPull (Exp a) -> Mutable s (Exp a) -> BProgram ()
+atomicAdd :: forall a s. AtomicAdd a => SPull (Exp a) -> Mutable Shared (Exp a) -> BProgram ()
 atomicAdd arr (Mutable n noms) | m <= n = mapNamesM_ f noms
                                | otherwise = error "atomicAdd: incompatible sizes" 
   where

@@ -67,6 +67,9 @@ mkPushArray :: s -> ((a -> EWord32 -> TProgram ())
 mkPushArray n p = Push n p 
 mkPullArray n p = Pull n p  
 
+-- Fix this.
+--   * you cannot safely resize either push or pull arrays
+--   * you can shorten pull arrays safely. 
 class Array a where
   resize :: r -> a s e -> a r e
   len    :: ASize s => a s e -> s
