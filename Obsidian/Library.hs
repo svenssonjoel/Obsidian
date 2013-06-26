@@ -42,7 +42,7 @@ import Prelude hiding (splitAt,zipWith,replicate,reverse)
 ---------------------------------------------------------------------------
   
 reverse :: ASize l => Pull l a -> Pull l a 
-reverse arr = mkPullArray n (\ix -> arr ! ((sizeConv m) - ix))  
+reverse arr = mkPull n (\ix -> arr ! ((sizeConv m) - ix))  
    where m = n-1
          n = len arr
          
@@ -50,8 +50,8 @@ reverse arr = mkPullArray n (\ix -> arr ! ((sizeConv m) - ix))
 -- splitAt (name clashes with Prelude.splitAt)
 ---------------------------------------------------------------------------
 splitAt :: (Integral i, ASize l) => i -> Pull l a -> (Pull l a, Pull l a) 
-splitAt n arr = (mkPullArray m (\ix -> arr ! ix), 
-                 mkPullArray  (len arr - m) (\ix -> arr ! (ix + pos)))
+splitAt n arr = (mkPull m (\ix -> arr ! ix), 
+                 mkPull  (len arr - m) (\ix -> arr ! (ix + pos)))
   where pos = fromIntegral n
         m   = fromIntegral n
 
@@ -61,12 +61,18 @@ halve arr = splitAt n2 arr
     n = len arr
     n2 = n `div` 2
 
+splitUp :: ASize l => Word32 -> Pull l a -> Pull l (SPull a)
+splitUp n arr {-(Pull m ixf)-} =
+  mkPull (len arr `div` fromIntegral n) $ \i ->
+    mkPull n $ \j -> arr ! (i * (sizeConv n) + j)                                               
+
+
 ---------------------------------------------------------------------------
 -- everyNth 
 ---------------------------------------------------------------------------
 
 everyNth :: ASize l => Word32 -> Word32 -> Pull l a -> Pull l a
-everyNth n m arr = mkPullArray n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegral m)
+everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegral m)
   where
     n' = len arr `div` (fromIntegral n) 
   
@@ -74,7 +80,7 @@ everyNth n m arr = mkPullArray n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIn
 ---------------------------------------------------------------------------
 -- replicate 
 ---------------------------------------------------------------------------
-replicate n a = mkPullArray n (\ix -> a)
+replicate n a = mkPull n (\ix -> a)
 
 singleton a = replicate 1 a 
 
@@ -89,21 +95,21 @@ last arr = arr ! fromIntegral ( len arr - 1)
 -- Take and Drop (what about strange sizes ? fix) 
 ---------------------------------------------------------------------------
 take :: ASize l => l -> Pull l a -> Pull l a
-take n arr = resize n arr
+take n arr = setSize n arr
 
 drop :: ASize l => l -> Pull l a -> Pull l a
-drop n arr = resize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
+drop n arr = setSize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
 
 ---------------------------------------------------------------------------
 -- Shift arrays
 ---------------------------------------------------------------------------
 shiftRight :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
-shiftRight dist elt arr = resize (len arr)
+shiftRight dist elt arr = setSize (len arr)
                           $ replicate (fromIntegral dist) elt `conc` arr
 
 -- TODO: incorrect! 
 shiftLeft :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
-shiftLeft dist elt arr = mkPullArray (len arr)
+shiftLeft dist elt arr = mkPull (len arr)
                          $ \ix -> (arr `conc`  replicate (fromIntegral dist) elt)
                                   ! (ix + fromIntegral dist) 
                          
@@ -111,8 +117,8 @@ shiftLeft dist elt arr = mkPullArray (len arr)
 -- elements at even indices to fst output, odd to snd.
 ---------------------------------------------------------------------------
 evenOdds :: ASize l => Pull l a -> (Pull l a, Pull l a)
-evenOdds arr = (mkPullArray (n-n2) (\ix -> arr ! (2*ix)) ,
-                mkPullArray n2     (\ix -> arr ! (2*ix + 1)))
+evenOdds arr = (mkPull (n-n2) (\ix -> arr ! (2*ix)) ,
+                mkPull n2     (\ix -> arr ! (2*ix + 1)))
   where
     n  = len arr
     n2 = div n 2
@@ -135,7 +141,7 @@ odds  = snd . evenOdds
 -- Concatenate the arrays
 ---------------------------------------------------------------------------
 conc :: (ASize l, Choice a) => Pull l a -> Pull l a -> Pull l a 
-conc a1 a2 = mkPullArray (n1+n2)
+conc a1 a2 = mkPull (n1+n2)
                $ \ix -> ifThenElse (ix <* (fromIntegral n1)) 
                        (a1 ! ix) 
                        (a2 ! (ix - (fromIntegral n1)))
@@ -148,12 +154,12 @@ conc a1 a2 = mkPullArray (n1+n2)
 -- zipp unzipp
 ---------------------------------------------------------------------------
 unzipp :: ASize l =>  Pull l (a,b) -> (Pull l a, Pull l b)       
-unzipp arr = (mkPullArray (len arr) (\ix -> fst (arr ! ix)) ,
-              mkPullArray (len arr) (\ix -> snd (arr ! ix)) )
+unzipp arr = (mkPull (len arr) (\ix -> fst (arr ! ix)) ,
+              mkPull (len arr) (\ix -> snd (arr ! ix)) )
               
 zipp :: ASize l => (Pull l a, Pull l b) -> Pull l (a, b)             
-zipp (arr1,arr2) =  Pull (min (len arr1) (len arr2))
-                      $ \ix -> (arr1 ! ix, arr2 ! ix) 
+zipp (arr1,arr2) = mkPull (min (len arr1) (len arr2))
+                     $ \ix -> (arr1 ! ix, arr2 ! ix) 
 
 zip :: ASize l =>  Pull l a -> Pull l b -> Pull l (a, b)    
 zip = curry zipp
@@ -168,30 +174,30 @@ unzipp3 arr = (fmap (\(x,_,_) -> x) arr,
 zipp3 :: ASize l =>  (Pull l a, Pull l b, Pull l c) 
          -> Pull l (a,b,c)             
 zipp3 (arr1,arr2,arr3) = 
-  mkPullArray (minimum [len arr1, len arr2, len arr3])
+  mkPull (minimum [len arr1, len arr2, len arr3])
   (\ix -> (arr1 ! ix, arr2 ! ix, arr3 ! ix))
     
 
 zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
 zipWith op a1 a2 =  
-  mkPullArray (min (len a1) (len a2))
+  mkPull (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))
                                       
 ---------------------------------------------------------------------------
 -- pair 
 ---------------------------------------------------------------------------
 pair :: ASize l => Pull l a -> Pull l (a,a)
-pair (Pull n ixf) = 
-  mkPullArray n' (\ix -> (ixf (ix*2),ixf (ix*2+1))) 
+pair arr {-(Pull n ixf)-} = 
+  mkPull n' (\ix -> (arr ! (ix*2),arr ! (ix*2+1))) 
   where 
-    n' = n `div` 2 
+    n' = len arr `div` 2 
 
 
 
 unpair :: ASize l => Choice a => Pull l (a,a) -> Pull l a
 unpair arr = 
     let n = len arr
-    in  mkPullArray (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
+    in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
                                   (fst (arr ! (ix `shiftR` 1)))
                                   (snd (arr ! (ix `shiftR` 1)))) 
 
@@ -206,12 +212,12 @@ binSplit = twoK
 twoK ::Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
 twoK 0 f = f  -- divide 0 times and apply f
 twoK n f = \arr -> 
-              let arr' = mkPullArray lt (\i -> (f (mkPullArray  m (\j -> (arr ! (g i j)))) ! (h i))) 
+              let arr' = mkPull lt (\i -> (f (mkPull  m (\j -> (arr ! (g i j)))) ! (h i))) 
                   m    = (len arr `shiftR` n)   --pow of two           
                   g i j = i .&. (fromIntegral (complement (m-1))) .|. j  
                   h i   = i .&. (fromIntegral (nl2-1))   -- optimize 
 
-                  nl2   = len (f (mkPullArray  m (\j -> arr ! variable "X")))
+                  nl2   = len (f (mkPull  m (\j -> arr ! variable "X")))
                   lt    = nl2 `shiftL` n 
               in arr'
 
@@ -227,13 +233,14 @@ twoK n f = \arr ->
 
 concP :: ASize l
          => Push t l a -> Push t l a -> Push t l a 
-concP (Push n1 p1) (Push n2 p2) =
-  Push (n1 + n2) $ \wf ->
+concP p1 p2 {- (Push n1 p1) (Push n2 p2)-} =
+  mkPush (n1 + n2) $ \wf ->
   do
-    p1 wf
-    p2 $ \a i -> wf a (sizeConv n1 + i) 
- 
-        
+    p1 <: wf
+    p2 <: \a i -> wf a (sizeConv n1 + i) 
+ where 
+   n1 = len p1
+   n2 = len p2 
 
 {-
 concP :: (Array arr1, Array arr2, ASize l,
@@ -257,9 +264,9 @@ concP pt arr1 arr2 =
 mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
 mergeL _ arr1 arr2 | len arr1 /= len arr2 = error "incorrect lengths" 
 mergeL f arr1 arr2 =
-  Push (len arr1) $ \wf ->
+  mkPush (len arr1) $ \wf ->
   do
-    ForAll (sizeConv (len arr1)) $
+    forAll (sizeConv (len arr1)) $
       \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
 
 
@@ -268,7 +275,7 @@ mergeL f arr1 arr2 =
 ---------------------------------------------------------------------------
 
 singletonP a =
-  Push 1 $ \wf ->
+  mkPush 1 $ \wf ->
   do
     a' <- a
     wf a' 0 

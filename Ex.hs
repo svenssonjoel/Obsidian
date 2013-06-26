@@ -43,16 +43,13 @@ mapTest :: Pull Word32 EInt32 -> BProgram (SPush Block EInt32)
 mapTest arr =
   do
     return $ push (fmap (+1) arr) 
-  
-splitUp :: (ASize l, Num l)
-           => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)
-splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
-                          \i -> Pull n $ \j -> ixf (i * (sizeConv n) + j)
-
+ 
 
 splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
-splitUpS n (Pull m ixf) = Pull (m `div` n) $ 
-                          \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
+splitUpS n arr = mkPull (m `div` n) $ 
+                 \i -> mkPull n $ \j -> arr ! (i * (fromIntegral n) + j)
+  where
+    m = len arr                                               
 
 --test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
 --test1 input = liftG  $ fmap mapFusion (splitUp 256 input) 

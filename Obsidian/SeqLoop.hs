@@ -27,14 +27,14 @@ seqReduce :: (ASize l, MemoryOps a)
            -> Pull l a
            -> Push Thread l a
 seqReduce op arr =
-  Push 1 $ \wf -> 
+  mkPush 1 $ \wf -> 
   do
     (ns :: Names a)  <- names "v" 
     allocateScalar ns 
 
     assignScalar ns init  
  
-    SeqFor (n-1) $ \ ix ->
+    seqFor (n-1) $ \ ix ->
       do
         assignScalar ns (readFrom ns `op`  (arr ! (ix + 1)))
     
@@ -54,13 +54,13 @@ seqIterate :: (ASize l, MemoryOps a)
               -> a
               -> Push Thread l a
 seqIterate n f init =
-  Push 1 $  \wf -> 
+  mkPush 1 $  \wf -> 
   do
     (ns :: Names a)  <- names "v" 
     allocateScalar ns 
 
     assignScalar ns init
-    SeqFor n $ \ix ->
+    seqFor n $ \ix ->
       do
         assignScalar ns $ f ix (readFrom ns)
 
@@ -96,7 +96,7 @@ seqUntil :: (ASize l, MemoryOps a)
             -> a
             -> Push Thread l a
 seqUntil f p init =
-  Push 1 $ \wf -> 
+  mkPush 1 $ \wf -> 
   do 
     (ns :: Names a) <- names "v" 
     allocateScalar ns 
@@ -118,16 +118,17 @@ seqScan :: (ASize l, MemoryOps a)
            => (a -> a -> a)
            -> Pull l a
            -> Push Thread l a
-seqScan op (Pull n ixf)  =
-  Push n $ \wf -> do
+seqScan op arr {-(Pull n ixf)-}  =
+  mkPush n $ \wf -> do
     (ns :: Names a) <- names "v" -- (ixf 0) 
     allocateScalar ns -- (ixf 0)
-    assignScalar ns (ixf 0)
+    assignScalar ns (arr ! 0)
     wf (readFrom ns) 0 
-    SeqFor (sizeConv (n-1)) $ \ix -> do
-      assignScalar ns  $ readFrom ns `op` (ixf (ix + 1))
+    seqFor (sizeConv (n-1)) $ \ix -> do
+      assignScalar ns  $ readFrom ns `op` (arr ! (ix + 1))
       wf (readFrom ns) (ix+1)
-
+    where
+      n = len arr
 
 
 seqScanCin :: (ASize l, MemoryOps a)
@@ -135,17 +136,17 @@ seqScanCin :: (ASize l, MemoryOps a)
            -> a -- cin  
            -> Pull l a
            -> Push Thread l a
-seqScanCin op a (Pull n ixf) =
-  Push n $ \wf -> do
+seqScanCin op a arr {-(Pull n ixf)-} =
+  mkPush n $ \wf -> do
     (ns :: Names a) <- names "v" -- (ixf 0) 
     allocateScalar ns -- (ixf 0)
     assignScalar ns a -- (ixf 0)
     -- wf (readFrom ns) 0 
-    SeqFor (sizeConv  n) $ \ix -> do
-      assignScalar ns  $ readFrom ns `op` (ixf ix)
+    seqFor (sizeConv  n) $ \ix -> do
+      assignScalar ns  $ readFrom ns `op` (arr ! ix)
       wf (readFrom ns) ix                  
-     
-                 
+  where
+    n = len arr
 ---------------------------------------------------------------------------
 -- Sequential Map (here for uniformity) 
 ---------------------------------------------------------------------------
@@ -155,8 +156,8 @@ seqMap :: ASize l
           -> Pull l a
           -> Push Thread l b
 seqMap f arr =
-  Push (len arr) $ \wf -> do
-    SeqFor (sizeConv (len arr)) $ \ix ->
+  mkPush (len arr) $ \wf -> do
+    seqFor (sizeConv (len arr)) $ \ix ->
       wf (f (arr ! ix)) ix 
 
 

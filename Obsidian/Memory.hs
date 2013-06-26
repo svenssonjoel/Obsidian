@@ -49,7 +49,7 @@ instance Scalar a => MemoryOps (Exp a) where
   assignArray  (Single name) a ix = Assign name [ix] a
 
   assignScalar (Single name) a    = Assign name [] a  
-  pullFrom (Single name) n = Pull n (\i -> index name i) 
+  pullFrom (Single name) n = mkPull n (\i -> index name i) 
   readFrom (Single name) = variable name
 
 
@@ -79,7 +79,7 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   pullFrom (Tuple ns1 ns2) n =
     let p1 = pullFrom ns1 n
         p2 = pullFrom ns2 n
-    in Pull n (\ix -> (p1 ! ix, p2 ! ix))
+    in mkPull n (\ix -> (p1 ! ix, p2 ! ix))
   readFrom (Tuple ns1 ns2)  =
     let p1 = readFrom ns1
         p2 = readFrom ns2
@@ -119,7 +119,7 @@ instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
     let p1 = pullFrom ns1 n
         p2 = pullFrom ns2 n
         p3 = pullFrom ns3 n
-    in Pull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
+    in mkPull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
   readFrom (Triple ns1 ns2 ns3)  =
     let p1 = readFrom ns1
         p2 = readFrom ns2

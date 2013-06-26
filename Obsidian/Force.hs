@@ -44,32 +44,32 @@ instance Write Pull where
       
     allocateArray snames  n
 
-    let (Push m p) = push arr
+    let p = push arr
 
-    p (assignArray snames) 
+    p <: assignArray snames
       
     return $ pullFrom snames n
 
 instance Write (Push Block) where
-  unsafeWrite (Push m p) = do 
+  unsafeWrite p {-(Push m p)-} = do 
     (snames :: Names a)  <- names "arr" 
 
-    allocateArray snames  m
+    allocateArray snames  (len p) -- m
 
-    p (assignArray snames) 
+    p <: assignArray snames
       
-    return $ pullFrom snames m
+    return $ pullFrom snames (len p) -- m
 
 instance Write (Push Thread) where
-  unsafeWrite (Push m p) = do 
+  unsafeWrite p {-(Push m p)-} = do 
     (snames :: Names a)  <- names "arr" 
 
-    allocateArray snames  m
+    allocateArray snames  (len p) -- m
 
     forAll 1 $ \_ ->         --One thread
-      p (assignArray snames) 
+      p <: assignArray snames
       
-    return $ pullFrom snames m
+    return $ pullFrom snames (len p) -- m
 
   
 force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
