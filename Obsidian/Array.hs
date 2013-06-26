@@ -11,7 +11,18 @@
     2012-12-10: Drastically shortened. 
 -}
 
-module Obsidian.Array  where
+module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
+                       mkPull,
+                       mkPush,
+                       push,
+                       pushN,
+                       setSize, 
+                       (!),
+                       (<:), 
+                       Array(..),
+                       ASize(..),
+                       namedGlobal,
+                       undefinedGlobal) where
 
 import Obsidian.Exp 
 import Obsidian.Types
@@ -32,13 +43,16 @@ type DPush t a = Push t EWord32 a
 ---------------------------------------------------------------------------
 -- Create arrays
 ---------------------------------------------------------------------------
+-- | An undefined array. Use as placeholder when generating code
 undefinedGlobal n = Pull n $ \gix -> undefined
+-- | A named global array. 
 namedGlobal name n = Pull n $ \gix -> index name gix
-namedPull name n = Pull n $ \gix -> index name gix
+-- namedPull name n = Pull n $ \gix -> index name gix
 
 ---------------------------------------------------------------------------
 -- Class ArraySize
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
+-- | ASize provides conversion to Exp Word32 for array sizes
 class (Integral a, Num a) => ASize a where
   sizeConv :: a ->  Exp Word32
 
@@ -51,40 +65,44 @@ instance ASize (Exp Word32) where
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
+-- | Push array. Parameterised over Program type and size type.
 data Push p s a =
   Push s ((a -> EWord32 -> TProgram ()) -> Program p ())
 
--- Is this useful for anything ? 
-data PPush t s a =
-  PPush s ((a -> EWord32 ->  Program (Below t) ()) -> Program t ())
+-- -- Is this useful for anything ? 
+-- data PPush t s a =
+--   PPush s ((a -> EWord32 ->  Program (Below t) ()) -> Program t ())
 
-
+-- | Pull array.
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: EWord32 -> a}
 
-mkPushArray :: s -> ((a -> EWord32 -> TProgram ())
+-- | Create a push array. 
+mkPush :: s -> ((a -> EWord32 -> TProgram ())
                              -> Program t ()) -> Push t s a
-mkPushArray n p = Push n p 
-mkPullArray n p = Pull n p  
+mkPush n p = Push n p 
+
+-- | Create a pull array. 
+mkPull n p = Pull n p 
+
+setSize :: l -> Pull l a -> Pull l a
+setSize n (Pull _ ixf) = mkPull n ixf
 
 -- Fix this.
 --   * you cannot safely resize either push or pull arrays
 --   * you can shorten pull arrays safely. 
 class Array a where
-  resize :: r -> a s e -> a r e
   len    :: ASize s => a s e -> s
   aMap   :: (e -> e') -> a s e -> a s e'
   ixMap  :: (Exp Word32 -> Exp Word32)
             -> a s e -> a s e
   
 instance Array Pull where 
-  resize m (Pull _ ixf) = Pull m ixf
   len      (Pull s _)   = s
   aMap   f (Pull n ixf) = Pull n (f . ixf)
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
   
 instance Array (Push t) where 
-  resize m (Push _ p) = Push m p
   len      (Push s _) = s
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
@@ -101,7 +119,6 @@ instance Indexible Pull where
 ---------------------------------------------------------------------------
 instance Array arr => Functor (arr w) where 
   fmap = aMap
-
 
 ---------------------------------------------------------------------------
 -- Pushable
@@ -128,7 +145,6 @@ instance PushableN Block where
     seqFor (fromIntegral n) $ \ix -> wf (ixf (tix * fromIntegral n + ix))
                                              (tix * fromIntegral n + ix) 
  
-    
 instance PushableN Grid where
   pushN n (Pull m ixf) =
     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
@@ -136,22 +152,23 @@ instance PushableN Grid where
                                               (bix * fromIntegral n + tix) 
  
     
-  
-
-pushGrid :: Word32 ->  DPull a -> DPush Grid a
-pushGrid m (Pull n ixf) =
-  Push n $ \ wf -> ForAll (n `div` fromIntegral m) $ \bix ->
-   ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
-                                             (bix * fromIntegral m + tix) 
-
+-- pushGrid :: Word32 ->  DPull a -> DPush Grid a
+-- pushGrid m (Pull n ixf) =
+--   Push n $ \ wf -> ForAll (n `div` fromIntegral m) $ \bix ->
+--    ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
+--                                              (bix * fromIntegral m + tix)
                                      
+      
+
 ---------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
-namedArray name n = mkPullArray n (\ix -> index name ix)
-indexArray n      = mkPullArray n (\ix -> ix)
+--namedArray name n = mkPull n (\ix -> index name ix)
+--indexArray n      = mkPull n (\ix -> ix)
 
-pushApp (Push _ p) a = p a 
+pushApp (Push _ p) a = p a
+infixl 9 <:
+(<:) = pushApp 
 
 infixl 9 ! 
 (!) :: Indexible a => a s e -> Exp Word32 -> e 

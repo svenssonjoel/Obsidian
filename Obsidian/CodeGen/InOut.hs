@@ -75,22 +75,22 @@ instance ToProgram (GProgram a) where
   toProgram i prg () = ([],CG.compileStep1 prg)
 
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
-  toProgram i (Push _ p) a =
+  toProgram i p {-(Push _ p)-} a =
     let prg = do
           output <- Output $ Pointer $ typeOf_ (undefined :: a)
-          p (\a ix -> assignOut output a ix)
+          p <: (\a ix -> assignOut output a ix)
     in 
      toProgram i prg a
     where
       assignOut out a ix = Assign out [ix] a
 
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
-  toProgram i (Push _ p) a =
+  toProgram i p {-(Push _ p)-} a =
     let prg = do
           out1 <- Output $ Pointer $ typeOf_ (undefined :: a)
           out2 <- Output $ Pointer $ typeOf_ (undefined :: b)
           
-          p (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
+          p <: (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
     in 
      toProgram i prg a
     where

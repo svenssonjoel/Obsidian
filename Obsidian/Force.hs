@@ -58,15 +58,19 @@ instance Write (Push Block) where
 
 -- Still not using the Mutable arrays.. problematic 
 instance Write (Push Thread) where
-  unsafeWrite (Push m p) = do
+  unsafeWrite p = do 
     (snames :: Names a)  <- names "arr" 
 
-    allocateArray snames  m
-
-    forAll 1 $ \_ ->         --One thread
-      p (assignArray snames) 
+    -- Here I know that this pattern match will succeed
+    let n = len p
       
-    return $ pullFrom snames m
+    allocateArray snames  n
+
+--     let p = push arr
+    forAll 1 $ \_ ->
+      p <: assignArray snames
+      
+    return $ pullFrom snames n
 
   
 force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)

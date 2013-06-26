@@ -11,7 +11,21 @@
              
 
 
-module Obsidian.Program  where 
+module Obsidian.Program  (
+  -- Hierarchy 
+  Thread, Block, Grid, Step, Zero,
+  -- Program type 
+  Program(..), -- all exported.. for now
+  TProgram, BProgram, GProgram,
+
+  -- helpers
+  printPrg,
+  runPrg,
+  uniqueNamed,
+
+  -- Programming interface
+  seqFor, forAll, seqWhile
+  ) where 
  
 import Data.Word
 import Data.Monoid
@@ -38,12 +52,11 @@ type Thread = Zero
 type Block  = Step Thread 
 type Grid   = Step Block  
 
+-- type family Below a
 
-type family Below a
-
-type instance Below Zero = Zero
-type instance Below (Step Zero) = Zero
-type instance Below (Step (Step Zero)) = Step Zero 
+-- type instance Below Zero = Zero
+-- type instance Below (Step Zero) = Zero
+-- type instance Below (Step (Step Zero)) = Step Zero 
 
 type Identifier = Int 
       
@@ -133,6 +146,14 @@ data Program t a where
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
 
 ---------------------------------------------------------------------------
+-- Aliases 
+---------------------------------------------------------------------------
+type TProgram = Program Thread
+type BProgram = Program Block
+type GProgram = Program Grid 
+
+
+---------------------------------------------------------------------------
 -- Helpers 
 --------------------------------------------------------------------------- 
 uniqueSM = do
@@ -150,32 +171,17 @@ forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 forAll n f = ForAll n f
 
 ---------------------------------------------------------------------------
--- SeqFor
+-- seqFor
 ---------------------------------------------------------------------------
-seqFor :: EWord32 -> (EWord32 -> Program t ())
-            -> Program t ()
+seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f
 
-
 ---------------------------------------------------------------------------
--- forAllT
---------------------------------------------------------------------------- 
--- When we know that all threads are independent and
--- independent of "blocksize".
--- Also any allocation of local storage is impossible.
--- Composition of something using forAllT with something
--- that performs local computations is impossible.
--- Using the hardcoded BlockDim may turn out to be a problem when
--- we want to compute more than one thing per thread (may be fine though). 
-forAllT :: EWord32 -> (EWord32 -> Program Thread ())
-           -> Program Grid ()
-forAllT n f = ForAllThreads n 
-            $ \gtid -> f gtid 
-
-
-
-forAllBlocks = forAll
+-- seqWhile
+---------------------------------------------------------------------------
+seqWhile :: Exp Bool -> Program Thread () -> Program Thread ()
+seqWhile = SeqWhile 
 
 ---------------------------------------------------------------------------
 -- Monad
@@ -184,12 +190,6 @@ instance Monad (Program t) where
   return = Return
   (>>=) = Bind
 
----------------------------------------------------------------------------
--- Aliases 
----------------------------------------------------------------------------
-type TProgram = Program Thread
-type BProgram = Program Block
-type GProgram = Program Grid 
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)

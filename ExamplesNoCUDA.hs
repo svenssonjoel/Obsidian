@@ -33,15 +33,31 @@ mapFusion arr =
     imm <- force $ (fmap (+1) . fmap (*2)) arr
     force $ (fmap (+3) . fmap (*4)) imm
 
-splitUp :: (ASize l, Num l)
-           => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)
-splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
-                          \i -> Pull n $ \j -> ixf (i * (sizeConv n) + j)
+-- splitUp :: (ASize l, Num l)
+--            => l -> Pull (Exp Word32) a -> Pull (Exp Word32) (Pull l a)
+-- splitUp n (Pull m ixf) = Pull (m `div` fromIntegral n) $ 
+--                           \i -> Pull n $ \j -> ixf (i * (sizeConv n) + j)
+
+-- splitUp :: (ASize l, ASize m)
+--            => l -> Pull m a -> DPull (Pull l a)
+-- splitUp n (Pull m ixf) = Pull (fromIntegral m `div` fromIntegral n) $ 
+--                           \i -> Pull n $ \j -> ixf (i * (sizeConv n) + j)
+splitUp :: ASize l
+           => Word32
+           -> Pull l a
+           -> Pull l (SPull a)
+splitUp n arr  =
+  mkPull (m `div` fromIntegral n) $ \i ->
+    mkPull n $ \j -> arr ! (i * (sizeConv n) + j)
+  where
+    m = len arr
 
 
 splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
-splitUpS n (Pull m ixf) = Pull (m `div` n) $ 
-                          \i -> Pull n $ \j -> ixf (i * (fromIntegral n) + j)
+splitUpS n arr = mkPull (m `div` n) $ 
+                 \i -> mkPull n $ \j -> arr ! (i * (fromIntegral n) + j)
+  where
+    m = len arr                                      
 
 --test1 :: Pull (Exp Word32) EInt -> GProgram (Push Grid (Exp Word32) EInt)
 --test1 input = liftG  $ fmap mapFusion (splitUp 256 input) 
@@ -141,30 +157,30 @@ bKung op arr = undefined
 ---------------------------------------------------------------------------
 -- Go Towards Counting sort again.  
 --------------------------------------------------------------------------- 
-histogram :: Pull EWord32 EInt32 -> GProgram ()
-histogram arr = do
-  global <- Output $ Pointer Word32
-  forAllT (len arr) $ \gix -> atomicOp global (i32ToW32 (arr ! gix)) AtomicInc
+-- histogram :: Pull EWord32 EInt32 -> GProgram ()
+-- histogram arr = do
+--   global <- Output $ Pointer Word32
+--   forAllT (len arr) $ \gix -> atomicOp global (i32ToW32 (arr ! gix)) AtomicInc
 
   
-atomicOp n e1 a = AtomicOp n e1 a >> return () 
+-- atomicOp n e1 a = AtomicOp n e1 a >> return () 
 
-getHist =
-  quickPrint histogram
-             ((undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32) :- ())
+-- getHist =
+--   quickPrint histogram
+--              ((undefinedGlobal (variable "X") :: Pull (Exp Word32) EInt32) :- ())
   
-reconstruct :: Pull EWord32 EWord32 -> Push Grid EWord32 EInt32
-reconstruct arr = Push (len arr) f
-  where
-    f k = do forAllT (len arr) $ \gix ->
-               let startIx = arr ! gix
-               in  SeqFor (arr ! (gix+1) - startIx) $ \ix ->
-                   do 
-                     k (w32ToI32 gix) (ix + startIx)
+-- reconstruct :: Pull EWord32 EWord32 -> Push Grid EWord32 EInt32
+-- reconstruct arr = mkPush (len arr) f
+--   where
+--     f k = do forAllT (len arr) $ \gix ->
+--                let startIx = arr ! gix
+--                in  seqFor (arr ! (gix+1) - startIx) $ \ix ->
+--                    do 
+--                      k (w32ToI32 gix) (ix + startIx)
                  
-getRec =
-  quickPrint reconstruct
-             ((undefinedGlobal (variable "X") :: Pull (EWord32) EWord32) :- ())
+-- getRec =
+--   quickPrint reconstruct
+--              ((undefinedGlobal (variable "X") :: Pull (EWord32) EWord32) :- ())
 
 
 ---------------------------------------------------------------------------
@@ -247,8 +263,8 @@ transpose arr = mkPullArray m
      m = len (arr ! 0) 
 -}
 transpose :: SMatrix a -> SMatrix a
-transpose arr = mkPullArray m
-                $ \i -> mkPullArray n
+transpose arr = mkPull m
+                $ \i -> mkPull n
                        $ \j -> (arr ! j) ! i                                       
                                 
    where
@@ -275,7 +291,7 @@ matMul x y = liftG
         m  = len y'
 -} 
 
-mkMatrix n m f = mkPullArray n $ \i -> mkPullArray m $ \j -> f i j 
+mkMatrix n m f = mkPull n $ \i -> mkPull m $ \j -> f i j 
 
 {-
 matMul :: (Num a, MemoryOps a, LiftB a)
@@ -372,7 +388,7 @@ vperm2 l m r = swapBitBlocks l (r+l-m) r . bitBlockXor (l-1) (r+l-m-1)
 
 convToPush :: SPull a -> SPush Block a
 convToPush arr =
-  Push n $ \wf ->
+  mkPush n $ \wf ->
    forAll (fromIntegral n) $ \tid -> wf (arr ! tid) tid
   where
     n = len arr                             

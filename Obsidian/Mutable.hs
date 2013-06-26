@@ -69,10 +69,11 @@ writeTo :: Mem.MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
            -> BProgram ()
-writeTo (Mutable n snames) (Push m p) 
-  | n <= m = p (Mem.assignArray snames)
+writeTo (Mutable n snames) p {-(Push m p)-} 
+  | n <= m = p <: (Mem.assignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 
-  
+  where
+    m = len p 
 -- Add forceTo with offsets (why? just thought it might be useful)
 forceTo :: Mem.MemoryOps a
            => Mutable Shared a
