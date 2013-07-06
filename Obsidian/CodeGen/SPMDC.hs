@@ -41,7 +41,7 @@ data Value = IntVal Int         -- allow ?
 data CType = CVoid | CInt | CFloat | CDouble
            | CInt8 | CInt16 | CInt32 | CInt64 
            | CWord | CWord8 | CWord16 | CWord32 | CWord64
-           | CPointer CType -- *type
+           | CPointer CType -- '*' C type
            | CArray [CExpr] CType -- type[e1][e2][e3]..[en] or type[] 
            | CQualified CQualifyer CType 
            deriving (Eq,Ord,Show)
