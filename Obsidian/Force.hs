@@ -87,5 +87,5 @@ force arr = do
 
 
 unsafeForce :: MemoryOps a => SPull a -> BProgram (SPull a) 
-unsafeForce arr | len arr < 32 = unsafeWrite arr 
+unsafeForce arr | len arr <= 32 = unsafeWrite arr 
 unsafeForce arr = force arr
