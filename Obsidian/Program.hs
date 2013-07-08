@@ -24,7 +24,7 @@ module Obsidian.Program  (
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, seqWhile
+  seqFor, forAll, forAll2, seqWhile
   ) where 
  
 import Data.Word
@@ -104,8 +104,8 @@ data Program t a where
   --ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
   --                -> Program Grid ()
 
-  ForAllThreads :: (EWord32) -> (EWord32 -> Program Thread ())
-                   -> Program Grid ()
+  -- ForAllThreads :: (EWord32) -> (EWord32 -> Program Thread ())
+  --                  -> Program Grid ()
 
   -- Allocate shared memory in each MP
 
@@ -169,6 +169,13 @@ uniqueNamed pre = do
 ---------------------------------------------------------------------------
 forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 forAll n f = ForAll n f
+
+forAll2
+  :: EWord32
+     -> EWord32
+     -> (EWord32 -> EWord32 -> Program t ())
+     -> Program (Step (Step t)) ()
+forAll2 b n f =  forAll b $ \bs -> forAll n (f bs) 
 
 ---------------------------------------------------------------------------
 -- seqFor

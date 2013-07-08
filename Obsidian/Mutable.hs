@@ -12,6 +12,8 @@ module Obsidian.Mutable ( Mutable(Mutable)
                         , pullFrom
                         , atomicInc
                         , mutlen -- hack
+                        , namedMutable
+                        , undefinedMutable
                         )  where 
 
 
@@ -40,7 +42,7 @@ import Data.Word
 data Shared
 data Global
 
-
+-- EXPERIMENTS 
 -- Memory hierarchy size correspondence   
 type family MSize a
 type instance MSize Shared = Word32
@@ -60,7 +62,8 @@ type MShared a = Mutable Shared a
 type MGlobal a = Mutable Global a
 
 
-
+namedMutable s v = Mutable v (Single s)
+undefinedMutable v = Mutable v undefined 
 ---------------------------------------------------------------------------
 -- Create Mutable Shared memory arrays
 --   # allocates shared memory

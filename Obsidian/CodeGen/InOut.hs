@@ -13,6 +13,7 @@
 
   Notes:
 
+  2013-07-08: Mutable inputs
   2013-04-28: Big Changes. Allows empty lists of inputs
               that are represented by ().
               TODO: Add Niklas modifications that allow tuples in input arrays.
@@ -28,6 +29,7 @@ module Obsidian.CodeGen.InOut where
 
 import Obsidian.Exp 
 import Obsidian.Array
+import Obsidian.Mutable 
 
 import Obsidian.Types
 import Obsidian.Globs 
@@ -116,6 +118,18 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
       nom  = "input" ++ show i
       input = namedGlobal nom  (len a) 
       t     = typeOf_ (undefined :: t)
+
+
+instance (ToProgram b, Scalar t) => ToProgram (Mutable Global (Exp t) -> b) where
+  toProgram i f (a :- rest) = ((nom,Pointer t):(n,Word32):ins,prg)
+    where
+      (ins,prg) = toProgram (i+1) (f input) rest
+      nom  = "input" ++ show i
+      n    = "n" ++ show i
+      lengthVar = variable n
+      input = namedMutable nom lengthVar
+      t     = typeOf_ (undefined :: t)
+
 
 instance (ToProgram b, Scalar t) => ToProgram ((Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,t):ins,prg)

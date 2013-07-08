@@ -169,19 +169,20 @@ input = undefinedGlobal (variable "X")
 histogram :: Mutable Global EWord32 -> DPull EWord32 -> GProgram ()
 histogram mut arr =
   do
-    forAll b $ \bid ->
-      forAll 256 $ \tid -> 
+    forAll2 b 256 $ \bid tid -> 
         atomicInc (arr ! (bid * 256 + tid))  mut
-        
   where 
     b = fromIntegral (mutlen mut `div` 256)
-
+    
 
 input2 :: DPull EWord32
 input2 = undefinedGlobal (variable "X")
 
+inputM :: Mutable Global EWord32
+inputM = undefinedMutable (variable "X")
 
-getFullHistogram = quickPrint (histogram (Mutable (4*256) (Single "apa"))) (input2 :- ())
+--getFullHistogram = quickPrint (histogram (Mutable (4*256) (Single "apa"))) (input2 :- ())
+getFullHistogram = quickPrint histogram (inputM :- input2 :- ())
                                
 ---------------------------------------------------------------------------
 -- reconstruct
@@ -193,12 +194,14 @@ reconstruct blocks threads parr
   = mkPush (blocks * fromIntegral threads) f
   where
     f k =
-      forAll blocks $ \bix ->
-        forAll (fromIntegral threads) $ \tix ->
+      forAll2 blocks (fromIntegral threads) $ \bix tix ->   
           let gix = bix * fromIntegral threads + tix
               startIx = parr ! gix
           in  seqFor ((parr ! (gix + 1)) - startIx) $ \ix ->
                 k (w32ToI32 gix) (ix + startIx) 
-          
 
-                                  
+
+getFullReconstruct = quickPrint (reconstruct 10 256)  (input2 :- ())
+    
+
+                                   
