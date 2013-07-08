@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,
+             TypeFamilies #-}
 
 {- Joel Svensson 2013 -}
 
@@ -39,15 +40,30 @@ import Data.Word
 data Shared
 data Global
 
+
+-- Memory hierarchy size correspondence   
+type family MSize a
+type instance MSize Shared = Word32
+type instance MSize Global = EWord32
+
+-- Memory hierarchy program correspondence
+type family MProgram a
+type instance MProgram Shared = Block
+type instance MProgram Global = Grid 
+  
 -- Starting with implementing only the shared mem kind
-data Mutable s a = Mutable Word32 (Names a)
+data Mutable s a = Mutable (MSize s) (Names a)
 
 mutlen (Mutable n _) = n
 
 type MShared a = Mutable Shared a
-type MGlobal a = Mutable Global a 
+type MGlobal a = Mutable Global a
+
+
+
 ---------------------------------------------------------------------------
 -- Create Mutable Shared memory arrays
+--   # allocates shared memory
 ---------------------------------------------------------------------------
 
 newS :: Mem.MemoryOps a => SPush Block a -> BProgram (Mutable Shared a)
@@ -61,7 +77,6 @@ newS arr = do
     n = len arr
 
 
-
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
@@ -69,11 +84,12 @@ writeTo :: Mem.MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
            -> BProgram ()
-writeTo (Mutable n snames) p {-(Push m p)-} 
+writeTo (Mutable n snames) p 
   | n <= m = p <: (Mem.assignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 
   where
-    m = len p 
+    m = len p
+    
 -- Add forceTo with offsets (why? just thought it might be useful)
 forceTo :: Mem.MemoryOps a
            => Mutable Shared a
@@ -87,7 +103,7 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: Mem.MemoryOps a => Mutable s a -> SPull  a
+pullFrom :: Mem.MemoryOps a => Mutable Shared a -> SPull  a
 pullFrom (Mutable n snames) = Mem.pullFrom snames n  
 
 

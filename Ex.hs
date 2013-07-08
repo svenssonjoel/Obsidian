@@ -163,12 +163,8 @@ input = undefinedGlobal (variable "X")
 
 
 ---------------------------------------------------------------------------
--- Shared memory histograms
+-- Global memory histogram
 ---------------------------------------------------------------------------
-
-histoLocal :: Mutable Shared EWord32 -> SPull EWord32 -> BProgram (SPull EWord32)
-histoLocal mut arr = undefined
-
   
 histogram :: Mutable Global EWord32 -> DPull EWord32 -> GProgram ()
 histogram mut arr =
@@ -187,7 +183,22 @@ input2 = undefinedGlobal (variable "X")
 
 getFullHistogram = quickPrint (histogram (Mutable (4*256) (Single "apa"))) (input2 :- ())
                                
-{-
+---------------------------------------------------------------------------
+-- reconstruct
+---------------------------------------------------------------------------
 
+reconstruct :: EWord32 -> Word32 -> DPull EWord32 
+             -> DPush Grid EInt32
+reconstruct blocks threads parr
+  = mkPush (blocks * fromIntegral threads) f
+  where
+    f k =
+      forAll blocks $ \bix ->
+        forAll (fromIntegral threads) $ \tix ->
+          let gix = bix * fromIntegral threads + tix
+              startIx = parr ! gix
+          in  seqFor ((parr ! (gix + 1)) - startIx) $ \ix ->
+                k (w32ToI32 gix) (ix + startIx) 
+          
 
--}
+                                  
