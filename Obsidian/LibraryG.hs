@@ -36,7 +36,7 @@ pMap f as =
     n = len as
     rn = len $ fst $ runPrg 0 (f (as ! 0))
 
--- Bug ?
+-- Bug ? (may need ot tweak the wf) 
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
