@@ -30,8 +30,8 @@ pMap f as =
       do 
         --(Push _ p) <- f (as ! bix)
         p <- f (as ! bix) 
-        let wf' a ix = wf a (bix * sizeConv rn + ix)
-        p <: wf'     
+        -- let wf' a ix = wf a (bix * sizeConv rn + ix)
+        p <: wf -- '     
   where
     n = len as
     rn = len $ fst $ runPrg 0 (f (as ! 0))
@@ -43,7 +43,8 @@ pConcat arr =
   do
     forAll (sizeConv n) $ \bix ->
       let p = arr ! bix -- (Push _ p) = arr ! bix
-      in p <: wf
+          wf' a ix = wf a (bix * sizeConv rn + ix)   
+      in p <: wf'
   where
     n  = len arr
     rn = len $ arr ! 0

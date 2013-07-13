@@ -61,19 +61,26 @@ mf :: Pull (Exp Word32) EInt32
      -> DPush Grid EInt32
 mf arr = pConcatMap mapTest (splitUp 256 arr) 
 
+
+mf2 :: Pull (Exp Word32) EInt32
+     -> DPush Grid EInt32
+mf2 arr = pConcat $ reverse $ pMap  mapTest (splitUp 256 arr) 
+
+getmf2 = namedPrint "mf2" mf2 (input :- ())
+
 ---------------------------------------------------------------------------
 -- Testing integration
 ---------------------------------------------------------------------------
 
 test = withCUDA $
        do
-         kern <- capture mf (input1 :- ())
+         kern <- capture mf2 (input1 :- ())
 
-         useVector (V.fromList [0..255::Int32]) $ \ i1 ->
-           useVector (V.fromList (P.replicate 256 0)) $ \(o1 :: CUDA.DevicePtr Int32) -> 
+         useVector (V.fromList [0..512::Int32]) $ \ i1 ->
+           useVector (V.fromList (P.replicate 512 0)) $ \(o1 :: CUDA.DevicePtr Int32) -> 
            do
-             execute kern 1 256 i1 o1
-             r <- lift $ CUDA.peekListArray 256 o1
+             execute kern 2 256 i1 o1
+             r <- lift $ CUDA.peekListArray 512 o1
              lift $ putStrLn $ show r
 
 
