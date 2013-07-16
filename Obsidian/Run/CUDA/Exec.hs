@@ -44,7 +44,8 @@ import Control.Monad.State
 
 -} 
 
-data CUDAVector a = CUDAVector 
+data CUDAVector a = CUDAVector {cvPtr :: CUDA.DevicePtr a,
+                                cvLen :: Word32} 
 
 ---------------------------------------------------------------------------
 -- Get a list of devices from the CUDA driver
@@ -153,8 +154,10 @@ archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
 --------------------------------------------------------------------------- 
+-- useVector :: V.Storable a =>
+--              V.Vector a -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
 useVector :: V.Storable a =>
-             V.Vector a -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
+             V.Vector a -> (CUDAVector a -> CUDA b) -> CUDA b
 useVector v f =
   do
     let (hfptr,n) = V.unsafeToForeignPtr0 v
@@ -162,19 +165,23 @@ useVector v f =
     dptr <- lift $ CUDA.mallocArray n
     let hptr = unsafeForeignPtrToPtr hfptr
     lift $ CUDA.pokeArray n hptr dptr
-    b <- f dptr     
+    let cvector = CUDAVector dptr (fromIntegral (V.length v)) 
+    b <- f cvector -- dptr     
     lift $ CUDA.free dptr
     return b
 
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
+--allocaVector :: V.Storable a => 
+--                Int -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
 allocaVector :: V.Storable a => 
-                Int -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
+                Int -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaVector n f =
   do
     dptr <- lift $ CUDA.mallocArray n
-    b <- f dptr
+    let cvector = CUDAVector dptr (fromIntegral n)
+    b <- f cvector -- dptr
     lift $ CUDA.free dptr
     return b 
 
@@ -194,7 +201,17 @@ execute k nb sm {- stream -} a b = lift $
                     (fromIntegral (kThreadsPerBlock k), 1, 1)
                     (fromIntegral sm)
                     Nothing -- stream
-                    (toParamList a ++ [CUDA.VArg (0 :: Word32)] ++ toParamList b) -- params
+                    (toParamList a ++ toParamList b) -- params
+
+
+---------------------------------------------------------------------------
+-- Peek in a CUDAVector (Simple "copy back")
+---------------------------------------------------------------------------
+peekCUDAVector :: V.Storable a => CUDAVector a -> CUDA [a]
+peekCUDAVector (CUDAVector dptr n) = 
+    lift $ CUDA.peekListArray (fromIntegral n) dptr
+    
+
 
 ---------------------------------------------------------------------------
 -- ParamList
@@ -208,6 +225,10 @@ class ParamList a where
 
 instance ParamList (CUDA.DevicePtr a) where
   toParamList a = [CUDA.VArg a]
+
+
+instance ParamList (CUDAVector a) where
+  toParamList (CUDAVector dptr n)  = [CUDA.VArg dptr, CUDA.VArg n]
 
 
 instance (ParamList a, ParamList b) => ParamList (a :- b) where

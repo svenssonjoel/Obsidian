@@ -70,9 +70,9 @@ test = withCUDA $
          kern <- capture mf (input1 :- ())
 
          useVector (V.fromList (P.replicate 256 (7::Int32))) $ \ i1 ->
-           useVector (V.fromList (P.replicate 256 0)) $ \(o1 :: CUDA.DevicePtr Int32) -> 
+           useVector (V.fromList (P.replicate 256 0)) $ \(o1 :: CUDAVector Int32) -> 
            do
              execute kern 1 256 i1 o1
-             r <- lift $ CUDA.peekListArray 256 o1
+             r <- peekCUDAVector o1 -- lift $ CUDA.peekListArray 256 o1
              lift $ putStrLn $ show r
              
