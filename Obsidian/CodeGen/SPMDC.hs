@@ -309,11 +309,18 @@ ppSPMDC ppc (CAssign e exprs expr) =
   line " = " >> 
   ppCExpr ppc expr >> 
   cTermLn
+
+ppSPMDC ppc (CAtomic CAtomicInc res arr e) =
+  ppAtomicOp ppc CAtomicInc >>
+  wrap "(" ")" (ppCExpr ppc arr >> line " + " >> ppCExpr ppc e >> line " ," >> line "0xFFFFFFFF" ) >>
+  cTermLn 
+  -- Needs to be fixed! 
 ppSPMDC ppc (CAtomic op res arr e) =
   --ppCExpr ppc res >>
   --line " = " >>
   ppAtomicOp ppc op >>
-  wrap "(" ")" (ppCExpr ppc arr >> line ", " >> ppCExpr ppc e ) >>
+  -- MASSIVE HACK! 
+  wrap "(" ")" (ppCExpr ppc arr >> line " + " >> ppCExpr ppc e) >>
   cTermLn 
 
 ppSPMDC ppc (CDecl t n) = ppCTypedName ppc t n  >> cTermLn

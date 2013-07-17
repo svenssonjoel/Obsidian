@@ -209,5 +209,17 @@ reconstruct blocks threads parr
 
 getFullReconstruct = quickPrint (reconstruct 10 256)  (input2 :- ())
     
-
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
                                    
+test2 =
+  withCUDA $
+  do
+    kern <- capture histogram (inputM :- input2 :- ())
+    useVector (V.fromList ([7,7,7,432,432,432]++[0..511::Int32])) $ \ i1 ->
+      useVector (V.fromList (P.replicate 512 0)) $ \(o1 :: CUDAVector Int32) -> 
+      do
+        execute kern 2 256 o1 i1 -- o1
+        r <- peekCUDAVector o1 -- lift $ CUDA.peekListArray 256 o1
+        lift $ putStrLn $ show r

@@ -41,6 +41,7 @@ out a = [(a,())]
 
 data Statement t =
   forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
+                                             -- ? --arr  --offset   -- oper
   | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
   | SCond (Exp Bool) (IMList t) 
   | SSeqFor String (Exp Word32) (IMList t)

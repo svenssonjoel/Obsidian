@@ -178,9 +178,9 @@ imToSPMDC nt im = concatMap (process nt) im
 
     process nt (SAtomicOp res arr e op,_) = 
       [cAtomic (atomicOpToCAtomicOp op)
-               (cVar res (typeToCType (typeOf e)))
-               (cVar arr (typeToCType (Pointer (typeOf e))))
-               (expToCExp e)]
+               (cVar res (typeToCType (typeOf e))) -- result (unused!)
+               (cVar arr (typeToCType (Pointer (typeOf e)))) -- base address
+               (expToCExp e)] -- Offset 
 
     process nt (SCond bexp im,_) =
       [cIf (expToCExp bexp) (imToSPMDC nt im) []]
