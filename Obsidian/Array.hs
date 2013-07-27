@@ -12,6 +12,7 @@
 -}
 
 module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
+                       Pushable, 
                        mkPull,
                        mkPush,
                        push,

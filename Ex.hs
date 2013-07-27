@@ -39,10 +39,8 @@ mapFusion arr =
     imm2 <- force $ (fmap (+3) . fmap (*4)) imm
     return $ push imm2
 
-mapTest :: Pull Word32 EInt32 -> BProgram (SPush Block EInt32)
-mapTest arr =
-  do
-    return $ push (fmap (+1) arr) 
+mapTest :: Pull Word32 EInt32 -> SPush Block EInt32
+mapTest arr = push (fmap (+1) arr) 
  
 
 splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
