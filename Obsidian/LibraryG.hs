@@ -75,8 +75,8 @@ pZipWith f as bs =
     do
       -- (Push _ p) <- f (as ! bix) (bs ! bix)
       p <- f (as ! bix) (bs ! bix) 
-      let wf' a ix = wf a (bix * fromIntegral rn + ix) -- (bix * sizeConv n + ix)
-      p <: wf'      
+      -- let wf' a ix = wf a (bix * fromIntegral rn + ix) -- (bix * sizeConv n + ix)
+      p <: wf
 
     where
       -- Is this ok?! (does it break?) 

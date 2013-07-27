@@ -82,7 +82,10 @@ everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegra
 ---------------------------------------------------------------------------
 replicate n a = mkPull n (\ix -> a)
 
-singleton a = replicate 1 a 
+singleton a = replicate 1 a
+
+-- From Niklas
+iterations n = mkpull n id 
 
 ---------------------------------------------------------------------------
 -- last
