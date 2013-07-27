@@ -67,6 +67,13 @@ splitUp n arr {-(Pull m ixf)-} =
     mkPull n $ \j -> arr ! (i * (sizeConv n) + j)                                               
 
 
+coalesce :: (ASize l, Num l)
+         => l -> Pull l a -> Pull l (Pull l a)
+coalesce n arr =
+  mkPull s $ \i ->
+    mkPull n $ \j -> arr ! (i + (sizeConv s) * j)
+  where s = (len arr) `div` n
+
 ---------------------------------------------------------------------------
 -- everyNth 
 ---------------------------------------------------------------------------

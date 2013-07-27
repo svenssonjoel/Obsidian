@@ -12,6 +12,7 @@ import Obsidian.Array
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Memory
+import Obsidian.Library
 
 import Control.Monad
 import Data.Word
@@ -21,6 +22,11 @@ import Data.Word
 ---------------------------------------------------------------------------
 
 pConcatMap f = pConcat . pMap f
+pUnCoalesceMap f = pUnCoalesce . pMap f
+pConcatMapJoin f = pConcat . pMap (pJoin.f)
+pUnCoalesceMapJoin f = pUnCoalesce . pMap (pJoin.f)
+pCoalesceMap n f = pUnCoalesce . pMap f . coalesce n
+pSplitMap n f = pConcat . pMap f . splitUp n
 
 ---------------------------------------------------------------------------
 -- pMap and pZipWith
