@@ -189,7 +189,14 @@ zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
 zipWith op a1 a2 =  
   mkPull (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))
-                                      
+
+
+zipWith3 :: ASize l => (a -> b -> c-> d) -> Pull l a -> Pull l b -> Pull l c -> Pull l d
+zipWith3 f a1 a2 a3 =  
+  mkPull (minimum [len a1,len a2,len a3]) $ 
+    \ix -> f (a1 ! ix)  (a2 ! ix) (a3 ! ix)
+
+  
 ---------------------------------------------------------------------------
 -- pair 
 ---------------------------------------------------------------------------
