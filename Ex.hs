@@ -112,12 +112,13 @@ sklansky2
      Int
      -> (a -> a -> a)
      -> Pull Word32 a
-     -> Program Block (Push Block Word32 a)
+     -> BProgram (SPush Block a)
 sklansky2 l f arr =
   do
     (mut :: Mutable Shared a)  <- newS $ push arr -- (2^l) 
     arr2 <- seq' [phase mut i f | i <- [0..(l-1)]] arr
     return $ push arr2
+    
 seq' :: MemoryOps a
         => [SPull  a -> BProgram (SPull a)] 
         -> SPull  a
@@ -155,7 +156,7 @@ oneBits i = (2^i) - 1
 
 
 mapScan2 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan2 n f = pConcatMap $ sklansky2 n f
+mapScan2 n f = pConcatMap $ pJoin . sklansky2 n f
 
 
 getScan2 n = namedPrint ("scanB" ++ show (2^n))  (mapScan2 n (+) . splitUp (2^n)) (input :- ())

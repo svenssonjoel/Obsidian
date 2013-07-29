@@ -37,24 +37,6 @@ pSplitMap n f = pConcat . pMap f . splitUp n
 -- Maybe remove these and just use fmap, zipWith. 
 
 pMap :: ASize l
-<<<<<<< HEAD
-         => (a -> Program t (SPush t b))
-         -> Pull l a
-         -> Pull l (SPush t b) 
-pMap f as =
-  mkPull n $ \bix -> 
-    mkPush (fromIntegral rn) $
-      \wf ->
-      do 
-        --(Push _ p) <- f (as ! bix)
-        p <- f (as ! bix) 
-        p <: wf
-  where
-    n = len as
-    rn = len $ fst $ runPrg 0 (f (as ! 0))
-
--- Bug ? (may need ot tweak the wf) 
-=======
         => (a -> SPush t b)
         -> Pull l a
         -> Pull l (SPush t b)
@@ -90,7 +72,6 @@ generate n f =
 ---------------------------------------------------------------------------
 
 -- parallel concat of a pull of push 
->>>>>>> 5f99df68c0a0ab2d43c3ec48e22e84864948c0de
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -102,11 +83,7 @@ pConcat arr =
     n  = len arr
     rn = len $ arr ! 0
 
-<<<<<<< HEAD
-
-=======
 -- sequential concatenation of a pull of push 
->>>>>>> 5f99df68c0a0ab2d43c3ec48e22e84864948c0de
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
 sConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -118,53 +95,6 @@ sConcat arr =
   where 
     n  = len arr
     rn = len $ arr ! 0
-<<<<<<< HEAD
-    
----------------------------------------------------------------------------
--- Parallel ZipWith 
----------------------------------------------------------------------------
-
-pZipWith :: ASize l => (a -> b -> Program t (SPush t c))
-           -> Pull l a
-           -> Pull l b
-           -> Pull l (SPush t c)
-pZipWith f as bs =
-  mkPull instances $ \ bix -> 
-    mkPush (fromIntegral rn) $
-    \wf ->
-    do
-      -- (Push _ p) <- f (as ! bix) (bs ! bix)
-      p <- f (as ! bix) (bs ! bix) 
-      -- let wf' a ix = wf a (bix * fromIntegral rn + ix) -- (bix * sizeConv n + ix)
-      p <: wf
-
-    where
-      -- Is this ok?! (does it break?) 
-      rn = len $ fst $ runPrg 0 (f (as ! 0) (bs ! 0))
-   
-      instances = min (len as) (len bs) 
-
----------------------------------------------------------------------------
--- Parallel Generate 
----------------------------------------------------------------------------
-generate :: ASize l
-              => l
-              -> (EWord32 -> Program t (SPush t b))
-              -> Push (Step t)  l b
-generate n f =
-    mkPush (n * fromIntegral inner) $ \wf ->
-    forAll (sizeConv n) $ \tid ->
-    do
-      -- (Push _ p) <- f tid
-      p <- f tid
-      let wf' a ix = wf a (tid * fromIntegral inner + ix)
-      p <: wf' 
-    where
-      inner = len $ fst  $ runPrg 0 ( f 0)     
-
-
-=======
->>>>>>> 5f99df68c0a0ab2d43c3ec48e22e84864948c0de
 
 -- pUnCoalesce adapted from Niklas branch. 
 pUnCoalesce :: ASize l => Pull l (SPush t a) -> Push (Step t) l a

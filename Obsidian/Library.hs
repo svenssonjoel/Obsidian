@@ -92,7 +92,7 @@ replicate n a = mkPull n (\ix -> a)
 singleton a = replicate 1 a
 
 -- From Niklas
-iterations n = mkpull n id 
+iterations n = mkPull n id 
 
 ---------------------------------------------------------------------------
 -- last
