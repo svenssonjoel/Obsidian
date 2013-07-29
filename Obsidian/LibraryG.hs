@@ -17,6 +17,8 @@ import Obsidian.Library
 import Control.Monad
 import Data.Word
 
+import Prelude hiding (zipWith)
+
 ---------------------------------------------------------------------------
 -- Parallel concatMap  
 ---------------------------------------------------------------------------
@@ -31,6 +33,8 @@ pSplitMap n f = pConcat . pMap f . splitUp n
 ---------------------------------------------------------------------------
 -- pMap and pZipWith
 ---------------------------------------------------------------------------
+-- pMap and pZipWith are now just fmap and zipWith.
+-- Maybe remove these and just use fmap, zipWith. 
 
 pMap :: ASize l
 <<<<<<< HEAD
@@ -54,17 +58,15 @@ pMap f as =
         => (a -> SPush t b)
         -> Pull l a
         -> Pull l (SPush t b)
-pMap f as = mkPull (len as) $ \bix -> f (as ! bix)
+pMap = fmap  
 
 pZipWith :: ASize l
             => (a -> b -> SPush t c)
             -> Pull l a
             -> Pull l b
             -> Pull l (SPush t c)
-pZipWith f as bs =
-  mkPull rn $ \bix -> f (as ! bix) (bs ! bix) 
-  where rn = min (len as) (len bs) 
-
+pZipWith = zipWith
+    
 
 ---------------------------------------------------------------------------
 -- Parallel Generate 
