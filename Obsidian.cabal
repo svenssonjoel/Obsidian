@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.0.0.10
+Version:        0.0.0.11
 
 
 License:                BSD3
@@ -51,6 +51,7 @@ Library
                ,  Obsidian.LibraryG 
 --               ,  Obsidian.Lift
                ,  Obsidian.Memory
+               ,  Obsidian.Mutable
                ,  Obsidian.Names
                ,  Obsidian.Program 
                ,  Obsidian.SeqLoop 
