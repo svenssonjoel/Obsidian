@@ -8,17 +8,26 @@
     + Mutable arrays:
       Mutable arrays in shared memory can be created.
       Global mutable arrays can be passed into a kernel as an argument. 
+    + Atomic operations on mutable arrays.
     + Executing kernels from within Haskell is possible on platforms 
       supported by the CUDA bindings (Linux, Mac). 
       Obsidian.Run.CUDA.Exec provides a very low level interface to running kernels. 
-
-   
-      
-
+    + A collection of sequential building blocks for sequential (reg->reg 
+       computations). 
+          + Fold 
+          + Scan 
+          + Sort (todo). How ? Which kind of sort. 
+	    I want one with known number of iterations and in-place capability. 
+          + Merge (todo) 
+          + Filter (todo, Tricky, whats the lengths?) 
+  
+* Latest tweaks 
+  + pMap is now just fmap! (simplification)
+  
 
 * TODOs
-  + TODO: Look at code generation, is there a problem with the memory management ? 
-  + TODO: global arrays have sizes! make the code generation aware of this! 
+  + Look at code generation, is there a problem with the memory management ? 
+  + global arrays have sizes! make the code generation aware of this! 
   + Think about completely dissallowing Int and Word as types in Obsidian programs.
     Require that the programmer explicitly makes a Int32, Int64, Word32, Word64 Choice-
   + (In Progress) update the SPDMC based code outputer (cleaner, nicer) 
@@ -27,22 +36,7 @@
     * CodeGen.Liveness.hs 
   + The CSE code is definitely completely broken in relation 
     to all news now.
-  + Make sure unnecessary usage of shared memory can be avoided.    
+  + More thinking about the mutable array interface(and implementation) is needed.
 
-* Next version of Obsidian
-  * Features (in progress): 
-     + Only one kind of Pull array.
-       However, it can have either Dynamic or Statically known length.
-     + A Set of lift functional that lifts local computations 
-       to global, lifts sequential into local. 
-     + A collection of sequential building blocks for sequential (reg->reg 
-       computations). 
-       
-       * Currently: 
-          + Fold 
-          + Scan 
-          + Sort (todo). How ? Which kind of sort. 
-	    I want one with known number of iterations and in-place capability. 
-          + Merge (todo) 
-          + Filter (todo, Tricky, whats the lengths?) 
+  
 	    
