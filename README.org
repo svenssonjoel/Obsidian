@@ -16,8 +16,7 @@
        computations). 
           + Fold 
           + Scan 
-          + Sort (todo). How ? Which kind of sort. 
-	    I want one with known number of iterations and in-place capability. 
+          + Sort (todo). How ? Which kind of sort. I want one with known number of iterations and in-place capability. 
           + Merge (todo) 
           + Filter (todo, Tricky, whats the lengths?) 
   
