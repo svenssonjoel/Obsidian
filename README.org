@@ -2,11 +2,19 @@
   
   An embedded language for GPU kernel programming. 
   
-  * Current features 
-    + Pull arrays
-    + Push arrays 
-    + Mutable arrays 
-        
+* Current features 
+    + Pull arrays: traditional "arrays as function from index to value" 
+    + Push arrays: a computation that is parameterised on a "write function". 
+    + Mutable arrays:
+      Mutable arrays in shared memory can be created.
+      Global mutable arrays can be passed into a kernel as an argument. 
+    + Executing kernels from within Haskell is possible on platforms 
+      supported by the CUDA bindings (Linux, Mac). 
+      Obsidian.Run.CUDA.Exec provides a very low level interface to running kernels. 
+
+   
+      
+
 
 * TODOs
   + TODO: Look at code generation, is there a problem with the memory management ? 
