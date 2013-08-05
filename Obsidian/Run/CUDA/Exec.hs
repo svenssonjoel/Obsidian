@@ -92,7 +92,7 @@ data Kernel = Kernel {kFun :: CUDA.Fun,
 newIdent :: CUDA Int
 newIdent =
   do
-    i <- return . csIdent =<< get
+    i <- gets csIdent
     modify (\s -> s {csIdent = i+1 }) 
     return i
   
