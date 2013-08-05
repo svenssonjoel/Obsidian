@@ -2,7 +2,7 @@
 
 {-# LANGUAGE GADTs #-} 
 module Obsidian.CodeGen.CUDA 
-       (genKernel) where  
+       (genKernel, genKernelSpecs) where  
 
 import Data.List
 import Data.Word 
@@ -51,14 +51,12 @@ kernelHead name ins outs =
     typeList :: [(String,Type)] -> [String] 
     typeList []              = [] 
     typeList ((a,t):xs)      = (genType gc t ++ a) : typeList xs
- 
+
 ---------------------------------------------------------------------------
--- genKernel 
----------------------------------------------------------------------------
-    
---genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String
-genKernel :: ToProgram a => String -> a -> InputList a -> String     
-genKernel name kernel a = proto ++ ts ++ cuda 
+-- getKernelSpecs 
+--------------------------------------------------------------------------- 
+genKernelSpecs :: ToProgram a => String -> a -> InputList a -> (String,Word32,Word32)
+genKernelSpecs name kernel a = (proto ++ ts ++ ms ++ cuda,nThreads,bytesShared) 
   where
     (ins,im) = toProgram 0 kernel a
 
@@ -71,8 +69,11 @@ genKernel name kernel a = proto ++ ts ++ cuda
              
     -- What if its Right ??? (I DONT KNOW!) 
     (Left threadBudget) = numThreads im
-    ts = "/* number of threads needed " ++ show threadBudget ++ "*/\n"
-
+    nThreads = threadBudget
+    bytesShared = size m
+    ts = "/* Number of threads needed: " ++ show nThreads ++ "*/\n"
+    ms = "/* Amount of shared memory needed: " ++ show bytesShared ++ "*/\n"
+    
     spmd = imToSPMDC threadBudget im
     
     
@@ -94,6 +95,50 @@ genKernel name kernel a = proto ++ ts ++ cuda
 
     proto = getProto name ins outs 
     cuda = printCKernel (PPConfig "__global__" "" "" "__syncthreads()") ckernel 
+                               
+---------------------------------------------------------------------------
+-- genKernel 
+---------------------------------------------------------------------------
+    
+--genKernel :: ToProgram a b => String -> (a -> b) -> Ips a b -> String
+genKernel :: ToProgram a => String -> a -> InputList a -> String     
+genKernel name kernel a = (\(x,_,_) -> x) $ genKernelSpecs name kernel a -- proto ++ ts ++ ms ++ cuda 
+  -- where
+  --   (ins,im) = toProgram 0 kernel a
+
+  --   outs = getOutputs im
+    
+  --   lc  = computeLiveness im 
+    
+  --   -- Creates (name -> memory address) map      
+  --   (m,mm) = mmIM lc sharedMem Map.empty
+             
+  --   -- What if its Right ??? (I DONT KNOW!) 
+  --   (Left threadBudget) = numThreads im
+  --   ts = "/* Number of threads needed: " ++ show threadBudget ++ "*/\n"
+  --   ms = "/* Amount of shared memory needed: " ++ show (size m) ++ "*/\n"
+    
+  --   spmd = imToSPMDC threadBudget im
+    
+    
+  --   body' = (if size m > 0 then (shared :) else id)  $ mmSPMDC mm spmd
+
+
+  --   --em = snd $ execState (collectExps body') ( 0, Map.empty)
+  --   --(decls,body'') = replacePass em body'
+  --   --spdecls = declsToSPMDC decls 
+
+  --   body = body' -- spdecls ++ body''
+              
+  --   swap (x,y) = (y,x)
+  --   inputs = map ((\(t,n) -> (typeToCType t,n)) . swap) ins
+  --   outputs = map ((\(t,n) -> (typeToCType t,n)) . swap) outs 
+    
+  --   ckernel = CKernel CQualifyerKernel CVoid name (inputs++outputs) body
+  --   shared = CDecl (CQualified CQualifyerExtern (CQualified CQualifyerShared ((CQualified (CQualifyerAttrib (CAttribAligned 16)) (CArray []  (CWord8)))))) "sbase"
+
+  --   proto = getProto name ins outs 
+  --   cuda = printCKernel (PPConfig "__global__" "" "" "__syncthreads()") ckernel 
 
 
 ---------------------------------------------------------------------------

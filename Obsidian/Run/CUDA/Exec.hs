@@ -86,7 +86,8 @@ data CUDAState = CUDAState { csIdent :: Int,
 type CUDA a =  StateT CUDAState IO a
 
 data Kernel = Kernel {kFun :: CUDA.Fun,
-                      kThreadsPerBlock :: Word32 } 
+                      kThreadsPerBlock :: Word32,
+                      kBytesShared :: Word32} 
 
 newIdent :: CUDA Int
 newIdent =
@@ -123,10 +124,10 @@ capture f inputs =
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
 
-        (_,im) = toProgram 0 f inputs
-        (Left prgThreads) = numThreads im --getNThreads f inputs
+        --(_,im) = toProgram 0 f inputs
+        --(Left prgThreads) = numThreads im --getNThreads f inputs
         -- (Right _) = numThreads im -- is not taken care of! 
-        prgstr = genKernel kn f inputs 
+        (prgstr,nt,bs) = genKernelSpecs kn f inputs 
         header = "#include <stdint.h>\n" -- more includes ? 
          
     lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
@@ -137,7 +138,7 @@ capture f inputs =
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $ Kernel fun prgThreads
+    return $ Kernel fun nt bs -- prgThreads
 
 archStr :: CUDA.DeviceProperties -> String
 archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
@@ -191,15 +192,15 @@ allocaVector n f =
 ---------------------------------------------------------------------------
 execute :: (ParamList a, ParamList b) => Kernel
            -> Word32 -- Number of blocks 
-           -> Word32 -- Amount of Shared mem (get from an analysis) 
+         --  -> Word32 -- Amount of Shared mem (get from an analysis) 
          --  -> Maybe CUDAStream.Stream
            -> a -> b
            -> CUDA ()
-execute k nb sm {- stream -} a b = lift $ 
+execute k nb {- stream -} a b = lift $ 
   CUDA.launchKernel (kFun k)
                     (fromIntegral nb,1,1)
                     (fromIntegral (kThreadsPerBlock k), 1, 1)
-                    (fromIntegral sm)
+                    (fromIntegral (kBytesShared k))
                     Nothing -- stream
                     (toParamList a ++ toParamList b) -- params
 
