@@ -63,7 +63,7 @@ mf arr = pConcatMap mapTest (splitUp 256 arr)
 
 mf2 :: Pull (Exp Word32) EInt32
      -> DPush Grid EInt32
-mf2 arr = pConcat $ reverse $ pMap  mapTest (splitUp 256 arr) 
+mf2 arr = pConcat $ reverse $ fmap  mapTest (splitUp 256 arr) 
 
 getmf2 = namedPrint "mf2" mf2 (input :- ())
 
