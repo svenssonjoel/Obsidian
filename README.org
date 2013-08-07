@@ -40,5 +40,6 @@
     The sizes of Local computations are now set by the splitUp functions. 
     The number and types of input a generated kernel takes should be possible 
     to extract from the type of the obsidian function used to generate it. 
-  
+  + There is a bug causing some a -> GProgram (Push b) kernels to generate no code. 
+    See what is wrong, start in InOut.hs..
 	    

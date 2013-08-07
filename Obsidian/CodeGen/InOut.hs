@@ -72,9 +72,17 @@ typeOf_ a = typeOf (Literal a)
 
 ---------------------------------------------------------------------------
 -- Base cases
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
+
+
+-- This instance is incorrect
 instance ToProgram (GProgram a) where
+  -- toProgram i prg () = toProgram $ pJoin prg
   toProgram i prg () = ([],CG.compileStep1 prg)
+  -- Needs to deal with GProgram () and GProgram (Push a), GProgram (Pull a)
+  -- in different ways.
+  -- When fixing this, also think about leaving the current set up
+  -- where the programmer is forced to provide prototypical inputs.   
 
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
   toProgram i p {-(Push _ p)-} a =
