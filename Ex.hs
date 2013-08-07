@@ -45,7 +45,7 @@ mapTest :: Pull Word32 EInt32 -> SPush Block EInt32
 mapTest arr = push (fmap (+1) arr) 
  
 splitUpS :: Word32 -> Pull Word32 a -> Pull Word32 (Pull Word32 a)
-splitUpS n arr = mkPull (m `div` n) $ 
+splitUpS n arr = mkPull (m `div` n) $
                  \i -> mkPull n $ \j -> arr ! (i * (fromIntegral n) + j)
   where
     m = len arr                                               
