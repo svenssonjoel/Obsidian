@@ -74,7 +74,7 @@ newS arr = do
   (snames :: Names a) <- Mem.names "arr"
   Mem.allocateArray snames n
   let mut = Mutable n snames
-  forceTo mut arr
+  writeTo mut arr
   return $ mut -- Mutable n snames 
   where
     n = len arr
