@@ -36,6 +36,9 @@
   + The CSE code is definitely completely broken in relation 
     to all news now.
   + More thinking about the mutable array interface(and implementation) is needed.
-
+  + Generating a kernel should not really need the prototypical input arrays. 
+    The sizes of Local computations are now set by the splitUp functions. 
+    The number and types of input a generated kernel takes should be possible 
+    to extract from the type of the obsidian function used to generate it. 
   
 	    

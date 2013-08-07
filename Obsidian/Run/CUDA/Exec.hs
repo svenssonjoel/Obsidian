@@ -190,7 +190,8 @@ allocaVector n f =
 ---------------------------------------------------------------------------
 -- execute Kernels on the GPU 
 ---------------------------------------------------------------------------
-execute :: (ParamList a, ParamList b) => Kernel
+execute :: (ParamList a, ParamList b)
+           => Kernel
            -> Word32 -- Number of blocks 
          --  -> Word32 -- Amount of Shared mem (get from an analysis) 
          --  -> Maybe CUDAStream.Stream
