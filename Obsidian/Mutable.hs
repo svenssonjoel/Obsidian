@@ -22,7 +22,7 @@ import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
-import qualified  Obsidian.Memory as Mem
+import Obsidian.Memory
 import Obsidian.Names
 import Obsidian.Array
 import Obsidian.Atomic 
@@ -69,10 +69,10 @@ undefinedMutable v = Mutable v undefined
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: Mem.MemoryOps a => SPush Block a -> BProgram (Mutable Shared a)
+newS :: MemoryOps a => SPush Block a -> BProgram (Mutable Shared a)
 newS arr = do
-  (snames :: Names a) <- Mem.names "arr"
-  Mem.allocateArray snames n
+  (snames :: Names a) <- moNames "arr"
+  moAllocateArray snames n
   let mut = Mutable n snames
   writeTo mut arr
   return $ mut -- Mutable n snames 
@@ -83,18 +83,18 @@ newS arr = do
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
-writeTo :: Mem.MemoryOps a
+writeTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
            -> BProgram ()
 writeTo (Mutable n snames) p 
-  | n <= m = p <: (Mem.assignArray snames)
+  | n <= m = p <: (moAssignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 
   where
     m = len p
     
 -- Add forceTo with offsets (why? just thought it might be useful)
-forceTo :: Mem.MemoryOps a
+forceTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
            -> BProgram ()
@@ -106,8 +106,8 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: Mem.MemoryOps a => Mutable Shared a -> SPull  a
-pullFrom (Mutable n snames) = Mem.pullFrom snames n  
+pullFrom :: MemoryOps a => Mutable Shared a -> SPull  a
+pullFrom (Mutable n snames) = moPullFrom snames n  
 
 
 ---------------------------------------------------------------------------

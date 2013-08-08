@@ -15,9 +15,10 @@ import Obsidian.CodeGen.InOut
 import Obsidian.CodeGen.Common (genType,GenConfig(..))
 import Obsidian.Types -- experimental 
 
-import qualified Data.Vector.Storable as V
 import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?) 
+
+import qualified Data.Vector.Storable as V 
 
 import Data.Word
 import Data.Supply
@@ -185,6 +186,26 @@ allocaVector n f =
     b <- f cvector -- dptr
     lift $ CUDA.free dptr
     return b 
+
+allocaFillVector :: V.Storable a => 
+                Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b                
+allocaFillVector n a f =
+  do
+    dptr <- lift $ CUDA.mallocArray n
+    lift $ CUDA.memset dptr n a 
+    let cvector = CUDAVector dptr (fromIntegral n)
+    b <- f cvector -- dptr
+    lift $ CUDA.free dptr
+    return b 
+
+---------------------------------------------------------------------------
+-- Fill a Vector
+---------------------------------------------------------------------------
+fill :: V.Storable a =>
+        CUDAVector a -> 
+        a -> CUDA ()
+fill (CUDAVector dptr n) a =
+  lift $ CUDA.memset dptr (fromIntegral n) a 
 
 
 ---------------------------------------------------------------------------

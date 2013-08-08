@@ -27,102 +27,103 @@ import Data.Word
 -- Local Memory
 ---------------------------------------------------------------------------
 class MemoryOps a where
-  names          :: String -> Program t (Names a) 
-  allocateArray  :: Names a -> Word32 -> Program Block ()
-  allocateScalar :: Names a -> Program t () 
-  assignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
-  assignScalar   :: Names a -> a -> TProgram () 
-  pullFrom       :: Names a -> Word32 -> Pull Word32 a
-  readFrom       :: Names a -> a
+  moNames          :: String -> Program t (Names a) 
+  moAllocateArray  :: Names a -> Word32 -> Program Block ()
+  moAllocateScalar :: Names a -> Program t () 
+  moAssignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
+  moAssignScalar   :: Names a -> a -> TProgram () 
+  moPullFrom       :: Names a -> Word32 -> Pull Word32 a
+  moReadFrom       :: Names a -> a
 
 
 ---------------------------------------------------------------------------
 -- Instances
 ---------------------------------------------------------------------------
 instance Scalar a => MemoryOps (Exp a) where
-  names pre = do {i <- uniqueNamed pre; return (Single i)}
-  allocateArray (Single name) n = 
+  moNames pre = do {i <- uniqueNamed pre; return (Single i)}
+  moAllocateArray (Single name) n = 
     Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Pointer (typeOf (undefined :: Exp a)))
-  allocateScalar (Single name) =
+  moAllocateScalar (Single name) =
     Declare name (typeOf (undefined :: Exp a)) 
-  assignArray  (Single name) a ix = Assign name [ix] a
+  moAssignArray  (Single name) a ix = Assign name [ix] a
 
-  assignScalar (Single name) a    = Assign name [] a  
-  pullFrom (Single name) n = mkPull n (\i -> index name i) 
-  readFrom (Single name) = variable name
+  moAssignScalar (Single name) a    = Assign name [] a  
+  moPullFrom (Single name) n = mkPull n (\i -> index name i) 
+  moReadFrom  (Single name) = variable name
 
 
 instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
-  names pre {-(a,b)-} =
+  moNames pre {-(a,b)-} =
     do
-      (a' :: Names a) <- names pre --a
-      (b' :: Names b) <- names pre --b
+      (a' :: Names a) <- moNames pre --a
+      (b' :: Names b) <- moNames pre --b
       return $ Tuple a' b'
-  allocateArray (Tuple ns1 ns2) {-(a,b)-} n =
+  moAllocateArray (Tuple ns1 ns2) {-(a,b)-} n =
     do 
-      allocateArray ns1 {-a-} n
-      allocateArray ns2 {-b-} n
-  allocateScalar (Tuple ns1 ns2) {-(a,b)-} =
+      moAllocateArray ns1 {-a-} n
+      moAllocateArray ns2 {-b-} n
+  moAllocateScalar (Tuple ns1 ns2) {-(a,b)-} =
     do
-      allocateScalar ns1 {-a-}
-      allocateScalar ns2 {-b-} 
-  assignArray (Tuple ns1 ns2) (a,b) ix =
+      moAllocateScalar ns1 {-a-}
+      moAllocateScalar ns2 {-b-} 
+  moAssignArray (Tuple ns1 ns2) (a,b) ix =
     do
-      assignArray ns1 a ix 
-      assignArray ns2 b ix
+      moAssignArray ns1 a ix 
+      moAssignArray ns2 b ix
 
-  assignScalar (Tuple ns1 ns2) (a,b) =
+  moAssignScalar (Tuple ns1 ns2) (a,b) =
     do
-      assignScalar ns1 a 
-      assignScalar ns2 b  
-  pullFrom (Tuple ns1 ns2) n =
-    let p1 = pullFrom ns1 n
-        p2 = pullFrom ns2 n
+      moAssignScalar ns1 a 
+      moAssignScalar ns2 b  
+
+  moPullFrom (Tuple ns1 ns2) n =
+    let p1 = moPullFrom ns1 n
+        p2 = moPullFrom ns2 n
     in mkPull n (\ix -> (p1 ! ix, p2 ! ix))
-  readFrom (Tuple ns1 ns2)  =
-    let p1 = readFrom ns1
-        p2 = readFrom ns2
+  moReadFrom (Tuple ns1 ns2)  =
+    let p1 = moReadFrom ns1
+        p2 = moReadFrom ns2
     in (p1,p2)
 
 
 instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
-  names pre {-(a,b)-} =
+  moNames pre {-(a,b)-} =
     do
-      (a :: Names a) <- names pre --a
-      (b :: Names b) <- names pre --b
-      (c :: Names c) <- names pre --b
+      (a :: Names a) <- moNames pre --a
+      (b :: Names b) <- moNames pre --b
+      (c :: Names c) <- moNames pre --b
       return $ Triple a b c
-  allocateArray (Triple ns1 ns2 ns3) {-(a,b)-} n =
+  moAllocateArray (Triple ns1 ns2 ns3) {-(a,b)-} n =
     do 
-      allocateArray ns1 {-a-} n
-      allocateArray ns2 {-b-} n
-      allocateArray ns3 {-b-} n
-  allocateScalar (Triple ns1 ns2 ns3) {-(a,b)-} =
+      moAllocateArray ns1 {-a-} n
+      moAllocateArray ns2 {-b-} n
+      moAllocateArray ns3 {-b-} n
+  moAllocateScalar (Triple ns1 ns2 ns3) {-(a,b)-} =
     do
-      allocateScalar ns1 {-a-}
-      allocateScalar ns2 {-b-}
-      allocateScalar ns3 {-b-} 
-  assignArray (Triple ns1 ns2 ns3) (a,b,c) ix =
+      moAllocateScalar ns1 {-a-}
+      moAllocateScalar ns2 {-b-}
+      moAllocateScalar ns3 {-b-} 
+  moAssignArray (Triple ns1 ns2 ns3) (a,b,c) ix =
     do
-      assignArray ns1 a ix 
-      assignArray ns2 b ix
-      assignArray ns3 c ix
+      moAssignArray ns1 a ix 
+      moAssignArray ns2 b ix
+      moAssignArray ns3 c ix
 
-  assignScalar (Triple ns1 ns2 ns3) (a,b,c) =
+  moAssignScalar (Triple ns1 ns2 ns3) (a,b,c) =
     do
-      assignScalar ns1 a 
-      assignScalar ns2 b
-      assignScalar ns3 c
+      moAssignScalar ns1 a 
+      moAssignScalar ns2 b
+      moAssignScalar ns3 c
       
-  pullFrom (Triple ns1 ns2 ns3) n =
-    let p1 = pullFrom ns1 n
-        p2 = pullFrom ns2 n
-        p3 = pullFrom ns3 n
+  moPullFrom (Triple ns1 ns2 ns3) n =
+    let p1 = moPullFrom ns1 n
+        p2 = moPullFrom ns2 n
+        p3 = moPullFrom ns3 n
     in mkPull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
-  readFrom (Triple ns1 ns2 ns3)  =
-    let p1 = readFrom ns1
-        p2 = readFrom ns2
-        p3 = readFrom ns3
+  moReadFrom (Triple ns1 ns2 ns3)  =
+    let p1 = moReadFrom ns1
+        p2 = moReadFrom ns2
+        p3 = moReadFrom ns3
     in (p1,p2,p3)
  

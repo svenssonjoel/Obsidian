@@ -29,17 +29,17 @@ seqReduce :: (ASize l, MemoryOps a)
 seqReduce op arr =
   mkPush 1 $ \wf -> 
   do
-    (ns :: Names a)  <- names "v" 
-    allocateScalar ns 
+    (ns :: Names a)  <- moNames "v" 
+    moAllocateScalar ns 
 
-    assignScalar ns init  
+    moAssignScalar ns init  
  
     seqFor (n-1) $ \ ix ->
       do
-        assignScalar ns (readFrom ns `op`  (arr ! (ix + 1)))
+        moAssignScalar ns (moReadFrom ns `op`  (arr ! (ix + 1)))
     
-    wf (readFrom ns) 0 
-  where 
+    wf (moReadFrom ns) 0 
+  where
     n = sizeConv$ len arr
     init = arr ! 0 
 
@@ -56,40 +56,19 @@ seqIterate :: (ASize l, MemoryOps a)
 seqIterate n f init =
   mkPush 1 $  \wf -> 
   do
-    (ns :: Names a)  <- names "v" 
-    allocateScalar ns 
+    (ns :: Names a)  <- moNames "v" 
+    moAllocateScalar ns 
 
-    assignScalar ns init
+    moAssignScalar ns init
     seqFor n $ \ix ->
       do
-        assignScalar ns $ f ix (readFrom ns)
+        moAssignScalar ns $ f ix (moReadFrom ns)
 
-    wf (readFrom ns) 0 
+    wf (moReadFrom ns) 0 
 
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------    
--- seqUntil :: MemoryOps a
---                  => (a -> a)
---                  -> (a -> EBool)
---                  -> a
---                  -> Program Thread a
--- seqUntil f p init =
---   do 
---     (ns :: Names a) <- names "v" 
---     allocateScalar ns 
-
---     assignScalar ns init
---     SeqWhile (p (readFrom ns)) $ 
---       do
---         (tmp :: Names a) <- names "t"
---         allocateScalar tmp
---         assignScalar tmp (readFrom ns) 
---         assignScalar ns $ f (readFrom tmp)
-    
---     return $ readFrom ns
-
-
 seqUntil :: (ASize l, MemoryOps a) 
             => (a -> a)
             -> (a -> EBool)
@@ -98,17 +77,17 @@ seqUntil :: (ASize l, MemoryOps a)
 seqUntil f p init =
   mkPush 1 $ \wf -> 
   do 
-    (ns :: Names a) <- names "v" 
-    allocateScalar ns 
+    (ns :: Names a) <- moNames "v" 
+    moAllocateScalar ns 
 
-    assignScalar ns init
-    SeqWhile (p (readFrom ns)) $ 
+    moAssignScalar ns init
+    SeqWhile (p (moReadFrom ns)) $ 
       do
-        (tmp :: Names a) <- names "t"
-        allocateScalar tmp
-        assignScalar tmp (readFrom ns) 
-        assignScalar ns $ f (readFrom tmp)
-    wf (readFrom ns) 0 
+        (tmp :: Names a) <- moNames "t"
+        moAllocateScalar tmp
+        moAssignScalar tmp (moReadFrom ns) 
+        moAssignScalar ns $ f (moReadFrom tmp)
+    wf (moReadFrom ns) 0 
   
 ---------------------------------------------------------------------------
 -- Sequential scan
@@ -120,13 +99,13 @@ seqScan :: (ASize l, MemoryOps a)
            -> Push Thread l a
 seqScan op arr {-(Pull n ixf)-}  =
   mkPush n $ \wf -> do
-    (ns :: Names a) <- names "v" -- (ixf 0) 
-    allocateScalar ns -- (ixf 0)
-    assignScalar ns (arr ! 0)
-    wf (readFrom ns) 0 
+    (ns :: Names a) <- moNames "v" -- (ixf 0) 
+    moAllocateScalar ns -- (ixf 0)
+    moAssignScalar ns (arr ! 0)
+    wf (moReadFrom ns) 0 
     seqFor (sizeConv (n-1)) $ \ix -> do
-      assignScalar ns  $ readFrom ns `op` (arr ! (ix + 1))
-      wf (readFrom ns) (ix+1)
+      moAssignScalar ns  $ moReadFrom ns `op` (arr ! (ix + 1))
+      wf (moReadFrom ns) (ix+1)
     where
       n = len arr
 
@@ -138,13 +117,13 @@ seqScanCin :: (ASize l, MemoryOps a)
            -> Push Thread l a
 seqScanCin op a arr {-(Pull n ixf)-} =
   mkPush n $ \wf -> do
-    (ns :: Names a) <- names "v" -- (ixf 0) 
-    allocateScalar ns -- (ixf 0)
-    assignScalar ns a -- (ixf 0)
+    (ns :: Names a) <- moNames "v" -- (ixf 0) 
+    moAllocateScalar ns -- (ixf 0)
+    moAssignScalar ns a -- (ixf 0)
     -- wf (readFrom ns) 0 
     seqFor (sizeConv  n) $ \ix -> do
-      assignScalar ns  $ readFrom ns `op` (arr ! ix)
-      wf (readFrom ns) ix                  
+      moAssignScalar ns  $ moReadFrom ns `op` (arr ! ix)
+      wf (moReadFrom ns) ix                  
   where
     n = len arr
 ---------------------------------------------------------------------------

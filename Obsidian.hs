@@ -10,7 +10,8 @@ module Obsidian (module Obsidian.Array,
                  module Obsidian.Atomic, 
                  module Obsidian.SeqLoop, 
                  module Obsidian.Memory, 
-                 module Obsidian.Names ) where
+                 module Obsidian.Names,
+                 module Obsidian.Mutable ) where
 
 
 
@@ -27,3 +28,4 @@ import Obsidian.Atomic
 import Obsidian.SeqLoop
 import Obsidian.Memory
 import Obsidian.Names
+import Obsidian.Mutable
