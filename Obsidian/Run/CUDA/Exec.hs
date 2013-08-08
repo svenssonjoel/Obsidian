@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE TypeOperators,
+             ScopedTypeVariables #-} 
 
 module Obsidian.Run.CUDA.Exec where
 
@@ -16,7 +17,8 @@ import Obsidian.CodeGen.Common (genType,GenConfig(..))
 import Obsidian.Types -- experimental 
 
 import Foreign.Marshal.Array
-import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?) 
+import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
+import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
 
 import qualified Data.Vector.Storable as V 
 
@@ -234,7 +236,13 @@ peekCUDAVector :: V.Storable a => CUDAVector a -> CUDA [a]
 peekCUDAVector (CUDAVector dptr n) = 
     lift $ CUDA.peekListArray (fromIntegral n) dptr
     
-
+copyOut :: V.Storable a => CUDAVector a -> CUDA (V.Vector a)
+copyOut (CUDAVector dptr n) =
+  do
+    (fptr :: ForeignPtr a) <- lift $ mallocForeignPtrArray (fromIntegral n)
+    let ptr = unsafeForeignPtrToPtr fptr
+    lift $ CUDA.peekArray (fromIntegral n) dptr ptr
+    return $ V.unsafeFromForeignPtr fptr 0 (fromIntegral n)
 
 ---------------------------------------------------------------------------
 -- ParamList
