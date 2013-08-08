@@ -105,7 +105,7 @@ store = load
 -- Join (adapted from Niklas branch
 ---------------------------------------------------------------------------
 
-pJoin :: ASize s => Program t (Push t s a) -> Push t s a
+pJoin ::  Program t (Push t s a) -> Push t s a
 pJoin prg = mkPush n $ \wf -> do
   parr <- prg
   parr <: wf

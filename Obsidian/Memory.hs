@@ -126,36 +126,3 @@ instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
         p3 = readFrom ns3
     in (p1,p2,p3)
  
----------------------------------------------------------------------------
--- Global Memory
----------------------------------------------------------------------------
-
-{- 
-class GlobalMemoryOps a where
-  -- outputs   :: a -> GProgram Names
-  assignOut :: a -> Exp Word32 -> Program Thread ()
-
-
-instance Scalar a => GlobalMemoryOps (Exp a) where
-  --outputs a =
-  --  do
-  --    name <- Output $ Pointer $ typeOf a
-  --    return (Single name) 
-  assignOut  a ix =
-    do
-      name <- Output $ Pointer $ typeOf a
-      Assign name [ix] a
-
-
-instance (GlobalMemoryOps a, GlobalMemoryOps b)
-         => GlobalMemoryOps (a,b) where
-  --outputs (a,b) =
-  --  do
-  --    na <- outputs a
-  --    nb <- outputs b
-  --    return (Tuple [na,nb]) 
-  assignOut (a,b) ix =
-    do
-      assignOut a ix 
-      assignOut b ix
--}

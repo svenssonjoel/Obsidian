@@ -37,7 +37,8 @@ import Obsidian.Program
 import Obsidian.Force
 import Obsidian.Memory
 
-import Obsidian.Names -- PHASE OUT! 
+import Obsidian.Names
+import Obsidian.LibraryG
 
 import qualified Obsidian.CodeGen.Program as CG 
 
@@ -63,6 +64,9 @@ import Data.Int
 type Inputs = [(Name,Type)]
 
 
+---------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------- 
 class ToProgram a where
   toProgram :: Int -> a -> InputList a -> (Inputs,CG.IM)
 
@@ -74,15 +78,22 @@ typeOf_ a = typeOf (Literal a)
 -- Base cases
 ---------------------------------------------------------------------------
 
-
 -- This instance is incorrect
-instance ToProgram (GProgram a) where
+instance ToProgram (GProgram ()) where
   -- toProgram i prg () = toProgram $ pJoin prg
   toProgram i prg () = ([],CG.compileStep1 prg)
   -- Needs to deal with GProgram () and GProgram (Push a), GProgram (Pull a)
   -- in different ways.
-  -- When fixing this, also think about leaving the current set up
-  -- where the programmer is forced to provide prototypical inputs.   
+
+-- This instance might fix the problem with empty kernels being generated
+instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) where
+  toProgram i p a = toProgram i (pJoin p) a
+
+-- No ToProgram (GProgram (Pull a)) instance is needed. These programs
+-- cannot currently be created using the API. The reason is that GProgram (Pull a)
+-- implies a capability that GPUs do not have. The pulling from an array computed globally.
+-- That kind of computation can not be synced and its result would be undefined. 
+
 
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
   toProgram i p {-(Push _ p)-} a =
@@ -108,7 +119,11 @@ instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
         do
           Assign o1 [ix] a
           Assign o2 [ix] b
-      
+
+---------------------------------------------------------------------------
+-- Recursive
+---------------------------------------------------------------------------
+          
 instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,Pointer t):(n,Word32):ins,prg)
     where
@@ -166,4 +181,6 @@ type family InputList a
 type instance InputList (a -> b)        = a :- (InputList b)
 type instance InputList (Push Grid l b) = ()
 type instance InputList (GProgram b)    = () 
+
+
 

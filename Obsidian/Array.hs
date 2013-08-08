@@ -93,7 +93,7 @@ setSize n (Pull _ ixf) = mkPull n ixf
 --   * you cannot safely resize either push or pull arrays
 --   * you can shorten pull arrays safely. 
 class Array a where
-  len    :: ASize s => a s e -> s
+  len    :: a s e -> s
   aMap   :: (e -> e') -> a s e -> a s e'
   ixMap  :: (Exp Word32 -> Exp Word32)
             -> a s e -> a s e
