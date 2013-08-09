@@ -101,16 +101,8 @@ data Program t a where
             -> (EWord32 -> Program t ())
             -> Program (Step t) ()
 
-  --ForAllBlocks :: EWord32 -> (EWord32 -> Program Block ()) 
-  --                -> Program Grid ()
-
-  -- ForAllThreads :: (EWord32) -> (EWord32 -> Program Thread ())
-  --                  -> Program Grid ()
 
   -- Allocate shared memory in each MP
-
-  -- TODO: Change the Liveness analysis to a two-pass algo
-  --       and remove the Allocate constructor. 
   Allocate :: Name -> Word32 -> Type -> Program Block () 
 
   -- Automatic Variables

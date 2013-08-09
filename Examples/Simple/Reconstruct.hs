@@ -22,7 +22,8 @@ reconstruct blocks threads arr
               k  gix (ix + startIx)
 
               
-input :: DPull EWord32
-input = undefinedGlobal (variable "X")
 
 getReconstruct = putStrLn $ genKernel "recon" (reconstruct 256 256) (input :- ())
+  where
+    input :: DPull EWord32
+    input = undefinedGlobal (variable "X")
