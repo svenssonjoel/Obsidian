@@ -1,5 +1,5 @@
 
-module Histogram where
+module Histogram (histogram, getHistogram) where
 
 import Obsidian
 
@@ -9,13 +9,14 @@ import Prelude
 -- They currently have static size. (problem, not a porblem... i dont know)
 -- Also there is a special mutLen function. Not nice, should be len as for any other array.
 
-histogram :: Mutable Global EWord32 -> DPull EWord32 -> GProgram ()
-histogram mut arr =
+histogram :: EWord32    -- blocks
+             -> EWord32 -- threads
+             -> Mutable Global EWord32
+             -> DPull EWord32 -> GProgram ()
+histogram blocks threads mut arr =
   do
-    forAll2 b 256 $ \bid tid ->
-      atomicInc (arr ! (bid * 256 + tid)) mut
-  where
-    b = fromIntegral (mutlen mut `div` 256) 
+    forAll2 blocks threads $ \bid tid ->
+      atomicInc (arr ! (bid * threads + tid)) mut
 
 
 input :: DPull EWord32
@@ -24,5 +25,5 @@ input = undefinedGlobal (variable "X")
 inputM :: Mutable Global EWord32
 inputM = undefinedMutable (variable "X")
 
-getFullHistogram = putStrLn $ genKernel "histo" histogram (inputM :- input :- ())
+getHistogram = putStrLn $ genKernel "histo" (histogram 256 256) (inputM :- input :- ())
 
