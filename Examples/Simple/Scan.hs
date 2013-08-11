@@ -3,7 +3,7 @@ module Scan   where
 
 import Obsidian
 
-import Prelude
+import Prelude hiding (take, drop) 
 
 sklanskyLocal
   :: (Choice a, MemoryOps a) =>
@@ -29,3 +29,31 @@ getScan = putStrLn $ genKernel "scan" (sklansky 8 (+) . splitUp 256) (input :- (
    where
      input :: DPull EWord32
      input = undefinedGlobal (variable "X")
+
+  
+
+sklanskyLocalCin
+  :: (Choice a, MemoryOps a) =>
+     Int
+     -> (a -> a -> a)
+     -> a 
+     -> SPull a
+     -> BProgram (SPush Block a)
+sklanskyLocalCin n op cin arr =
+  do
+    arr' <- force $ applyToHead op cin arr 
+
+    sklanskyLocal n op arr'
+  where
+    applyToHead op cin arr =
+      let h = fmap (op cin) $ take 1 arr
+          b = drop 1 arr
+      in h `conc` b
+
+--sklanskyCin n op = pConcatMap $ pJoin . (sklanskyLocal n op)
+
+--getScanCin = putStrLn $ genKernel "scan" (sklanskyCin 8 (+) . splitUp 256) (input :- ())
+--   where
+--     input :: DPull EWord32
+--     input = undefinedGlobal (variable "X")
+

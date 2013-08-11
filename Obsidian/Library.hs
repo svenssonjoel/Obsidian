@@ -99,7 +99,7 @@ iterations n = mkPull n id
 ---------------------------------------------------------------------------
 
 last arr = arr ! fromIntegral ( len arr - 1)
-
+first arr = arr ! 0 
 
 ---------------------------------------------------------------------------
 -- Take and Drop (what about strange sizes ? fix) 
