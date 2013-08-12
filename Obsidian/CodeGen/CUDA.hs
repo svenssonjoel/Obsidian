@@ -2,7 +2,7 @@
 
 {-# LANGUAGE GADTs #-} 
 module Obsidian.CodeGen.CUDA 
-       (genKernel, genKernelSpecs) where  
+       (genKernel, genKernelSpecs, genKernelSpecsNL) where  
 
 import Data.List
 import Data.Word 
@@ -60,6 +60,50 @@ genKernelSpecs :: ToProgram a => String -> a -> InputList a -> (String,Word32,Wo
 genKernelSpecs name kernel a = (proto ++ ts ++ bs ++ cuda, nThreads, sharedBytes) 
   where
     (ins,im) = toProgram 0 kernel a
+
+    outs = getOutputs im
+    
+    lc  = computeLiveness im 
+    
+    -- Creates (name -> memory address) map      
+    (m,mm) = mmIM lc sharedMem Map.empty
+             
+    -- What if its Right ??? (I DONT KNOW!) 
+    (Left threadBudget) = numThreads im
+    nThreads = threadBudget
+    sharedBytes = size m 
+    ts = "/* Number of threads needed: " ++ show nThreads ++ "*/\n"
+    bs = "/* Bytes of shared memory needed: " ++ show sharedBytes ++ "*/\n"
+    spmd = imToSPMDC threadBudget im
+    
+    
+    body' = (if size m > 0 then (shared :) else id)  $ mmSPMDC mm spmd
+
+
+    --em = snd $ execState (collectExps body') ( 0, Map.empty)
+    --(decls,body'') = replacePass em body'
+    --spdecls = declsToSPMDC decls 
+
+    body = body' -- spdecls ++ body''
+              
+    swap (x,y) = (y,x)
+    inputs = map ((\(t,n) -> (typeToCType t,n)) . swap) ins
+    outputs = map ((\(t,n) -> (typeToCType t,n)) . swap) outs 
+    
+    ckernel = CKernel CQualifyerKernel CVoid name (inputs++outputs) body
+    shared = CDecl (CQualified CQualifyerExtern (CQualified CQualifyerShared ((CQualified (CQualifyerAttrib (CAttribAligned 16)) (CArray []  (CWord8)))))) "sbase"
+
+    proto = getProto name ins outs 
+    cuda = printCKernel (PPConfig "__global__" "" "" "__syncthreads()") ckernel 
+
+
+---------------------------------------------------------------------------
+-- genKernelSpecs
+---------------------------------------------------------------------------
+genKernelSpecsNL :: ToProgram prg => String -> prg -> (String,Word32,Word32)
+genKernelSpecsNL name kernel  = (proto ++ ts ++ bs ++ cuda, nThreads, sharedBytes) 
+  where
+    (ins,im) = toProgram_ 0 kernel
 
     outs = getOutputs im
     

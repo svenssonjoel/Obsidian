@@ -24,7 +24,7 @@ sklansky n op = pConcatMap $ pJoin . (sklanskyLocal n op)
 sklanskyLocalInc n op a arr =
   do
     arr' <- force =<<  sklanskyLocal n op arr
-    let arr'' = take (len arr) $ singleton a `conc` arr
+    let arr'' = take (len arr) $ singleton a `conc` arr'
     return $ push arr''    
 
 sklanskyInc n op a  = pConcatMap $ pJoin . (sklanskyLocalInc n op a)    

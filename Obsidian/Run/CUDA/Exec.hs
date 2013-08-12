@@ -1,5 +1,8 @@
 {-# LANGUAGE TypeOperators,
-             ScopedTypeVariables #-} 
+             ScopedTypeVariables,
+             TypeFamilies,
+             TypeSynonymInstances,
+             FlexibleInstances #-} 
 
 module Obsidian.Run.CUDA.Exec where
 
@@ -14,7 +17,10 @@ import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.CUDA
 import Obsidian.CodeGen.InOut
 import Obsidian.CodeGen.Common (genType,GenConfig(..))
-import Obsidian.Types -- experimental 
+import Obsidian.Types -- experimental
+import Obsidian.Exp
+import Obsidian.Array
+import Obsidian.Program (Grid)
 
 import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
@@ -23,6 +29,7 @@ import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
 import qualified Data.Vector.Storable as V 
 
 import Data.Word
+import Data.Int
 import Data.Supply
 import Data.List
 import qualified Data.Map as M
@@ -90,7 +97,65 @@ type CUDA a =  StateT CUDAState IO a
 
 data Kernel = Kernel {kFun :: CUDA.Fun,
                       kThreadsPerBlock :: Word32,
-                      kSharedBytes :: Word32} 
+                      kSharedBytes :: Word32}
+
+-- Change so that the type parameter to KernelT
+-- represents the "captured" type, with CUDAVectors instead of Pull, Push vectors. 
+data KernelT a = KernelT {ktFun :: CUDA.Fun,
+                          ktThreadsPerBlock :: Word32,
+                          ktSharedBytes :: Word32,
+                          ktInputs :: [CUDA.FunParam],
+                          ktOutput :: [CUDA.FunParam] }
+.VArg (cvPtr b)] ++ o)
+
+class KernelI a where
+  type KInput a 
+  addInParam :: KernelT (KInput a -> b) -> a -> KernelT b
+  
+class KernelO a where
+  type KOutput a 
+  addOutParam :: KernelT (KOutput a) -> a -> KernelT () 
+
+instance KernelI (CUDAVector Int32) where
+  type KInput (CUDAVector Int32) = DPull EInt32 
+  addInParam (KernelT f t s i o) b =
+    KernelT f t s ([CUDA.VArg (cvPtr b),
+                    CUDA.VArg (cvLen b)] ++  i) o
+
+instance KernelO (CUDAVector Int32) where
+  type KOutput (CUDAVector Int32) = DPush Grid EInt32
+  addOutParam (KernelT f t s i o) b =
+    KernelT f t s i ([CUDA.VArg (cvPtr b)] ++ o)
+
+
+
+(<>) :: (KernelI a)
+        => (Word32,KernelT (KInput a -> b)) -> a -> (Word32,KernelT b)
+(<>) (blocks,kern) a = (blocks,addInParam kern a)
+
+(<==) :: (KernelO b) => b -> (Word32, KernelT (KOutput b)) -> CUDA ()
+(<==) o (nb,kern) =
+  do
+    let k = addOutParam kern o
+    lift $ putStrLn $ show $ length (ktInputs k)
+    lift $ putStrLn $ show $ length (ktOutput k) 
+    lift $ CUDA.launchKernel
+      (ktFun k)
+      (fromIntegral nb,1,1)
+      (fromIntegral (ktThreadsPerBlock k), 1, 1)
+      (fromIntegral (ktSharedBytes k))
+      Nothing -- stream
+      (ktInputs k ++ ktOutput k) -- params    
+
+-- Tweak these 0
+infixl 4 <>
+infixl 3 <==
+
+
+--addInParam :: KernelT (a -> CUDA.DevicePtr b -> KernelT c
+--addInParam (KernelT f t s i o) b = KernelT f t s ([CUDA.VArg b] ++ i) o
+
+
 
 newIdent :: CUDA Int
 newIdent =
@@ -143,17 +208,32 @@ capture f inputs =
            
     return $ Kernel fun nt bs -- prgThreads
 
-archStr :: CUDA.DeviceProperties -> String
-archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
-  where
-    -- Updated for Cuda bindings version 0.5.0.0
-    archStr' (CUDA.Compute h l) = show h ++ show l
-    --archStr' (CUDA.Compute 1 0) = "10"
-    --archStr' (CUDA.Compute 1 2) = "12"
-    --archStr' (CUDA.Compute 2 0) = "20" 
-    --archStr' (CUDA.Compute 3 0) = "30"
-    --archStr' x = error $ "Unknown architecture: " ++ show x 
+---------------------------------------------------------------------------
+-- Capture without an inputlist! 
+---------------------------------------------------------------------------    
+capture_ :: ToProgram prg => prg -> CUDA (KernelT prg) 
+capture_ f =
+  do
+    i <- newIdent
+
+    props <- return . csProps =<< get
     
+    let kn     = "gen" ++ show i
+        fn     = kn ++ ".cu"
+        cub    = fn ++ ".cubin"
+
+        (prgstr,nt,bs) = genKernelSpecsNL kn f
+        header = "#include <stdint.h>\n" -- more includes ? 
+         
+    lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
+
+    mod <- liftIO $ CUDA.loadFile cub
+    fun <- liftIO $ CUDA.getFun mod kn 
+
+    {- After loading the binary into the running process
+       can I delete the .cu and the .cu.cubin ? -} 
+           
+    return $ KernelT fun nt bs [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
@@ -229,6 +309,21 @@ execute k nb {- sm stream -} a b = lift $
                     (toParamList a ++ toParamList b) -- params
 
 
+execute_ :: (ParamList a, ParamList b)
+           => KernelT t
+           -> Word32 -- Number of blocks 
+           -> a -> b
+           -> CUDA ()
+execute_ k nb {- sm stream -} a b = lift $ 
+  CUDA.launchKernel (ktFun k)
+                    (fromIntegral nb,1,1)
+                    (fromIntegral (ktThreadsPerBlock k), 1, 1)
+                    (fromIntegral (ktSharedBytes k))
+                    Nothing -- stream
+                    (toParamList a ++ toParamList b) -- params
+
+
+
 ---------------------------------------------------------------------------
 -- Peek in a CUDAVector (Simple "copy back")
 ---------------------------------------------------------------------------
@@ -265,11 +360,27 @@ instance (ParamList a, ParamList b) => ParamList (a :- b) where
   toParamList (a :- b) = toParamList a ++ toParamList b 
 
 
+
+---------------------------------------------------------------------------
+-- Get the "architecture" of the present CUDA device
+---------------------------------------------------------------------------
+  
+archStr :: CUDA.DeviceProperties -> String
+archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
+  where
+    -- Updated for Cuda bindings version 0.5.0.0
+    archStr' (CUDA.Compute h l) = show h ++ show l
+    --archStr' (CUDA.Compute 1 0) = "10"
+    --archStr' (CUDA.Compute 1 2) = "12"
+    --archStr' (CUDA.Compute 2 0) = "20" 
+    --archStr' (CUDA.Compute 3 0) = "30"
+    --archStr' x = error $ "Unknown architecture: " ++ show x 
+    
+
+
 ---------------------------------------------------------------------------
 -- Compile to Cubin (interface with nvcc)
 ---------------------------------------------------------------------------
-
-
 storeAndCompile :: String -> FilePath -> String -> IO FilePath
 storeAndCompile arch fp code =
   do

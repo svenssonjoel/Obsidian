@@ -69,6 +69,7 @@ type Inputs = [(Name,Type)]
 --------------------------------------------------------------------------- 
 class ToProgram a where
   toProgram :: Int -> a -> InputList a -> (Inputs,CG.IM)
+  toProgram_ :: Int -> a -> (Inputs, CG.IM)
 
 
 typeOf_ a = typeOf (Literal a)
@@ -85,9 +86,13 @@ instance ToProgram (GProgram ()) where
   -- Needs to deal with GProgram () and GProgram (Push a), GProgram (Pull a)
   -- in different ways.
 
+  toProgram_ i prg = ([],CG.compileStep1 prg) 
+  
 -- This instance might fix the problem with empty kernels being generated
 instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) where
   toProgram i p a = toProgram i (pJoin p) a
+
+  toProgram_ i p = toProgram_ i (pJoin p) 
 
 -- No ToProgram (GProgram (Pull a)) instance is needed. These programs
 -- cannot currently be created using the API. The reason is that GProgram (Pull a)
@@ -104,6 +109,7 @@ instance Scalar a => ToProgram (Push Grid l (Exp a)) where
      toProgram i prg a
     where
       assignOut out a ix = Assign out [ix] a
+  toProgram_ i p = toProgram i p () 
 
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
   toProgram i p {-(Push _ p)-} a =
@@ -119,6 +125,7 @@ instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
         do
           Assign o1 [ix] a
           Assign o2 [ix] b
+  toProgram_ i p = toProgram i p () 
 
 ---------------------------------------------------------------------------
 -- Recursive
@@ -133,6 +140,14 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull EWord32 (Exp t) -> b) where
       lengthVar = variable n
       input = namedGlobal nom lengthVar
       t     = typeOf_ (undefined :: t)
+  toProgram_ i f = ((nom,Pointer t):(n,Word32):ins,prg)
+    where
+      (ins,prg) = toProgram_ (i+1) (f input)
+      nom  = "input" ++ show i
+      n    = "n" ++ show i
+      lengthVar = variable n
+      input = namedGlobal nom lengthVar
+      t     = typeOf_ (undefined :: t)
 
 instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,Pointer t):ins,prg)
@@ -141,12 +156,21 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
       nom  = "input" ++ show i
       input = namedGlobal nom  (len a) 
       t     = typeOf_ (undefined :: t)
+  toProgram_ _ _ = error "toProgram_: static length" 
 
 
 instance (ToProgram b, Scalar t) => ToProgram (Mutable Global (Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,Pointer t):(n,Word32):ins,prg)
     where
       (ins,prg) = toProgram (i+1) (f input) rest
+      nom  = "input" ++ show i
+      n    = "n" ++ show i
+      lengthVar = variable n
+      input = namedMutable nom lengthVar
+      t     = typeOf_ (undefined :: t)
+  toProgram_ i f = ((nom,Pointer t):(n,Word32):ins,prg)
+    where
+      (ins,prg) = toProgram_ (i+1) (f input)
       nom  = "input" ++ show i
       n    = "n" ++ show i
       lengthVar = variable n
@@ -161,6 +185,13 @@ instance (ToProgram b, Scalar t) => ToProgram ((Exp t) -> b) where
       nom  = "input" ++ show i
       input = variable nom -- namedGlobal nom (len a) 
       t     = typeOf_ (undefined :: t)
+  toProgram_ i f = ((nom,t):ins,prg)
+    where
+      (ins,prg) = toProgram_ (i+1) (f input) 
+      nom  = "input" ++ show i
+      input = variable nom -- namedGlobal nom (len a) 
+      t     = typeOf_ (undefined :: t)
+
 
 
     

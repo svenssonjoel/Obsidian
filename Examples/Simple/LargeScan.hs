@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ScanExec where
+module Main where
 
 import Scan
 import Reduction
@@ -21,7 +21,7 @@ import Data.Word
 perform =
   withCUDA $
   do
-    scan <- capture (sklansky 8 (+) . splitUp 256) ( input :- ())
+  
     scanI <- capture (\a b -> sklanskyInc 8 (+) a (splitUp 256 b)) (variable "x" :- input :- ())
     reduce <- capture (reduce (+) . splitUp 256) (input :- ()) 
     scanCin <- capture kernel (input :- input :- ())
@@ -37,9 +37,13 @@ perform =
           execute scanCin 256 (reds :- i) o
           r <- peekCUDAVector o
           lift $ putStrLn $ show (P.take 256 r)
+          lift $ putStrLn "..."
+          lift $ putStrLn $ show (P.drop 65280 r) 
   where
     input :: DPull EWord32
     input = undefinedGlobal (variable "X")
     kernel cins arr = sklanskyCin 8 (+) cins (splitUp 256 arr)
 
                       
+
+main = perform 
