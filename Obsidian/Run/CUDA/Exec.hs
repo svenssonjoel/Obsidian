@@ -251,12 +251,11 @@ copyOut (CUDAVector dptr n) =
 class ParamList a where
   toParamList :: a -> [CUDA.FunParam]
 
---instance ParamList Word32 where
---  toParamList a = [CUDA.VArg a] 
-
 instance ParamList (CUDA.DevicePtr a) where
   toParamList a = [CUDA.VArg a]
 
+instance ParamList Word32 where
+  toParamList w = [CUDA.VArg w]
 
 instance ParamList (CUDAVector a) where
   toParamList (CUDAVector dptr n)  = [CUDA.VArg dptr, CUDA.VArg n]

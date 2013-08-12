@@ -24,7 +24,8 @@ module Obsidian.Program  (
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile
+  seqFor, forAll, forAll2, seqWhile --, 
+  -- module Control.Applicative                          
   ) where 
  
 import Data.Word
@@ -39,6 +40,9 @@ import Obsidian.Names
 -- Package value-supply
 import Data.Supply
 import System.IO.Unsafe
+
+import Control.Monad
+import Control.Applicative 
 
 ---------------------------------------------------------------------------
 -- Thread/Block/Grid 
@@ -189,6 +193,21 @@ instance Monad (Program t) where
   return = Return
   (>>=) = Bind
 
+---------------------------------------------------------------------------
+-- Functor
+---------------------------------------------------------------------------
+instance Functor (Program t) where
+  fmap g fa = do {a <- fa; return $ g a}
+
+---------------------------------------------------------------------------
+-- Applicative 
+---------------------------------------------------------------------------
+instance Applicative (Program t) where
+  pure = return
+  ff <*> fa = 
+    do
+      f <- ff
+      fmap f fa 
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)

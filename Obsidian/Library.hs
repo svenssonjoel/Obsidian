@@ -250,7 +250,7 @@ twoK n f = \arr ->
 
 concP :: ASize l
          => Push t l a -> Push t l a -> Push t l a 
-concP p1 p2 {- (Push n1 p1) (Push n2 p2)-} =
+concP p1 p2  =
   mkPush (n1 + n2) $ \wf ->
   do
     p1 <: wf
@@ -259,23 +259,6 @@ concP p1 p2 {- (Push n1 p1) (Push n2 p2)-} =
    n1 = len p1
    n2 = len p2 
 
-{-
-concP :: (Array arr1, Array arr2, ASize l,
-          Pushable arr1, Pushable arr2)
-         => PT t -> arr1 l a -> arr2 l a -> Push t l a     
-concP pt arr1 arr2 = 
-  mkPushArray (n1 + n2)
-  $ \wf ->
-  do
-    parr1 wf
-    parr2 $ \a i -> wf a (sizeConv n1 + i)
-  
-  where
-    n1 = len arr1 
-    n2 = len arr2 
-    (Push _ parr1) = push pt arr1
-    (Push _ parr2) = push pt arr2
--}
 
 -- More general versions of this can be imagined 
 mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
