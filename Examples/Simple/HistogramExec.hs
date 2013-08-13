@@ -20,18 +20,23 @@ import Data.Word
 performSmall =
   withCUDA $
   do
-    kern <- capture histogram (inputM :- input :- ())
+    kern <- capture (histogram 256 256) (inputM :- input :- ()) 
 
     useVector (V.fromList [0..255 :: Word32]) $ \i ->
       allocaVector 255 $ \ (m :: CUDAVector Word32) ->
       do
-        execute kern 1 m i 
+        fill m 0
+        execute kern 1 m i
         r <- peekCUDAVector m
         lift $ putStrLn $ show r 
+  where
+    inputM :: Mutable Global EWord32
+    inputM = undefinedMutable (variable "X")
+    input :: DPull EWord32
+    input  = undefinedGlobal  (variable "Y") 
 
 
-
-
+{-
 performLarge =
   withCUDA $
   do
@@ -44,4 +49,4 @@ performLarge =
           execute kern 256 m i
           r <- peekCUDAVector m
           lift $ putStrLn $ show r 
-
+-}

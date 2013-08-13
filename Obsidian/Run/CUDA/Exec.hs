@@ -6,6 +6,11 @@
 
 module Obsidian.Run.CUDA.Exec where
 
+---------------------------------------------------------------------------
+--
+-- Low level interface to CUDA functionality from Obsidian
+--
+---------------------------------------------------------------------------
 
 
 import qualified Foreign.CUDA.Driver as CUDA
@@ -40,20 +45,9 @@ import System.Process
 
 import Control.Monad.State
 
-{-
-  Proposed Interface:
-   runCUDA
-   cudaCapture
-   cudaUseVector
-   cudaAlloca
-   cudaTime
-   cudaExecute
-
-   Implement it two times: Once that directly uses CUDA bindings
-   and once that give a string representing a full CUDA program. 
-
--} 
-
+---------------------------------------------------------------------------
+-- An array located in GPU memory
+---------------------------------------------------------------------------
 data CUDAVector a = CUDAVector {cvPtr :: CUDA.DevicePtr a,
                                 cvLen :: Word32} 
 
@@ -107,38 +101,60 @@ data KernelT a = KernelT {ktFun :: CUDA.Fun,
                           ktInputs :: [CUDA.FunParam],
                           ktOutput :: [CUDA.FunParam] }
 
-
+---------------------------------------------------------------------------
+-- Kernel Input and Output classes
+---------------------------------------------------------------------------
 class KernelI a where
   type KInput a 
   addInParam :: KernelT (KInput a -> b) -> a -> KernelT b
+
+class KernelM a where
+  type KMutable a
+  addMutable :: KernelT (Kinput a -> b) -> a -> KernelT b 
   
 class KernelO a where
   type KOutput a 
   addOutParam :: KernelT (KOutput a) -> a -> KernelT () 
 
-instance KernelI (CUDAVector Int32) where
-  type KInput (CUDAVector Int32) = DPull EInt32 
+instance Scalar a => KernelI (CUDAVector a) where
+  type KInput (CUDAVector a) = DPull (Exp a) 
   addInParam (KernelT f t s i o) b =
-    KernelT f t s ([CUDA.VArg (cvPtr b),
-                    CUDA.VArg (cvLen b)] ++  i) o
+    KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
+                         CUDA.VArg (cvLen b)]) o
 
-instance KernelO (CUDAVector Int32) where
-  type KOutput (CUDAVector Int32) = DPush Grid EInt32
+instance Scalar a => KernelM (CUDAVector a) where
+  type KMutable (CUDAVector a) = Mutable Global (Exp a) 
+  addMutable (KernelT f t s i o) b =
+    KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
+                         CUDA.VArg (cvLen b)]) o
+
+instance Scalar a => KernelO (CUDAVector a) where
+  type KOutput (CUDAVector a) = DPush Grid (Exp a) 
   addOutParam (KernelT f t s i o) b =
-    KernelT f t s i ([CUDA.VArg (cvPtr b)] ++ o)
+    KernelT f t s i (o ++ [CUDA.VArg (cvPtr b)])
 
-
-
-(<>) :: (KernelI a)
+---------------------------------------------------------------------------
+-- (<>) apply a kernel to an input
+---------------------------------------------------------------------------
+(<>) :: KernelI a
         => (Word32,KernelT (KInput a -> b)) -> a -> (Word32,KernelT b)
 (<>) (blocks,kern) a = (blocks,addInParam kern a)
 
-(<==) :: (KernelO b) => b -> (Word32, KernelT (KOutput b)) -> CUDA ()
+---------------------------------------------------------------------------
+-- Assign a mutable input/output to a kernel
+--------------------------------------------------------------------------- 
+(<:>) :: KernelM a
+         => (Word32, KernelT (KMutable a -> b)) -> a -> (Word32, KernelT b)
+(<:>) (blocks,kern) a = (blocks, addMutable kern a)
+
+
+---------------------------------------------------------------------------
+-- Execute a kernel and store output to an array
+---------------------------------------------------------------------------
+(<==) :: KernelO b => b -> (Word32, KernelT (KOutput b)) -> CUDA ()
 (<==) o (nb,kern) =
   do
     let k = addOutParam kern o
-    lift $ putStrLn $ show $ length (ktInputs k)
-    lift $ putStrLn $ show $ length (ktOutput k) 
     lift $ CUDA.launchKernel
       (ktFun k)
       (fromIntegral nb,1,1)
@@ -147,23 +163,30 @@ instance KernelO (CUDAVector Int32) where
       Nothing -- stream
       (ktInputs k ++ ktOutput k) -- params    
 
--- Tweak these 0
+-- Tweak these 
 infixl 4 <>
 infixl 3 <==
 
+---------------------------------------------------------------------------
+-- Execute a kernel that has no Output ( a -> GProgram ()) KernelT () 
+---------------------------------------------------------------------------
+--exec :: (Word32, KernelT ()) -> CUDA ()
+--exec (nb, kern
 
---addInParam :: KernelT (a -> CUDA.DevicePtr b -> KernelT c
---addInParam (KernelT f t s i o) b = KernelT f t s ([CUDA.VArg b] ++ i) o
-
-
-
+---------------------------------------------------------------------------
+-- Get a fresh identifier
+---------------------------------------------------------------------------
 newIdent :: CUDA Int
 newIdent =
   do
     i <- gets csIdent
     modify (\s -> s {csIdent = i+1 }) 
     return i
-  
+
+
+---------------------------------------------------------------------------
+-- Run a CUDA computation
+---------------------------------------------------------------------------
 withCUDA p =
   do
     CUDA.initialise []
@@ -180,7 +203,6 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture and compile a Obsidian function into a CUDA Function
 ---------------------------------------------------------------------------
--- capture :: ToProgram a b => (a -> b) -> Ips a b -> CUDA Kernel
 capture :: ToProgram prg => prg -> InputList prg -> CUDA Kernel 
 capture f inputs =
   do
@@ -238,8 +260,6 @@ capture_ f =
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
 --------------------------------------------------------------------------- 
--- useVector :: V.Storable a =>
---              V.Vector a -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
 useVector :: V.Storable a =>
              V.Vector a -> (CUDAVector a -> CUDA b) -> CUDA b
 useVector v f =
@@ -257,8 +277,6 @@ useVector v f =
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
---allocaVector :: V.Storable a => 
---                Int -> (CUDA.DevicePtr a -> CUDA b) -> CUDA b
 allocaVector :: V.Storable a => 
                 Int -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaVector n f =
@@ -269,6 +287,9 @@ allocaVector n f =
     lift $ CUDA.free dptr
     return b 
 
+---------------------------------------------------------------------------
+-- Allocate and fill with default value
+---------------------------------------------------------------------------
 allocaFillVector :: V.Storable a => 
                 Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaFillVector n a f =
@@ -308,22 +329,6 @@ execute k nb {- sm stream -} a b = lift $
                     Nothing -- stream
                     (toParamList a ++ toParamList b) -- params
 
-
-execute_ :: (ParamList a, ParamList b)
-           => KernelT t
-           -> Word32 -- Number of blocks 
-           -> a -> b
-           -> CUDA ()
-execute_ k nb {- sm stream -} a b = lift $ 
-  CUDA.launchKernel (ktFun k)
-                    (fromIntegral nb,1,1)
-                    (fromIntegral (ktThreadsPerBlock k), 1, 1)
-                    (fromIntegral (ktSharedBytes k))
-                    Nothing -- stream
-                    (toParamList a ++ toParamList b) -- params
-
-
-
 ---------------------------------------------------------------------------
 -- Peek in a CUDAVector (Simple "copy back")
 ---------------------------------------------------------------------------
@@ -355,11 +360,8 @@ instance ParamList Word32 where
 instance ParamList (CUDAVector a) where
   toParamList (CUDAVector dptr n)  = [CUDA.VArg dptr, CUDA.VArg n]
 
-
 instance (ParamList a, ParamList b) => ParamList (a :- b) where
   toParamList (a :- b) = toParamList a ++ toParamList b 
-
-
 
 ---------------------------------------------------------------------------
 -- Get the "architecture" of the present CUDA device
@@ -376,8 +378,6 @@ archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
     --archStr' (CUDA.Compute 3 0) = "30"
     --archStr' x = error $ "Unknown architecture: " ++ show x 
     
-
-
 ---------------------------------------------------------------------------
 -- Compile to Cubin (interface with nvcc)
 ---------------------------------------------------------------------------
