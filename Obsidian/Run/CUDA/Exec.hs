@@ -6,6 +6,11 @@
 
 module Obsidian.Run.CUDA.Exec where
 
+---------------------------------------------------------------------------
+--
+-- Low level interface to CUDA functionality from Obsidian
+--
+---------------------------------------------------------------------------
 
 
 import qualified Foreign.CUDA.Driver as CUDA
@@ -40,20 +45,9 @@ import System.Process
 
 import Control.Monad.State
 
-{-
-  Proposed Interface:
-   runCUDA
-   cudaCapture
-   cudaUseVector
-   cudaAlloca
-   cudaTime
-   cudaExecute
-
-   Implement it two times: Once that directly uses CUDA bindings
-   and once that give a string representing a full CUDA program. 
-
--} 
-
+---------------------------------------------------------------------------
+-- An array located in GPU memory
+---------------------------------------------------------------------------
 data CUDAVector a = CUDAVector {cvPtr :: CUDA.DevicePtr a,
                                 cvLen :: Word32} 
 
@@ -116,23 +110,29 @@ class KernelO a where
   type KOutput a 
   addOutParam :: KernelT (KOutput a) -> a -> KernelT () 
 
-instance KernelI (CUDAVector Int32) where
-  type KInput (CUDAVector Int32) = DPull EInt32 
+instance Scalar a => KernelI (CUDAVector a) where
+  type KInput (CUDAVector a) = DPull (Exp a) 
   addInParam (KernelT f t s i o) b =
     KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
                          CUDA.VArg (cvLen b)]) o
 
-instance KernelO (CUDAVector Int32) where
-  type KOutput (CUDAVector Int32) = DPush Grid EInt32
+instance Scalar a => KernelO (CUDAVector a) where
+  type KOutput (CUDAVector a) = DPush Grid (Exp a) 
   addOutParam (KernelT f t s i o) b =
     KernelT f t s i (o ++ [CUDA.VArg (cvPtr b)])
 
 
 
+---------------------------------------------------------------------------
+-- (<>) apply a kernel to an input
+---------------------------------------------------------------------------
 (<>) :: (KernelI a)
         => (Word32,KernelT (KInput a -> b)) -> a -> (Word32,KernelT b)
 (<>) (blocks,kern) a = (blocks,addInParam kern a)
 
+---------------------------------------------------------------------------
+-- Execute a kernel and store output to an array
+---------------------------------------------------------------------------
 (<==) :: (KernelO b) => b -> (Word32, KernelT (KOutput b)) -> CUDA ()
 (<==) o (nb,kern) =
   do
