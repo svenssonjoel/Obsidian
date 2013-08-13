@@ -106,7 +106,7 @@ data KernelT a = KernelT {ktFun :: CUDA.Fun,
                           ktSharedBytes :: Word32,
                           ktInputs :: [CUDA.FunParam],
                           ktOutput :: [CUDA.FunParam] }
-.VArg (cvPtr b)] ++ o)
+
 
 class KernelI a where
   type KInput a 
