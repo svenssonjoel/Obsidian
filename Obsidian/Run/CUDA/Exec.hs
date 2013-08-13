@@ -119,13 +119,13 @@ class KernelO a where
 instance KernelI (CUDAVector Int32) where
   type KInput (CUDAVector Int32) = DPull EInt32 
   addInParam (KernelT f t s i o) b =
-    KernelT f t s ([CUDA.VArg (cvPtr b),
-                    CUDA.VArg (cvLen b)] ++  i) o
+    KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
+                         CUDA.VArg (cvLen b)]) o
 
 instance KernelO (CUDAVector Int32) where
   type KOutput (CUDAVector Int32) = DPush Grid EInt32
   addOutParam (KernelT f t s i o) b =
-    KernelT f t s i ([CUDA.VArg (cvPtr b)] ++ o)
+    KernelT f t s i (o ++ [CUDA.VArg (cvPtr b)])
 
 
 
@@ -137,8 +137,6 @@ instance KernelO (CUDAVector Int32) where
 (<==) o (nb,kern) =
   do
     let k = addOutParam kern o
-    lift $ putStrLn $ show $ length (ktInputs k)
-    lift $ putStrLn $ show $ length (ktOutput k) 
     lift $ CUDA.launchKernel
       (ktFun k)
       (fromIntegral nb,1,1)
