@@ -20,7 +20,7 @@ import Data.Int
 performSmallNL =
   withCUDA $
   do
-    kern <- capture_ (reduce (+) . splitUp 256 ) 
+    kern <- capture (reduce (+) . splitUp 256 ) 
 
     useVector (V.fromList [0..511 :: Int32]) $ \i ->
       useVector (V.fromList [0,0 :: Int32]) $ \ o ->
@@ -38,12 +38,12 @@ performSmallNL =
 performSmall =
   withCUDA $
   do
-    kern <- capture (reduce (+) . splitUp 256) (input :- ())
+    kern <- capture (reduce (+) . splitUp 256) 
 
     useVector (V.fromList [0..511 :: Int32]) $ \i ->
       useVector (V.fromList [0,0 :: Int32]) $ \ o ->
       do
-        execute kern 2 i o 
+        o <== (2,kern) <> i 
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
 
@@ -53,14 +53,16 @@ performSmall =
 performLarge =
   withCUDA $
   do
-    kern <- capture (reduce (+) . splitUp 256) (input :- ())
+    kern <- capture (reduce (+) . splitUp 256) 
 
     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
       allocaVector 256  $ \(o :: CUDAVector Int32) ->
         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
         do
-          execute kern 256 i o
-          execute kern 1 o o2 
+          
+          o <== (256,kern) <> i
+          o2 <== (1,kern) <> o 
+
           r <- peekCUDAVector o2
           lift $ putStrLn $ show r 
 
