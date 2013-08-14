@@ -35,6 +35,11 @@ import Data.Word
 import Prelude hiding (splitAt,zipWith,replicate,reverse)
 
 
+---------------------------------------------------------------------------
+-- Fix the size of an array. Use to generate kernels for fixed sizes
+---------------------------------------------------------------------------
+fixSize :: Word32 -> DPull a -> SPull a
+fixSize w arr = mkPull w $ \ix -> arr ! ix
 
 
 ---------------------------------------------------------------------------
