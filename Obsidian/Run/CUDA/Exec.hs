@@ -206,37 +206,6 @@ withCUDA p =
           runStateT p (CUDAState 0 ctx (snd x)) 
           CUDA.destroy ctx
 
-
----------------------------------------------------------------------------
--- Capture and compile a Obsidian function into a CUDA Function
----------------------------------------------------------------------------
--- capture :: ToProgram prg => prg -> InputList prg -> CUDA Kernel 
--- capture f inputs =
---   do
---     i <- newIdent
-
---     props <- return . csProps =<< get
-    
---     let kn     = "gen" ++ show i
---         fn     = kn ++ ".cu"
---         cub    = fn ++ ".cubin"
-
---         --(_,im) = toProgram 0 f inputs
---         --(Left prgThreads) = numThreads im --getNThreads f inputs
---         -- (Right _) = numThreads im -- is not taken care of! 
---         (prgstr,nt,bs) = genKernelSpecs kn f inputs 
---         header = "#include <stdint.h>\n" -- more includes ? 
-         
---     lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
-
---     mod <- liftIO $ CUDA.loadFile cub
---     fun <- liftIO $ CUDA.getFun mod kn 
-
---     {- After loading the binary into the running process
---        can I delete the .cu and the .cu.cubin ? -} 
-           
---     return $ Kernel fun nt bs -- prgThreads
-
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
 ---------------------------------------------------------------------------    
@@ -317,25 +286,6 @@ fill :: V.Storable a =>
 fill (CUDAVector dptr n) a =
   lift $ CUDA.memset dptr (fromIntegral n) a 
 
-
----------------------------------------------------------------------------
--- execute Kernels on the GPU 
----------------------------------------------------------------------------
--- execute :: (ParamList a, ParamList b)
---            => Kernel
---            -> Word32 -- Number of blocks 
---          --  -> Word32 -- Amount of Shared mem (get from an analysis) 
---          --  -> Maybe CUDAStream.Stream
---            -> a -> b
---            -> CUDA ()
--- execute k nb {- sm stream -} a b = lift $ 
---   CUDA.launchKernel (kFun k)
---                     (fromIntegral nb,1,1)
---                     (fromIntegral (kThreadsPerBlock k), 1, 1)
---                     (fromIntegral (kSharedBytes k))
---                     Nothing -- stream
---                     (toParamList a ++ toParamList b) -- params
-
 ---------------------------------------------------------------------------
 -- Peek in a CUDAVector (Simple "copy back")
 ---------------------------------------------------------------------------
@@ -350,25 +300,6 @@ copyOut (CUDAVector dptr n) =
     let ptr = unsafeForeignPtrToPtr fptr
     lift $ CUDA.peekArray (fromIntegral n) dptr ptr
     return $ V.unsafeFromForeignPtr fptr 0 (fromIntegral n)
-
----------------------------------------------------------------------------
--- ParamList
----------------------------------------------------------------------------
-
--- class ParamList a where
---   toParamList :: a -> [CUDA.FunParam]
-
--- instance ParamList (CUDA.DevicePtr a) where
---   toParamList a = [CUDA.VArg a]
-
--- instance ParamList Word32 where
---   toParamList w = [CUDA.VArg w]
-
--- instance ParamList (CUDAVector a) where
---   toParamList (CUDAVector dptr n)  = [CUDA.VArg dptr, CUDA.VArg n]
-
--- instance (ParamList a, ParamList b) => ParamList (a :- b) where
---   toParamList (a :- b) = toParamList a ++ toParamList b 
 
 ---------------------------------------------------------------------------
 -- Get the "architecture" of the present CUDA device
