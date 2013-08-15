@@ -89,3 +89,16 @@ force arr = do
 unsafeForce :: MemoryOps a => SPull a -> BProgram (SPull a) 
 unsafeForce arr | len arr <= 32 = unsafeWrite arr 
 unsafeForce arr = force arr
+
+
+---------------------------------------------------------------------------
+-- Force a scalar
+---------------------------------------------------------------------------
+
+forceScalar :: MemoryOps a => a -> TProgram a
+forceScalar a =
+  do
+    names <- moNames "s"
+    moAllocateScalar names
+    moAssignScalar names a
+    return $ moReadFrom names 

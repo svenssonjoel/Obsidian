@@ -16,24 +16,6 @@ import Control.Monad.State
 
 import Data.Int
 
--- Experiment 
-performSmallNL =
-  withCUDA $
-  do
-    kern <- capture (reduce (+) . splitUp 256 ) 
-
-    useVector (V.fromList [0..511 :: Int32]) $ \i ->
-      useVector (V.fromList [0,0 :: Int32]) $ \ o ->
-      do
-        
-        o <== (2,kern) <> i     {- Executes 2 blocks of kern -} 
-        
-        r <- peekCUDAVector o
-        lift $ putStrLn $ show r 
-
-
-
-
 
 performSmall =
   withCUDA $

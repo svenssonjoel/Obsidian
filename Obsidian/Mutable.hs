@@ -33,7 +33,12 @@ import Data.Word
   Todo: Think about Global vs Shared.
   Todo: Add creation of mutable global arrays. 
 
-  Todo: Make mutable interface (atomic ops) very low-level 
+  Todo: Make mutable interface (atomic ops) very low-level
+
+
+  TODO: Rethink. Have two sepparate types of mutable arrays.
+        Also Skip the Type family magic if possible.
+        Make both kinds of Mutable arrays an instance of Array 
 -} 
 
 ---------------------------------------------------------------------------
