@@ -19,7 +19,7 @@ import Data.Int
 
 performSmall =
   withCUDA $
-  doa
+  do
     kern <- capture (reduce (+) . splitUp 256) 
 
     useVector (V.fromList [0..511 :: Int32]) $ \i ->
