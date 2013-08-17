@@ -135,6 +135,22 @@ compileExp (ICast e t) = go t
 
     go Float  = [cexp| (float) $e' |]
     go Double = [cexp| (float) $e' |]
+
+ -- IMPROVE HERE 
+    go (Pointer Int8) = [cexp| (typename int8_t*) $e' |]
+    go (Pointer Int16) = [cexp| (typename int16_t*) $e' |]
+    go (Pointer Int32) = [cexp| (typename int32_t*) $e' |]
+    go (Pointer Int64) = [cexp| (typename int64_t*) $e' |]
+
+    go (Pointer Word8) = [cexp| (typename uint8_t*) $e' |]
+    go (Pointer Word16) = [cexp| (typename uint16_t*) $e' |]
+    go (Pointer Word32) = [cexp| (typename uint32_t*) $e' |]
+    go (Pointer Word64) = [cexp| (typename uint64_t*) $e' |]
+
+    go (Pointer Float)  = [cexp| (float*) $e' |]
+    go (Pointer Double) = [cexp| (float*) $e' |]
+
+
     -- go _ = error $ "what: " ++ show e 
 
 
@@ -153,9 +169,9 @@ compileExp (ICast e t) = go t
 
 compileStm :: Statement t -> [Stm]
 compileStm (SAssign name [] e)
-  = [[cstm| $id:name = $(compileExp e);|]]
+  = [[cstm| $(compileExp name) = $(compileExp e);|]]
 compileStm (SAssign name [ix] e) 
-  = [[cstm| $id:name[$(compileExp ix)] = $(compileExp e); |]]
+  = [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
 compileStm (SCond be im) 
   = [[cstm| if ($(compileExp be)) { $stms:(compileIM  im) } |]]
 compileStm (SForAll n im) 

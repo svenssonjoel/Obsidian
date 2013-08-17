@@ -28,8 +28,6 @@ import Obsidian.DimSpec
 import Obsidian.Types
 import Obsidian.Globs
 
-import Obsidian.CodeGen.SPMDC
-
 ---------------------------------------------------------------------------
 -- some synonyms
 type Data a = Exp a 

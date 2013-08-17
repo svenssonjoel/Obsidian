@@ -40,7 +40,7 @@ type IM = IMList ()
 -- out :: 
 out a = [(a,())]
 
-data Statement t = SAssign Name [IExp] IExp
+data Statement t = SAssign IExp [IExp] IExp
          --         | SAtomicOp Name Name (IExp) (Atomic a)
                  | SCond IExp (IMList t) 
                  | SSeqFor String IExp (IMList t)
@@ -95,7 +95,7 @@ cs :: Compile t => Supply Int -> P.Program t a -> (a,IM)
 cs i P.Identifier = (supplyValue i, [])
 
 cs i (P.Assign name ix e) =
-  ((),out (SAssign name (map expToIExp ix) (expToIExp e)))
+  ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
  
 --cs i (P.AtomicOp name ix at) = (v,out im)
 --  where 
@@ -181,9 +181,9 @@ printIM im = concatMap printStm im
 -- Print a Statement with metadata 
 printStm :: Show a => (Statement a,a) -> String
 printStm (SAssign name [] e,m) =
-  name ++ " = " ++ show e ++ ";" ++ meta m
+  show name ++ " = " ++ show e ++ ";" ++ meta m
 printStm (SAssign name ix e,m) =
-  name ++ "[" ++ concat (intersperse "," (map show ix)) ++ "]" ++
+  show name ++ "[" ++ concat (intersperse "," (map show ix)) ++ "]" ++
   " = " ++ show e ++ ";" ++ meta m
 --printStm (SAtomicOp res arr ix op,m) =
 --  res ++ " = " ++

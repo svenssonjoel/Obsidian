@@ -63,7 +63,8 @@ cl im = mapM process im
       do
         s <- get
         let arrays = collectArraysI "arr" e
-            living = Set.fromList (nom:arrays) `Set.union` s
+            arrays1 = collectArraysI "arr" nom
+            living = Set.fromList (arrays1++arrays) `Set.union` s
         
         put living  -- update state   
         return (SAssign nom ixs e,living)
