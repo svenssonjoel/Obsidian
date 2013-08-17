@@ -57,7 +57,7 @@ type EBool   = Exp Bool
 ---------------------------------------------------------------------------
 -- Class Scalar. All the things we can handle code generation for 
 
-class (Eq a, ExpToCExp a, Show a) => Scalar a where 
+class (Eq a, ExpToIExp a, Show a) => Scalar a where 
   sizeOf :: Exp a -> Int   --  
   typeOf :: Exp a -> Type  --   Good enough for me ... 
 
@@ -276,13 +276,6 @@ collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++
 ---------------------------------------------------------------------------
 -- Typecasts
 ---------------------------------------------------------------------------
--- int32ToWord32 = UnOp Int32ToWord32
--- word32ToInt32 = UnOp Word32ToInt32
-
--- word32ToFloat = UnOp Word32ToFloat
-
--- word32ToWord8 = UnOp Word32ToWord8
-
 i32ToW32 = UnOp Int32ToWord32
 w32ToI32 = UnOp Word32ToInt32
 
@@ -298,11 +291,11 @@ w32ToW8 = UnOp Word32ToWord8
 instance Scalar a => Show (Exp a) where 
   show = printExp 
 
--- Look this over. Do I really need a types expression data type ?
+-- Look this over. Do I really need a typed expression data type ?
 --  (No real need for a Exp GADT I think. Go back to keeping it simple!) 
 instance (Eq a, Scalar a) => Eq (Exp a) where
-  (==) a b = -- error $ "equality test between exps: " ++ show a ++ " " ++ show b --
-    expToCExp a == expToCExp b
+  (==) a b = 
+    expToIExp a == expToIExp b
     -- Maybe not efficient! But simple.
 
   
@@ -739,152 +732,207 @@ printOp BitwiseOr  = " | "
 printOp BitwiseXor = " ^ " 
 printOp BitwiseNeg = " ~ "  
 
+
 ---------------------------------------------------------------------------
--- Turn expressions into backend-expressions
+-- Internal exp (not a GADT) 
 ---------------------------------------------------------------------------
-class ExpToCExp a where 
-  expToCExp :: Exp a -> CExpr 
+
+data IExp = IVar Name Type
+          | IBlockIdx  DimSpec
+          | IThreadIdx DimSpec
+          | IBlockDim  DimSpec
+          | IGridDim   DimSpec
+
+          | IBool Bool 
+          | IInt8 Int8 | IInt16 Int16 | IInt32 Int32 | IInt64 Int64
+          | IWord8 Word8 | IWord16 Word16 | IWord32 Word32 | IWord64 Word64
+          | IFloat Float | IDouble Double
+                           
+          | IIndex (IExp,[IExp]) Type
+          | ICond IExp IExp IExp Type
+          | IBinOp IBinOp IExp IExp Type
+          | IUnOp  IUnOp  IExp Type
+          | IFunCall Name [IExp] Type
+          | ICast IExp Type
+          deriving (Eq, Ord, Show) 
+ 
+
+data IBinOp = IAdd | ISub | IMul | IDiv | IMod
+            | IEq | INotEq | ILt | IGt | IGEq | ILEq
+            | IAnd | IOr | IPow
+            | IBitwiseAnd | IBitwiseOr | IBitwiseXor
+            | IShiftL | IShiftR
+            deriving (Eq, Ord, Show) 
+
+data IUnOp = IBitwiseNeg | INot
+           deriving (Eq, Ord, Show)
 
 
-instance  ExpToCExp Bool where 
-  expToCExp (Literal True) = cLiteral (IntVal 1) CInt 
-  expToCExp (Literal False) = cLiteral (IntVal 0) CInt
-  expToCExp a = expToCExpGeneral a 
 
-instance ExpToCExp Int where 
-  expToCExp (Literal a) = cLiteral (IntVal a) CInt
-  expToCExp a = expToCExpGeneral a  
+---------------------------------------------------------------------------
+-- Remove type info from operations
+---------------------------------------------------------------------------
 
-instance ExpToCExp Int8 where 
-  expToCExp (Literal a) = cLiteral (Int8Val a) CInt8
-  expToCExp a = expToCExpGeneral a  
+binOpToIBinOp :: Op t -> IBinOp
+binOpToIBinOp Add = IAdd
+binOpToIBinOp Sub = ISub
+binOpToIBinOp Mul = IMul
+binOpToIBinOp Div = IDiv 
+binOpToIBinOp FDiv = IDiv -- (???)  
+binOpToIBinOp Mod = IMod
 
-instance ExpToCExp Int16 where 
-  expToCExp (Literal a) = cLiteral (Int16Val a) CInt16
-  expToCExp a = expToCExpGeneral a  
+binOpToIBinOp Eq  = IEq 
+binOpToIBinOp NotEq = INotEq
+binOpToIBinOp Lt  = ILt 
+binOpToIBinOp LEq = ILEq
+binOpToIBinOp Gt  = IGt 
+binOpToIBinOp GEq = IGEq 
 
-instance ExpToCExp Int32 where 
-  expToCExp (Literal a) = cLiteral (Int32Val a) CInt32
-  expToCExp a = expToCExpGeneral a  
+binOpToIBinOp And = IAnd 
+binOpToIBinOp Or  = IOr 
 
-instance ExpToCExp Int64 where 
-  expToCExp (Literal a) = cLiteral (Int64Val a) CInt64
-  expToCExp a = expToCExpGeneral a  
+binOpToIBinOp Pow = IPow
 
-instance ExpToCExp Float where 
-  expToCExp (Literal a) = cLiteral (FloatVal a) CFloat
-  expToCExp a = expToCExpGeneral a 
+binOpToIBinOp BitwiseAnd = IBitwiseAnd
+binOpToIBinOp BitwiseOr  = IBitwiseOr
+binOpToIBinOp BitwiseXor = IBitwiseXor
+binOpToIBinOp ShiftL     = IShiftL 
+binOpToIBinOp ShiftR     = IShiftR
 
-instance ExpToCExp Double where 
-  expToCExp (Literal a) = cLiteral (DoubleVal a) CDouble
-  expToCExp a = expToCExpGeneral a 
+unOpToIUnOp :: Op t -> IUnOp
+unOpToIUnOp   BitwiseNeg = IBitwiseNeg
+unOpToIUnOp   Not = INot 
 
-instance ExpToCExp Word where 
-  expToCExp (Literal a) = cLiteral (WordVal a) CWord
-  expToCExp a = expToCExpGeneral a 
 
-instance ExpToCExp Word8 where 
-  expToCExp (Literal a) = cLiteral (Word8Val a) CWord8
-  expToCExp a = expToCExpGeneral a 
+---------------------------------------------------------------------------
+-- Turn Exp a to IExp with type information. 
+---------------------------------------------------------------------------
 
-instance ExpToCExp Word16 where 
-  expToCExp (Literal a) = cLiteral (Word16Val a) CWord16
-  expToCExp a = expToCExpGeneral a 
 
-instance ExpToCExp Word32 where 
-  expToCExp (Literal a) = cLiteral (Word32Val a) CWord32
-  expToCExp a = expToCExpGeneral a 
+class ExpToIExp a where 
+  expToIExp :: Exp a -> IExp 
 
-instance ExpToCExp Word64 where 
-  expToCExp (Literal a) = cLiteral (Word64Val a) CWord64
-  expToCExp a = expToCExpGeneral a 
+
+instance  ExpToIExp Bool where 
+  expToIExp (Literal True) = IBool True 
+  expToIExp (Literal False) = IBool False 
+  expToIExp a = expToIExpGeneral a 
+
+-- This is strange. 
+instance ExpToIExp Int where 
+  expToIExp (Literal a) = IInt32 (fromIntegral a)  
+  expToIExp a = expToIExpGeneral a  
+
+instance ExpToIExp Int8 where 
+  expToIExp (Literal a) = IInt8 a 
+  expToIExp a = expToIExpGeneral a  
+
+instance ExpToIExp Int16 where 
+  expToIExp (Literal a) = IInt16 a 
+  expToIExp a = expToIExpGeneral a  
+
+instance ExpToIExp Int32 where 
+  expToIExp (Literal a) = IInt32 a 
+  expToIExp a = expToIExpGeneral a  
+
+instance ExpToIExp Int64 where 
+  expToIExp (Literal a) = IInt64 a 
+  expToIExp a = expToIExpGeneral a  
+
+instance ExpToIExp Float where 
+  expToIExp (Literal a) = IFloat a 
+  expToIExp a = expToIExpGeneral a 
+
+instance ExpToIExp Double where 
+  expToIExp (Literal a) = IDouble a 
+  expToIExp a = expToIExpGeneral a 
+
+-- This is strange. 
+instance ExpToIExp Word where 
+  expToIExp (Literal a) = IWord32 (fromIntegral a)
+  expToIExp a = expToIExpGeneral a 
+
+instance ExpToIExp Word8 where 
+  expToIExp (Literal a) = IWord8 a 
+  expToIExp a = expToIExpGeneral a 
+
+instance ExpToIExp Word16 where 
+  expToIExp (Literal a) = IWord16 a 
+  expToIExp a = expToIExpGeneral a 
+
+instance ExpToIExp Word32 where 
+  expToIExp (Literal a) = IWord32 a 
+  expToIExp a = expToIExpGeneral a 
+
+instance ExpToIExp Word64 where 
+  expToIExp (Literal a) = IWord64 a 
+  expToIExp a = expToIExpGeneral a
+
 
   
-expToCExpGeneral :: ExpToCExp a  => Exp a -> CExpr
-expToCExpGeneral WarpSize      = cWarpSize 
-expToCExpGeneral (BlockIdx d)  = cBlockIdx d
-expToCExpGeneral (BlockDim d)  = cBlockDim d 
-expToCExpGeneral (ThreadIdx d) = cThreadIdx d
+expToIExpGeneral :: ExpToIExp a  => Exp a -> IExp
+expToIExpGeneral WarpSize      = IVar "warpsize" Word32 
+expToIExpGeneral (BlockIdx d)  = IBlockIdx d
+expToIExpGeneral (BlockDim d)  = IBlockDim d 
+expToIExpGeneral (ThreadIdx d) = IThreadIdx d
 
-expToCExpGeneral e@(Index (name,[])) = cVar name (typeToCType (typeOf e))
-expToCExpGeneral e@(Index (name,xs)) = cIndex (cVar name (CPointer (typeToCType (typeOf e))),map expToCExp xs) (typeToCType (typeOf e)) 
-expToCExpGeneral e@(If b e1 e2)      = cCond  (expToCExp b) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e))
+expToIExpGeneral e@(Index (name,[])) = IVar name  (typeOf e)
+expToIExpGeneral e@(Index (name,xs))
+  = IIndex (IVar name (Pointer (typeOf e)),map expToIExp xs) (typeOf e) 
+expToIExpGeneral e@(If b e1 e2)
+  = ICond  (expToIExp b) (expToIExp e1) (expToIExp e2) (typeOf e)
 
-expToCExpGeneral (UnOp Word32ToInt32 e) = cCast (expToCExp e) CInt32
-expToCExpGeneral (UnOp Int32ToWord32 e) = cCast (expToCExp e) CWord32
-expToCExpGeneral (UnOp Word32ToFloat e) = cCast (expToCExp e) CFloat
-expToCExpGeneral (UnOp Word32ToWord8 e) = cCast (expToCExp e) CWord8 
 
-expToCExpGeneral e@(BinOp Min e1 e2) = cFuncExpr "min" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
-expToCExpGeneral e@(BinOp Max e1 e2) = cFuncExpr "max" [expToCExp e1, expToCExp e2] (typeToCType (typeOf e)) 
-expToCExpGeneral e@(BinOp op e1 e2)  = cBinOp (binOpToCBinOp op) (expToCExp e1) (expToCExp e2) (typeToCType (typeOf e)) 
+expToIExpGeneral (UnOp Word32ToInt32 e) = ICast (expToIExp e) Int32
+expToIExpGeneral (UnOp Int32ToWord32 e) = ICast (expToIExp e) Word32
+expToIExpGeneral (UnOp Word32ToFloat e) = ICast (expToIExp e) Float
+expToIExpGeneral (UnOp Word32ToWord8 e) = ICast (expToIExp e) Word8 
 
-expToCExpGeneral (UnOp Exp e)        = cFuncExpr "exp" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Sqrt e)       = cFuncExpr "sqrt" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Log e)        = cFuncExpr "log" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Log2 e)       = cFuncExpr "log2" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Log10 e)      = cFuncExpr "log10" [expToCExp e] (typeToCType (typeOf e))
+expToIExpGeneral e@(BinOp Min e1 e2)
+  = IFunCall "min" [expToIExp e1, expToIExp e2] (typeOf e)
+    
+expToIExpGeneral e@(BinOp Max e1 e2)
+  = IFunCall "max" [expToIExp e1, expToIExp e2] (typeOf e)
+    
+expToIExpGeneral e@(BinOp op e1 e2)
+  = IBinOp (binOpToIBinOp op) (expToIExp e1) (expToIExp e2) (typeOf e)
+
+
+expToIExpGeneral (UnOp Exp e)        = IFunCall "exp" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp Sqrt e)       = IFunCall "sqrt" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp Log e)        = IFunCall "log" [expToIExp e]  (typeOf e)
+expToIExpGeneral (UnOp Log2 e)       = IFunCall "log2" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp Log10 e)      = IFunCall "log10" [expToIExp e] (typeOf e)
   
 -- Floating trig
-expToCExpGeneral (UnOp Sin e)        = cFuncExpr "sin" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Cos e)        = cFuncExpr "cos" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp Tan e)        = cFuncExpr "tan" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ASin e)       = cFuncExpr "asin" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ACos e)       = cFuncExpr "acos" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ATan e)       = cFuncExpr "atan" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp SinH e)       = cFuncExpr "sinh" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp CosH e)       = cFuncExpr "cosh" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp TanH e)       = cFuncExpr "tanh" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ASinH e)      = cFuncExpr "asinh" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ACosH e)      = cFuncExpr "acosh" [expToCExp e] (typeToCType (typeOf e))
-expToCExpGeneral (UnOp ATanH e)      = cFuncExpr "atanh" [expToCExp e] (typeToCType (typeOf e))
+expToIExpGeneral (UnOp Sin e)        = IFunCall "sin" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp Cos e)        = IFunCall "cos" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp Tan e)        = IFunCall "tan" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp ASin e)       = IFunCall "asin" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp ACos e)       = IFunCall "acos" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp ATan e)       = IFunCall "atan" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp SinH e)       = IFunCall "sinh" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp CosH e)       = IFunCall "cosh" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp TanH e)       = IFunCall "tanh" [expToIExp e]  (typeOf e)
+expToIExpGeneral (UnOp ASinH e)      = IFunCall "asinh" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp ACosH e)      = IFunCall "acosh" [expToIExp e] (typeOf e)
+expToIExpGeneral (UnOp ATanH e)      = IFunCall "atanh" [expToIExp e] (typeOf e)
+
+expToIExpGeneral e@(UnOp op e1) = IUnOp  (unOpToIUnOp op) (expToIExp e1) (typeOf e)
  
-expToCExpGeneral e@(UnOp op e1)     = cUnOp  (unOpToCUnOp op) (expToCExp e1) (typeToCType (typeOf e))
- 
 
-typeToCType Bool = CInt 
-typeToCType Int  = CInt
-typeToCType Int8  = CInt8
-typeToCType Int16  = CInt16
-typeToCType Int32  = CInt32
-typeToCType Int64  = CInt64
-typeToCType Float = CFloat
-typeToCType Double = CDouble
-typeToCType Word8 = CWord8
-typeToCType Word16 = CWord16
-typeToCType Word32 = CWord32
-typeToCType Word64 = CWord64
-typeToCType (Pointer t) = CPointer (typeToCType t)
-typeToCType (Global t)  = CQualified CQualifyerGlobal (typeToCType t) 
-typeToCType (Local t)  = CQualified CQualifyerLocal (typeToCType t) 
+---------------------------------------------------------------------------
+-- Collect arrays from an IExp 
+---------------------------------------------------------------------------
 
--- maybe unnecessary
-binOpToCBinOp Add = CAdd
-binOpToCBinOp Sub = CSub
-binOpToCBinOp Mul = CMul
-binOpToCBinOp Div = CDiv 
-binOpToCBinOp FDiv = CDiv -- (???)  
-binOpToCBinOp Mod = CMod
-
-binOpToCBinOp Eq  = CEq 
-binOpToCBinOp NotEq = CNotEq
-binOpToCBinOp Lt  = CLt 
-binOpToCBinOp LEq = CLEq
-binOpToCBinOp Gt  = CGt 
-binOpToCBinOp GEq = CGEq 
-
-binOpToCBinOp And = CAnd 
-binOpToCBinOp Or  = COr 
-
-binOpToCBinOp Pow = CPow
-
-binOpToCBinOp BitwiseAnd = CBitwiseAnd
-binOpToCBinOp BitwiseOr  = CBitwiseOr
-binOpToCBinOp BitwiseXor = CBitwiseXor
-binOpToCBinOp ShiftL     = CShiftL 
-binOpToCBinOp ShiftR     = CShiftR
--- notice min and max is not here ! 
-
-unOpToCUnOp   BitwiseNeg = CBitwiseNeg
-unOpToCUnOp   Not = CNot 
-  
+collectArraysI :: String -> IExp -> [Name]
+collectArraysI pre e = go e
+  where
+    go (IVar name _) = if isPrefixOf pre name then [name] else []
+    go (IIndex (ne,es) _) = go ne ++ concatMap go es 
+--    go (IIndex (name,[]) _) = []
+--    go (IIndex (name,_) _) = if isPrefixOf pre name then [name] else []
+    go (IBinOp _ e1 e2 _) = go e1 ++ go e2
+    go (IUnOp  _ e _) = go e
+    go (ICond b e1 e2 _) = go b ++ go e1 ++ go e2
+    go _ = [] 

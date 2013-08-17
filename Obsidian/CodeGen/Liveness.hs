@@ -62,16 +62,16 @@ cl im = mapM process im
     process (SAssign nom ixs e,_) =
       do
         s <- get
-        let arrays = collectArrays e
+        let arrays = collectArraysI "arr" e
             living = Set.fromList (nom:arrays) `Set.union` s
         
         put living  -- update state   
         return (SAssign nom ixs e,living)
     
-    process (SAtomicOp n1 n2 ixs op,_) =
-      do
-        s <- get
-        return (SAtomicOp n1 n2 ixs op,s)
+--    process (SAtomicOp n1 n2 ixs op,_) =
+--      do
+--        s <- get
+--        return (SAtomicOp n1 n2 ixs op,s)
         
     process (SAllocate name size t,_) =
       do
@@ -145,12 +145,12 @@ cl im = mapM process im
         put ns
         return (SForAllBlocks n iml,ns)
 
-    process (SForAllThreads n im,_) = 
-      do 
-        s <- get 
-        let iml = computeLiveness1 s im 
-            l   = safeHead iml 
-            ns  = s `Set.union` l
-        put ns 
-        return (SForAllThreads n iml,ns)
+    -- process (SForAllThreads n im,_) = 
+    --   do 
+    --     s <- get 
+    --     let iml = computeLiveness1 s im 
+    --         l   = safeHead iml 
+    --         ns  = s `Set.union` l
+    --     put ns 
+    --     return (SForAllThreads n iml,ns)
 

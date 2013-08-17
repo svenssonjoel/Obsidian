@@ -40,29 +40,23 @@ type IM = IMList ()
 -- out :: 
 out a = [(a,())]
 
+data Statement t = SAssign Name [IExp] IExp
+         --         | SAtomicOp Name Name (IExp) (Atomic a)
+                 | SCond IExp (IMList t) 
+                 | SSeqFor String IExp (IMList t)
+                 | SBreak
+                 | SSeqWhile IExp (IMList t)
+                   
+                 | SForAll IExp (IMList t) 
+                 | SForAllBlocks IExp (IMList t)
 
-data Statement t =
-  forall a. (Show a, Scalar a) => SAssign Name [Exp Word32] (Exp a)
-                                             -- ? --arr  --offset   -- oper
-  | forall a. (Show a, Scalar a) => SAtomicOp Name Name (Exp Word32) (Atomic a)
-  | SCond (Exp Bool) (IMList t) 
-  | SSeqFor String (Exp Word32) (IMList t)
-  | SBreak
-  | SSeqWhile (EBool) (IMList t)
-    
-  | SForAll (Exp Word32) (IMList t) 
-  | SForAllBlocks (Exp Word32) (IMList t)
-
-    -- a special loop over all threads..
-  | SForAllThreads (Exp Word32) (IMList t)
-    
     -- Memory Allocation..
-  | SAllocate Name Word32 Type
-  | SDeclare  Name Type
-  | SOutput   Name Type
+                 | SAllocate Name Word32 Type
+                 | SDeclare  Name Type
+                 | SOutput   Name Type
 
     -- Synchronisation
-  | SSynchronize
+                 | SSynchronize
 
 compileStep1 :: Compile t => P.Program t a -> IM
 compileStep1 p = snd $ compile ns p
@@ -79,7 +73,7 @@ instance Compile Zero  where
 
 -- Compile Block program 
 instance Compile (Step Zero) where
-  compile s (P.ForAll n f) = (a,out (SForAll n im))
+  compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
     where
       p = f (ThreadIdx X)
       (a,im) = compile s p
@@ -87,7 +81,7 @@ instance Compile (Step Zero) where
 
 -- Compile a Grid Program 
 instance Compile (Step (Step (Zero))) where
-  compile s (P.ForAll n f) = (a, out (SForAllBlocks n im))
+  compile s (P.ForAll n f) = (a, out (SForAllBlocks (expToIExp n) im))
     where 
       p = f (BlockIdx X)
       (a,im) = compile s p
@@ -101,25 +95,25 @@ cs :: Compile t => Supply Int -> P.Program t a -> (a,IM)
 cs i P.Identifier = (supplyValue i, [])
 
 cs i (P.Assign name ix e) =
-  ((),out (SAssign name ix e))
+  ((),out (SAssign name (map expToIExp ix) (expToIExp e)))
  
-cs i (P.AtomicOp name ix at) = (v,out im)
-  where 
-    nom = "a" ++ show (supplyValue i)
-    v = variable nom
-    im = SAtomicOp nom name ix at
+--cs i (P.AtomicOp name ix at) = (v,out im)
+--  where 
+--    nom = "a" ++ show (supplyValue i)
+--    v = variable nom
+--    im = SAtomicOp nom name ix at
       
-cs i (P.Cond bexp p) = ((),out (SCond bexp im)) 
+cs i (P.Cond bexp p) = ((),out (SCond (expToIExp bexp) im)) 
   where ((),im) = compile i p
 
-cs i (P.SeqFor n f) = (a,out (SSeqFor nom n im))
+cs i (P.SeqFor n f) = (a,out (SSeqFor nom (expToIExp n) im))
   where
     (i1,i2) = split2 i
     nom = "i" ++ show (supplyValue i1)
     v = variable nom
     p = f v
     (a,im) = compile i2 p
-cs i (P.SeqWhile b p) = (a, out (SSeqWhile b im))
+cs i (P.SeqWhile b p) = (a, out (SSeqWhile (expToIExp b) im))
   where
     (a,im) = compile i p
 
@@ -145,24 +139,25 @@ cs i (P.Return a) = (a,[])
 -- The nested ForAll case. 
 cs i p = error $ P.printPrg p -- compile i p 
 
+
+
 ---------------------------------------------------------------------------
 -- Analysis
 --------------------------------------------------------------------------- 
-numThreads :: IMList a -> Either Word32 (EWord32)
-numThreads im = foldl maxCheck (Left 0) $ map process im
+numThreads :: IMList a -> Maybe Word32 
+numThreads im = foldl maxCheck (Just 0) $ map process im
   where
     process (SCond bexp im,_) = numThreads im
-    process (SSeqFor _ _ _,_) = Left 1
-    process (SForAll (Literal n) _,_) = Left n
-    process (SForAll n _,_) = Right n
+    process (SSeqFor _ _ _,_) = Just 1
+    process (SForAll (IWord32 n) _,_) = Just n
+    process (SForAll n _,_) = Nothing
     process (SForAllBlocks _ im,_) = numThreads im
-    process (SForAllThreads n im,_) = Right (variable "UNKNOWN") --fix this!
-    process a = Left 0 -- ok ? 
+--     process (SForAllThreads n im,_) = Right (ariable "UNKNOWN") --fix this!
+    process a = Just 0 -- ok ? 
 
-    maxCheck (Left a) (Right b)  = Right $ max (fromIntegral a) b
-    maxCheck (Right a) (Left b)  = Right $ max a (fromIntegral b)
-    maxCheck (Left a) (Left  b)  = Left  $ max a b
-    maxCheck (Right a) (Right b) = Right $ max a b
+    maxCheck (Just a) (Just  b)  = Just  $ max a b
+    maxCheck _ _ = Nothing
+
 
 
 getOutputs :: IMList a -> [(Name,Type)]
@@ -172,7 +167,7 @@ getOutputs im = concatMap process im
     process (SSeqFor _ _ im,_)      = getOutputs im
     process (SForAll _ im,_)        = getOutputs im
     process (SForAllBlocks _ im,_)  = getOutputs im
-    process (SForAllThreads _ im,_) = getOutputs im
+--    process (SForAllThreads _ im,_) = getOutputs im
     process a = []
     
 
@@ -186,13 +181,13 @@ printIM im = concatMap printStm im
 -- Print a Statement with metadata 
 printStm :: Show a => (Statement a,a) -> String
 printStm (SAssign name [] e,m) =
-  name ++ " = " ++ printExp e ++ ";" ++ meta m
+  name ++ " = " ++ show e ++ ";" ++ meta m
 printStm (SAssign name ix e,m) =
-  name ++ "[" ++ concat (intersperse "," (map printExp ix)) ++ "]" ++
-  " = " ++ printExp e ++ ";" ++ meta m
-printStm (SAtomicOp res arr ix op,m) =
-  res ++ " = " ++
-  printAtomic op ++ "(" ++ arr ++ "[" ++ printExp ix ++ "]);" ++ meta m
+  name ++ "[" ++ concat (intersperse "," (map show ix)) ++ "]" ++
+  " = " ++ show e ++ ";" ++ meta m
+--printStm (SAtomicOp res arr ix op,m) =
+--  res ++ " = " ++
+--  printAtomic op ++ "(" ++ arr ++ "[" ++ show ix ++ "]);" ++ meta m
 printStm (SAllocate name n t,m) =
   name ++ " = malloc(" ++ show n ++ ");" ++ meta m
 printStm (SDeclare name t,m) =
@@ -217,9 +212,9 @@ printStm (SForAll n im,m) =
 printStm (SForAllBlocks n im,m) =
   "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
-printStm (SForAllThreads n im,m) =
-  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
-  concatMap printStm im ++ "\ndone;\n"
+--printStm (SForAllThreads n im,m) =
+--  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
+--  concatMap printStm im ++ "\ndone;\n"
 
 
   

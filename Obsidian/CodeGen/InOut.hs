@@ -50,26 +50,19 @@ import Data.Int
 ---------------------------------------------------------------------------
 -- "reify" Haskell functions into CG.Programs
 
-{-
-   Blocks needs to be of specific sizes (a design choice we've made).
-   Because of this a prototypical input array needs to be provided
-   that has a static block size (the number of blocks is dynamic).
 
-   To make things somewhat general a heterogeneous list of input arrays
-   that has same shape as the actual parameter list of the function
-   is passed into toProgram (the reifyer). 
+---------------------------------------------------------------------------
+-- The parameter list of the kernel function
+--------------------------------------------------------------------------- 
 
--} 
-  
-type Inputs = [(Name,Type)]
-
+type Parameters = [(Name,Type)]
 
 ---------------------------------------------------------------------------
 --
 --------------------------------------------------------------------------- 
 class ToProgram a where
-  toProgram :: Int -> a -> InputList a -> (Inputs,CG.IM)
-  toProgram_ :: Int -> a -> (Inputs, CG.IM)
+  toProgram :: Int -> a -> InputList a -> (Parameters,CG.IM)
+  toProgram_ :: Int -> a -> (Parameters, CG.IM)
 
 
 typeOf_ a = typeOf (Literal a)
@@ -101,25 +94,33 @@ instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) whe
 
 
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
-  toProgram i p {-(Push _ p)-} a =
-    let prg = do
-          output <- Output $ Pointer $ typeOf_ (undefined :: a)
-          p <: (\a ix -> assignOut output a ix)
-    in 
-     toProgram i prg a
+  toProgram i p a =
+    let outT = Pointer $ typeOf_ (undefined :: a)
+        outN = "output" ++ show i
+        
+        prg = p <: (\a ix -> assignOut outN a ix)
+        
+        (inputs,im) = toProgram (i+1) prg a
+        
+    in (inputs++[(outN,outT)],im) 
+     
     where
       assignOut out a ix = Assign out [ix] a
   toProgram_ i p = toProgram i p () 
 
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
-  toProgram i p {-(Push _ p)-} a =
-    let prg = do
-          out1 <- Output $ Pointer $ typeOf_ (undefined :: a)
-          out2 <- Output $ Pointer $ typeOf_ (undefined :: b)
+  toProgram i p a =
+    let   outT1 = Pointer $ typeOf_ (undefined :: a)
+          outT2 = Pointer $ typeOf_ (undefined :: b)
+          outN1 = "output" ++ show i
+          outN2 = "output" ++ show (i+1)
           
-          p <: (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
-    in 
-     toProgram i prg a
+
+          prg = p <: (\(a,b) ix -> assignOut (outN1,outN2) (a,b) ix)
+            
+          (inputs,im) = toProgram (i+2) prg a
+          
+    in (inputs++[(outN1,outT1),(outN2,outT2)],im)
     where
       assignOut (o1,o2) (a,b) ix =
         do

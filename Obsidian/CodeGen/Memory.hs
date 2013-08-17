@@ -141,7 +141,7 @@ mmIM im memory memmap = r im (memory,memmap)
     -- Yet another tricky case.
     process (SForAll n im,_) m mm = mmIM im m mm 
     -- The worst of them all.
-    process (SForAllThreads n im,_) m mm = mmIM im m mm
+--    process (SForAllThreads n im,_) m mm = mmIM im m mm
 
     process (_,_) m mm = (m,mm) 
 
