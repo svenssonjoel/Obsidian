@@ -5,7 +5,7 @@ module Obsidian (module Obsidian.Array,
                  module Obsidian.Force, 
                  module Obsidian.Library,
                  module Obsidian.LibraryG,
-                 module Obsidian.CodeGen.InOut,
+                 module Obsidian.CodeGen.Reify,
                  module Obsidian.CodeGen.CompileIM,
                  --module Obsidian.CodeGen.CUDA,
                  module Obsidian.Atomic, 
@@ -23,7 +23,7 @@ import Obsidian.Array
 import Obsidian.Library
 import Obsidian.LibraryG
 import Obsidian.Force
-import Obsidian.CodeGen.InOut
+import Obsidian.CodeGen.Reify
 import Obsidian.CodeGen.CompileIM
 --import Obsidian.CodeGen.CUDA 
 import Obsidian.Atomic

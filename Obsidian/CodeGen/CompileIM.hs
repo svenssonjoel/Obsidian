@@ -5,13 +5,13 @@
 module Obsidian.CodeGen.CompileIM where 
 
 import Language.C.Quote
-import Language.C.Quote.CUDA
+import Language.C.Quote.CUDA as CU
 
 import qualified Language.C.Quote.OpenCL as CL 
 
 import qualified "language-c-quote" Language.C.Syntax as C 
 
-import Obsidian.Exp (IExp(..),IBinOp(..),IUnOp(..),expToIExp)
+import Obsidian.Exp (IExp(..),IBinOp(..),IUnOp(..))
 import Obsidian.Types
 import Obsidian.DimSpec 
 import Obsidian.CodeGen.Program
@@ -103,7 +103,9 @@ compileExp (IBinOp op e1 e2 t) = go op
     go ILEq = [cexp| $x <=  $y |]
     go IAnd = [cexp| $x && $y |]
     go IOr = [cexp| $x  || $y |]
---    go IPow = [cexp| $x  $y |]
+    go IPow = case t of
+                Float ->  [cexp|powf($x,$y) |]
+                Double -> [cexp|pow($x,$y)  |] 
     go IBitwiseAnd = [cexp| $x & $y |]
     go IBitwiseOr = [cexp| $x | $y |]
     go IBitwiseXor = [cexp| $x ^ $y |]
@@ -120,41 +122,24 @@ compileExp (IFunCall name es t) = [cexp| $fc |]
     es' = map compileExp es
     fc  = [cexp| $id:(name)($args:(es')) |]
 
-compileExp (ICast e t) = go t
+compileExp (ICast e t) = [cexp| ($ty:(go t)) $e' |]
   where
     e' = compileExp e
-    go Int8 = [cexp| (typename int8_t) $e' |]
-    go Int16 = [cexp| (typename int16_t) $e' |]
-    go Int32 = [cexp| (typename int32_t) $e' |]
-    go Int64 = [cexp| (typename int64_t) $e' |]
+    go Int8   = [cty| typename int8_t  |]
+    go Int16  = [cty| typename int16_t |]
+    go Int32  = [cty| typename int32_t |]
+    go Int64  = [cty| typename int64_t |]
 
-    go Word8 = [cexp| (typename uint8_t) $e' |]
-    go Word16 = [cexp| (typename uint16_t) $e' |]
-    go Word32 = [cexp| (typename uint32_t) $e' |]
-    go Word64 = [cexp| (typename uint64_t) $e' |]
+    go Word8  = [cty| typename uint8_t  |]
+    go Word16 = [cty| typename uint16_t |]
+    go Word32 = [cty| typename uint32_t |]
+    go Word64 = [cty| typename uint64_t |]
 
-    go Float  = [cexp| (float) $e' |]
-    go Double = [cexp| (float) $e' |]
+    go Float  = [cty| float  |]
+    go Double = [cty| double |]
 
- -- IMPROVE HERE 
-    go (Pointer Int8) = [cexp| (typename int8_t*) $e' |]
-    go (Pointer Int16) = [cexp| (typename int16_t*) $e' |]
-    go (Pointer Int32) = [cexp| (typename int32_t*) $e' |]
-    go (Pointer Int64) = [cexp| (typename int64_t*) $e' |]
-
-    go (Pointer Word8) = [cexp| (typename uint8_t*) $e' |]
-    go (Pointer Word16) = [cexp| (typename uint16_t*) $e' |]
-    go (Pointer Word32) = [cexp| (typename uint32_t*) $e' |]
-    go (Pointer Word64) = [cexp| (typename uint64_t*) $e' |]
-
-    go (Pointer Float)  = [cexp| (float*) $e' |]
-    go (Pointer Double) = [cexp| (float*) $e' |]
-
-
-    -- go _ = error $ "what: " ++ show e 
-
-
-
+    go (Pointer t) = [cty| $ty:(go t)* |]
+ 
 
 ---------------------------------------------------------------------------
 -- **     
@@ -199,11 +184,16 @@ compile pform config kname (params,im)
     stms = compileIM im 
     ps = compileParams params
     go PlatformCUDA
-      = [cedecl| __global__ void $id:kname($params:ps) {$stms:stms} |]
+      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:body} |]
     go PlatformOpenCL
       = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
 
+    body = [BlockDecl cudaDecls] ++
+            map BlockStm stms
 
+-- see if there is a problem with alignments
+-- Maybe Obsidian.CodeGen.Memory needs to align allocations.. 
+cudaDecls = [cdecl| extern __shared__ typename uint8_t sbase[]; |]
 
 compileParams :: Parameters -> [Param]
 compileParams = map go

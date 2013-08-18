@@ -19,9 +19,8 @@ import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
 import Obsidian.CodeGen.Program
-import Obsidian.CodeGen.CUDA
-import Obsidian.CodeGen.InOut
-import Obsidian.CodeGen.Common (genType,GenConfig(..))
+import Obsidian.CodeGen.Reify
+
 import Obsidian.Types -- experimental
 import Obsidian.Exp
 import Obsidian.Array
