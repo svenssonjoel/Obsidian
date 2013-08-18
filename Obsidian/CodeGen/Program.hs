@@ -46,8 +46,9 @@ data Statement t = SAssign IExp [IExp] IExp
                  | SSeqFor String IExp (IMList t)
                  | SBreak
                  | SSeqWhile IExp (IMList t)
-                   
-                 | SForAll IExp (IMList t) 
+
+                 --        loopVar  Iters   Body
+                 | SForAll String   IExp    (IMList t) 
                  | SForAllBlocks IExp (IMList t)
 
     -- Memory Allocation..
@@ -73,11 +74,15 @@ instance Compile Zero  where
 
 -- Compile Block program 
 instance Compile (Step Zero) where
-  compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
+  compile s (P.ForAll n f) = (a,out (SForAll nom (expToIExp n) im))
     where
-      p = f (ThreadIdx X)
+      --(i1,i2) = split2 s
+      nom = "tid" 
+      v = variable nom
+      p = f v  -- (ThreadIdx X)
       (a,im) = compile s p
   compile s p = cs s p 
+
 
 -- Compile a Grid Program 
 instance Compile (Step (Step (Zero))) where
@@ -149,8 +154,8 @@ numThreads im = foldl maxCheck (Just 0) $ map process im
   where
     process (SCond bexp im,_) = numThreads im
     process (SSeqFor _ _ _,_) = Just 1
-    process (SForAll (IWord32 n) _,_) = Just n
-    process (SForAll n _,_) = Nothing
+    process (SForAll _ (IWord32 n) _,_) = Just n
+    process (SForAll _ n _,_) = Nothing
     process (SForAllBlocks _ im,_) = numThreads im
 --     process (SForAllThreads n im,_) = Right (ariable "UNKNOWN") --fix this!
     process a = Just 0 -- ok ? 
@@ -160,15 +165,15 @@ numThreads im = foldl maxCheck (Just 0) $ map process im
 
 
 
-getOutputs :: IMList a -> [(Name,Type)]
-getOutputs im = concatMap process im
-  where
-    process (SOutput name t,_)      = [(name,t)]
-    process (SSeqFor _ _ im,_)      = getOutputs im
-    process (SForAll _ im,_)        = getOutputs im
-    process (SForAllBlocks _ im,_)  = getOutputs im
---    process (SForAllThreads _ im,_) = getOutputs im
-    process a = []
+-- getOutputs :: IMList a -> [(Name,Type)]
+-- getOutputs im = concatMap process im
+--   where
+--     process (SOutput name t,_)      = [(name,t)]
+--     process (SSeqFor _ _ im,_)      = getOutputs im
+--     process (SForAll _ _ im,_)        = getOutputs im
+--     process (SForAllBlocks _ im,_)  = getOutputs im
+-- --    process (SForAllThreads _ im,_) = getOutputs im
+--     process a = []
     
 
 ---------------------------------------------------------------------------
@@ -205,8 +210,8 @@ printStm (SSeqFor name n im,m) =
   "for " ++ name  ++ " in [0.." ++ show n ++"] do" ++ meta m ++ 
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SForAll n im,m) =
-  "forAll i in [0.." ++ show n ++"] do" ++ meta m ++
+printStm (SForAll nom n im,m) =
+  "forAll" ++ nom ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
 printStm (SForAllBlocks n im,m) =

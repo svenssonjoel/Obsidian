@@ -23,13 +23,14 @@ import Data.Int
 
 {- TODOs:
    * Do not "derive" number of threads from the code.
-     Impose a number of threads and blocks from the outside
+     Impose a number of threads and blocks from the outside.
+     This means changing the IM.
+    
    * Pass a target "platform" to code generator.
       - CUDA
       - OpenCL
       - Sequential C
-   * Create the full kernel (including function declaration, inputs, outputs
-   * Move memory-mapping to a earlier IM -> IM phase.
+   * rewrite some functions here to use  a reader monad. 
    
 -} 
 
@@ -41,7 +42,7 @@ data Platform = PlatformCUDA
               | PlatformC 
 
 data Config = Config {configThreads :: Word32,
-                      configBlocks  :: Word32 }
+                      configBlocks  :: Word32 } -- Not sure what to do with num of blocks knowledge
 
 
 
@@ -152,24 +153,50 @@ compileExp (ICast e t) = [cexp| ($ty:(go t)) $e' |]
 ---------------------------------------------------------------------------
 
 
-compileStm :: Statement t -> [Stm]
-compileStm (SAssign name [] e)
+compileStm :: Platform -> Config -> Statement t -> [Stm]
+compileStm p c (SAssign name [] e)
   = [[cstm| $(compileExp name) = $(compileExp e);|]]
-compileStm (SAssign name [ix] e) 
+compileStm p c (SAssign name [ix] e) 
   = [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
-compileStm (SCond be im) 
-  = [[cstm| if ($(compileExp be)) { $stms:(compileIM  im) } |]]
-compileStm (SForAll n im) 
-  = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM im) } |]]
-compileStm (SForAllBlocks n im) 
-  = [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:(compileIM im) } |]]
-compileStm SSynchronize 
-  = [[cstm| __syncthreads(); |]]
-compileStm a = []
-         
+compileStm p c (SCond be im) 
+  = [[cstm| if ($(compileExp be)) { $stms:(compileIM p c im) } |]]
+compileStm p c a@(SForAll loopVar n im) = compileForAll p c a
+--   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
+compileStm p c (SForAllBlocks n im) 
+  = [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
+compileStm p c SSynchronize 
+  = case p of
+      PlatformCUDA -> [[cstm| __syncthreads(); |]]
+      PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
+compileStm _ _ a = []
+
+
+compileForAll pform c (SForAll loopVar (IWord32 n) im) = goQ pform ++ goR pform
+
+  where
+    nt = configThreads c 
+
+    q  = n `quot` nt
+    r  = n `rem`  nt 
+    
+    goQ PlatformCUDA =
+      case q of
+        0 -> []
+        1 -> [cstm| $id:loopVar = threadIdx.x; |] : compileIM pform c im 
+        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
+             where 
+               body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] :compileIM pform c im
+   
+    goR PlatformCUDA = 
+      case r of 
+        0 -> [] 
+        n -> [[cstm| if (threadIdx.x < $int:n) { $stms:(compileIM pform c im) } |]]
   
-compileIM :: IMList a -> [Stm]
-compileIM im = concatMap (compileStm . fst) im
+      
+
+
+compileIM :: Platform -> Config -> IMList a -> [Stm]
+compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 
 
 ---------------------------------------------------------------------------
@@ -181,19 +208,20 @@ compile :: Platform -> Config -> String -> (Parameters,IMList a) -> Definition
 compile pform config kname (params,im)
   = go pform 
   where
-    stms = compileIM im 
+    stms = compileIM pform config im 
     ps = compileParams params
     go PlatformCUDA
       = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:body} |]
     go PlatformOpenCL
       = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
 
-    body = [BlockDecl cudaDecls] ++
+    body =  cudaDecls ++
             map BlockStm stms
 
 -- see if there is a problem with alignments
--- Maybe Obsidian.CodeGen.Memory needs to align allocations.. 
-cudaDecls = [cdecl| extern __shared__ typename uint8_t sbase[]; |]
+-- Maybe Obsidian.CodeGen.Memory needs to align allocations..
+cudaDecls = [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |], 
+             BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |] ]
 
 compileParams :: Parameters -> [Param]
 compileParams = map go

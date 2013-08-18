@@ -128,14 +128,14 @@ cl im = mapM process im
         return (SBreak,s)
 
 
-    process (SForAll n im,_) =  
+    process (SForAll nom n im,_) =  
       do 
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
             ns  = s `Set.union` l
         put ns
-        return (SForAll n iml,ns) 
+        return (SForAll nom n iml,ns) 
     
     process (SForAllBlocks n im,_) = 
       do 
