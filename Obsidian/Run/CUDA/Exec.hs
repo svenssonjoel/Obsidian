@@ -45,6 +45,11 @@ import System.Process
 
 import Control.Monad.State
 
+
+
+debug = True
+
+
 ---------------------------------------------------------------------------
 -- An array located in GPU memory
 ---------------------------------------------------------------------------
@@ -222,8 +227,10 @@ capture config f =
         (prgstr,bytesShared) = genKernelSpecsNL config kn f
         header = "#include <stdint.h>\n" -- more includes ? 
 
-    lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
-    lift $ putStrLn $ prgstr
+    when debug $ 
+      do 
+        lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
+        lift $ putStrLn $ prgstr
                  
     lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
 

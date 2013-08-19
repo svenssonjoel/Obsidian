@@ -2,6 +2,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE PackageImports #-} 
 
+{-
+
+   Joel Svensson 2013
+
+
+-} 
+
 module Obsidian.CodeGen.CompileIM where 
 
 import Language.C.Quote
