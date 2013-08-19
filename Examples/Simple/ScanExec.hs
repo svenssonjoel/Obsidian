@@ -20,11 +20,12 @@ import Data.Word
 perform =
   withCUDA $
   do
-    kern <- capture (sklansky 8 (+) . splitUp 256) 
+    kern <- capture (256, 0) (sklansky 10 (+) . splitUp 1024) 
 
-    useVector (V.fromList [0..255 :: Word32]) $ \i -> 
-      allocaVector 256 $ \ (o :: CUDAVector Word32) ->
+    useVector (V.fromList [0..1023 :: Word32]) $ \i -> 
+      allocaVector 1024 $ \ (o :: CUDAVector Word32) ->
       do
+        fill o 0
         o <== (1,kern) <> i 
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
@@ -34,7 +35,7 @@ perform =
 performLarge =
   withCUDA $
   do
-    kern <- capture (sklansky 8 (+) . splitUp 256) 
+    kern <- capture (256,0) (sklansky 8 (+) . splitUp 256) 
 
     useVector (V.fromList [0..65535 :: Word32]) $ \i ->
       allocaVector 65536 $ \ (o :: CUDAVector Word32) ->

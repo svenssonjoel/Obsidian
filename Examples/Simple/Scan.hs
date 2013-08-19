@@ -34,10 +34,10 @@ fan op arr =  a1 `conc`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))              
 
-getScan = putStrLn $ genKernel "scan" (sklansky 8 (+) . splitUp 256) (input :- ())
-   where
-     input :: DPull EWord32
-     input = undefinedGlobal (variable "X")
+-- getScan = putStrLn $ genKernel "scan" (sklansky 8 (+) . splitUp 256) (input :- ())
+--    where
+--      input :: DPull EWord32
+--      input = undefinedGlobal (variable "X")
 
   
 
@@ -63,14 +63,14 @@ sklanskyCin n op cins arr
   = pConcat $
     zipWith (\a b -> pJoin $ sklanskyLocalCin n op a b) cins arr
 
-getScanCin =
-  putStrLn $ genKernel "scan" kernel (inputC :- input :- ())
-   where
-     kernel cins arr = sklanskyCin 8 (+) cins (splitUp 256 arr) 
-     input :: DPull EWord32
-     input = undefinedGlobal (variable "X")
+-- getScanCin =
+--   putStrLn $ genKernel "scan" kernel (inputC :- input :- ())
+--    where
+--      kernel cins arr = sklanskyCin 8 (+) cins (splitUp 256 arr) 
+--      input :: DPull EWord32
+--      input = undefinedGlobal (variable "X")
 
-     inputC :: DPull EWord32
-     inputC = undefinedGlobal (variable "X")
+--      inputC :: DPull EWord32
+--      inputC = undefinedGlobal (variable "X")
      
 
