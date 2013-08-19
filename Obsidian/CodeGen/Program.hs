@@ -143,7 +143,7 @@ cs i p = error $ P.printPrg p -- compile i p
 
 
 ---------------------------------------------------------------------------
--- Analysis
+-- Analysis (Old: Not used anymore) 
 --------------------------------------------------------------------------- 
 numThreads :: IMList a -> Maybe Word32 
 numThreads im = foldl maxCheck (Just 0) $ map process im

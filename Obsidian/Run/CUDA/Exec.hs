@@ -2,7 +2,7 @@
              ScopedTypeVariables,
              TypeFamilies,
              TypeSynonymInstances,
-             FlexibleInstances #-} 
+             FlexibleInstances  #-} 
 
 module Obsidian.Run.CUDA.Exec where
 
@@ -233,7 +233,7 @@ capture config f =
         lift $ putStrLn $ prgstr
                  
     lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
-
+    
     mod <- liftIO $ CUDA.loadFile cub
     fun <- liftIO $ CUDA.getFun mod kn 
 

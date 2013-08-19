@@ -212,7 +212,7 @@ type instance InputList (GProgram b)    = ()
 genKernelSpecsNL :: ToProgram prg => (Word32, Word32) -> String -> prg -> (String, Word32)
 genKernelSpecsNL (nt, nb) kn prg = (prgStr,bytesShared) 
   where
-    prgStr = pretty 75 $ ppr $ compile PlatformCUDA (Config nt nb) kn (a,rim) 
+    prgStr = pretty 75 $ ppr $ compile PlatformCUDA (Config nt nb bytesShared) kn (a,rim) 
     (a,im) = toProgram_ 0 prg
     iml = computeLiveness im
     (m,mm) = mmIM iml sharedMem (M.empty)

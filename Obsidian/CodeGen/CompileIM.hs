@@ -43,10 +43,12 @@ import Data.Int
 ---------------------------------------------------------------------------
 data Platform = PlatformCUDA
               | PlatformOpenCL
-              | PlatformC 
+              | PlatformC
 
-data Config = Config {configThreads :: Word32,
-                      configBlocks  :: Word32 } -- Not sure what to do with num of blocks knowledge
+data Config = Config { configThreads :: Word32,
+                       configBlocks  :: Word32, -- Really ???
+                       configSharedMem :: Word32 }
+
 
 
 
@@ -172,31 +174,38 @@ compileStm p c SSynchronize
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
 compileStm _ _ a = []
 
-
-compileForAll pform c (SForAll loopVar (IWord32 n) im) = goQ pform ++ goR pform
-
+---------------------------------------------------------------------------
+-- ForAll is compiled differently for different platforms
+---------------------------------------------------------------------------
+compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = goQ ++ goR
   where
     nt = configThreads c 
 
     q  = n `quot` nt
     r  = n `rem`  nt 
     
-    goQ PlatformCUDA =
+    goQ  =
       case q of
         0 -> []
-        1 -> [cstm| $id:loopVar = threadIdx.x; |] : compileIM pform c im 
+        1 -> [cstm| $id:loopVar = threadIdx.x; |] : compileIM PlatformCUDA c im 
         n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
              where 
-               body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] :compileIM pform c im
+               body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] :compileIM PlatformCUDA c im
    
-    goR PlatformCUDA = 
+    goR  = 
       case r of 
         0 -> [] 
-        n -> [[cstm| if (threadIdx.x < $int:n) { $stms:(compileIM pform c im) } |]]
-  
+        n -> [[cstm| if (threadIdx.x < $int:n) { $stms:(compileIM PlatformCUDA c im) } |]]
+ 
+compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go 
+  where
+    body = compileIM PlatformC c im 
+    go = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
       
 
-
+--------------------------------------------------------------------------- 
+-- CompileIM to list of Stm 
+--------------------------------------------------------------------------- 
 compileIM :: Platform -> Config -> IMList a -> [Stm]
 compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 
@@ -213,18 +222,23 @@ compile pform config kname (params,im)
     stms = compileIM pform config im 
     ps = compileParams params
     go PlatformCUDA
-      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:body} |]
+      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
     go PlatformOpenCL
       = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
+    go PlatformC
+      = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
-    body =  cudaDecls ++
+    cudabody = [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |], 
+                BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |] ] ++
+                map BlockStm stms
+
+    cbody = -- add memory allocation 
             map BlockStm stms
 
--- see if there is a problem with alignments
--- Maybe Obsidian.CodeGen.Memory needs to align allocations..
-cudaDecls = [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |], 
-             BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |] ]
 
+--------------------------------------------------------------------------- 
+-- Parameter lists for functions  (kernel head) 
+---------------------------------------------------------------------------
 compileParams :: Parameters -> [Param]
 compileParams = map go
   where
