@@ -22,9 +22,6 @@ import Data.Word
 import Data.Int
 
 {- TODOs:
-   * Do not "derive" number of threads from the code.
-     Impose a number of threads and blocks from the outside.
-     This means changing the IM.
     
    * Pass a target "platform" to code generator.
       - CUDA
