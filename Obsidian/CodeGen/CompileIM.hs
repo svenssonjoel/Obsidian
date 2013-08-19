@@ -228,6 +228,14 @@ compileParams = map go
   where
     go (name,t) = [cparam| $ty:(cType t) $id:name |]
 
+    cType (Int8) = [cty| typename int8_t |]
+    cType (Int16) = [cty| typename int16_t |]
     cType (Int32) = [cty| typename int32_t |]
+    cType (Int64) = [cty| typename int64_t |]
+    cType (Word8) = [cty| typename uint8_t |]
+    cType (Word16) = [cty| typename uint16_t |]
     cType (Word32) = [cty| typename uint32_t |]
+    cType (Word64) = [cty| typename uint64_t |]
+    cType (Float) = [cty| float |]
+    cType (Double) = [cty| double |]
     cType (Pointer t) = [cty| $ty:(cType t)* |]

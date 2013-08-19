@@ -111,19 +111,7 @@ data Program t a where
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
-              
-  {- About Output (Creates a named output array). 
-     This is similar to Allocate but concerning global arrays.
-
-     Since we cannot synchronize writes to a global array inside of an
-     kernel, global arrays will only be written as outputs of the kernel
-
-     Also used this when doing 
-  -}
-  
-  Output   :: Type -> Program t Name
-  -- (Output may be replaced by AllocateG) 
-  
+                
   Sync     :: Program Block ()
   -- Two very experimental threadfence constructs.
   -- should correspond to cuda __threadfence();
@@ -248,7 +236,6 @@ printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 
 printPrg' :: Int -> Program t a -> (a,String,Int)
 printPrg' i Identifier = (i,"getId;\n",i+1) 
--- printPrg' i Skip = ((),";\n", i)
 printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 
 printPrg' i (AtomicOp n ix e) =
@@ -262,9 +249,6 @@ printPrg' i (Allocate id n t) =
 printPrg' i (Declare id t) =
   let newname = id -- "arr" ++ show id
   in ((),show t ++ " " ++ newname ++ "\n",i+1)
-printPrg' i (Output t) =
-  let newname = "globalOut" ++ show i
-  in (newname,newname ++ " = new Global output;\n",i+1)
 printPrg' i (SeqFor n f) =
   let (a,prg2,i') = printPrg' i (f (variable "i"))
       

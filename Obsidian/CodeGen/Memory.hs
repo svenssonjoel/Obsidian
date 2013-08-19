@@ -177,7 +177,6 @@ renameIM mm im = zip (map (go . fst) im) (repeat ())
     -- Strip this out earlier. 
     go (SAllocate name n t)  = SAllocate name n t 
     go (SDeclare name t) = SDeclare name t
-    go (SOutput name t)  = SOutput name t
     go SSynchronize      = SSynchronize 
 
 ---------------------------------------------------------------------------

@@ -54,7 +54,6 @@ data Statement t = SAssign IExp [IExp] IExp
     -- Memory Allocation..
                  | SAllocate Name Word32 Type
                  | SDeclare  Name Type
-                 | SOutput   Name Type
 
     -- Synchronisation
                  | SSynchronize
@@ -126,10 +125,7 @@ cs i (P.Break) = ((), out SBreak)
 
 cs i (P.Allocate id n t) = ((),out (SAllocate id n t))
 cs i (P.Declare  id t)   = ((),out (SDeclare id t))
--- Output works in a different way! (FIX THIS!)
---  Uniformity! (Allocate Declare Output) 
-cs i (P.Output   t)      = (nom,out (SOutput nom t))
-  where nom = "output" ++ show (supplyValue i) 
+
 cs i (P.Sync)            = ((),out (SSynchronize))
 
 
@@ -163,19 +159,6 @@ numThreads im = foldl maxCheck (Just 0) $ map process im
     maxCheck (Just a) (Just  b)  = Just  $ max a b
     maxCheck _ _ = Nothing
 
-
-
--- getOutputs :: IMList a -> [(Name,Type)]
--- getOutputs im = concatMap process im
---   where
---     process (SOutput name t,_)      = [(name,t)]
---     process (SSeqFor _ _ im,_)      = getOutputs im
---     process (SForAll _ _ im,_)        = getOutputs im
---     process (SForAllBlocks _ im,_)  = getOutputs im
--- --    process (SForAllThreads _ im,_) = getOutputs im
---     process a = []
-    
-
 ---------------------------------------------------------------------------
 -- Turning IM to strings
 ---------------------------------------------------------------------------
@@ -196,8 +179,6 @@ printStm (SAssign name ix e,m) =
 printStm (SAllocate name n t,m) =
   name ++ " = malloc(" ++ show n ++ ");" ++ meta m
 printStm (SDeclare name t,m) =
-  show t ++ " " ++ name ++ ";" ++ meta m
-printStm (SOutput name t,m) =
   show t ++ " " ++ name ++ ";" ++ meta m
 printStm (SCond bexp im,m) =
   "if " ++ show bexp ++ "{\n" ++ 

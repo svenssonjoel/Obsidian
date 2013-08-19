@@ -85,11 +85,6 @@ cl im = mapM process im
         s <- get 
         return (SDeclare name t,s)
 
-    process (SOutput name t,_) = 
-      do 
-        s <- get 
-        return (SOutput name t,s)
-
     process (SSynchronize,_) = 
       do 
         s <- get

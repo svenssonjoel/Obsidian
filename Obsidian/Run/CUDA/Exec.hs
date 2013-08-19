@@ -208,8 +208,8 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
 ---------------------------------------------------------------------------    
-capture :: ToProgram prg => prg -> CUDA (KernelT prg) 
-capture f =
+capture :: ToProgram prg => (Word32, Word32) -> prg -> CUDA (KernelT prg) 
+capture config f =
   do
     i <- newIdent
 
@@ -219,9 +219,12 @@ capture f =
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
 
-        (prgstr,nt,bs) = genKernelSpecsNL kn f
+        (prgstr,bytesShared) = genKernelSpecsNL config kn f
         header = "#include <stdint.h>\n" -- more includes ? 
-         
+
+    lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
+    lift $ putStrLn $ prgstr
+                 
     lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
 
     mod <- liftIO $ CUDA.loadFile cub
@@ -230,7 +233,7 @@ capture f =
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $ KernelT fun nt bs [] []
+    return $ KernelT fun (fst config) bytesShared [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
