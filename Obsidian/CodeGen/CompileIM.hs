@@ -34,6 +34,7 @@ import Data.Int
       - CUDA
       - OpenCL
       - Sequential C
+      - C with OpenMP ? 
    * rewrite some functions here to use  a reader monad. 
    
 -} 
@@ -45,8 +46,7 @@ data Platform = PlatformCUDA
               | PlatformOpenCL
               | PlatformC
 
-data Config = Config { configThreads :: Word32,
-                       configBlocks  :: Word32, -- Really ???
+data Config = Config { configThreadsPerBlock :: Word32,
                        configSharedMem :: Word32 }
 
 
@@ -179,7 +179,7 @@ compileStm _ _ a = []
 ---------------------------------------------------------------------------
 compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = goQ ++ goR
   where
-    nt = configThreads c 
+    nt = configThreadsPerBlock c 
 
     q  = n `quot` nt
     r  = n `rem`  nt 
@@ -220,7 +220,7 @@ compile pform config kname (params,im)
   = go pform 
   where
     stms = compileIM pform config im 
-    ps = compileParams params
+    ps = compileParams pform params
     go PlatformCUDA
       = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
     go PlatformOpenCL
@@ -239,9 +239,14 @@ compile pform config kname (params,im)
 --------------------------------------------------------------------------- 
 -- Parameter lists for functions  (kernel head) 
 ---------------------------------------------------------------------------
-compileParams :: Parameters -> [Param]
-compileParams = map go
+compileParams :: Platform -> Parameters -> [Param]
+compileParams PlatformOpenCL = map go
+  where
+    go (name,Pointer t) = [CL.cparam| global  $ty:(compileType t) $id:name |]
+    go (name, t)        = [CL.cparam| $ty:(compileType t) $id:name |]
+
+-- C or CUDA 
+compileParams _ = map go
   where
     go (name,t) = [cparam| $ty:(compileType t) $id:name |]
-
  

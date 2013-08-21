@@ -10,6 +10,7 @@ import Prelude as P
 
 import Obsidian
 import Obsidian.Run.CUDA.Exec
+-- import Obsidian.Run.CUDA.SC
 
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
@@ -20,10 +21,10 @@ import Data.Int
 performSmall =
   withCUDA $
   do
-    kern <- capture (1,0) (reduce (+) . splitUp 512) 
+    kern <- capture 256 (reduce (+) . splitUp 512) 
 
-    useVector (V.fromList [0..511 :: Int64]) $ \i ->
-      useVector (V.fromList [0,0 :: Int64]) $ \ o ->
+    useVector (V.fromList [0..511 :: Int32]) $ \i ->
+      useVector (V.fromList [0,0 :: Int32]) $ \ o ->
       do
         o <== (1,kern) <> i 
         r <- peekCUDAVector o

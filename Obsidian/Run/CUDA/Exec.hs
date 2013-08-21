@@ -2,7 +2,7 @@
              ScopedTypeVariables,
              TypeFamilies,
              TypeSynonymInstances,
-             FlexibleInstances  #-} 
+             FlexibleInstances #-} 
 
 module Obsidian.Run.CUDA.Exec where
 
@@ -25,7 +25,7 @@ import Obsidian.Types -- experimental
 import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Program (Grid, GProgram)
-import Obsidian.Mutable 
+import Obsidian.Mutable
 
 import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
@@ -213,8 +213,8 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
 ---------------------------------------------------------------------------    
-capture :: ToProgram prg => (Word32, Word32) -> prg -> CUDA (KernelT prg) 
-capture config f =
+capture :: ToProgram prg => Word32 -> prg -> CUDA (KernelT prg) 
+capture threadsPerBlock f =
   do
     i <- newIdent
 
@@ -224,15 +224,17 @@ capture config f =
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
 
-        (prgstr,bytesShared) = genKernelSpecsNL config kn f
+        (prgstr,bytesShared) = genKernelSpecsNL threadsPerBlock kn f
         header = "#include <stdint.h>\n" -- more includes ? 
 
     when debug $ 
       do 
         lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
         lift $ putStrLn $ prgstr
-                 
-    lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
+
+    let arch = archStr props
+        
+    lift $ storeAndCompile arch (fn) (header ++ prgstr)
     
     mod <- liftIO $ CUDA.loadFile cub
     fun <- liftIO $ CUDA.getFun mod kn 
@@ -240,7 +242,7 @@ capture config f =
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $ KernelT fun (fst config) bytesShared [] []
+    return $ KernelT fun threadsPerBlock bytesShared [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 

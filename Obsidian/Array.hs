@@ -103,7 +103,6 @@ instance Array (Push t) where
   len      (Push s _) = s
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
-  
 
 class Indexible a where 
   access :: a s e -> Exp Word32 -> e 
@@ -120,6 +119,9 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
+convertToPush :: Pull Word32 e -> Push Block Word32 e 
+convertToPush (Pull n ixf) =
+    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
 
 class Pushable t where
   push :: ASize s => Pull s e -> Push t s e 

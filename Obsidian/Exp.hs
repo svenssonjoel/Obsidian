@@ -302,302 +302,7 @@ instance (Scalar a, Ord a) => Ord (Exp a) where
     max a b = BinOp Max a b
 
 ---------------------------------------------------------------------------
--- INT Instances
----------------------------------------------------------------------------
-instance Num (Exp Int) where 
-  (+) a (Literal 0) = a
-  (+) (Literal 0) a = a
-  (+) (Literal a) (Literal b) = Literal (a+b)
-  -- Added 2 Oct 2012
-  (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
-  (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
-  (+) a b = BinOp Add a b  
-  
-  (-) a (Literal 0) = a 
-  (-) (Literal a) (Literal b) = Literal (a - b) 
-  (-) a b = BinOp Sub a b 
-  
-  (*) a (Literal 1) = a 
-  (*) (Literal 1) a = a
-  (*) _ (Literal 0) = Literal 0
-  (*) (Literal 0) _ = Literal 0
-  (*) (Literal a) (Literal b) = Literal (a*b) 
-  (*) a b = BinOp Mul a b 
-  
-  signum = error "signum: not implemented for Exp Int" 
-  abs = error "abs: not implemented for Exp Int" 
-  fromInteger a = Literal (fromInteger a) 
-  
--- Added new cases for literal 0 (2012/09/25)
-instance Bits (Exp Int) where  
-  (.&.) x (Literal 0) = Literal 0
-  (.&.) (Literal 0) x = Literal 0 
-  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
-  (.&.) a b = BinOp BitwiseAnd a b
-  (.|.) (Literal a) (Literal b) = Literal (a .|. b)
-  (.|.) a b = BinOp BitwiseOr  a b
-  xor (Literal a) (Literal b) = Literal (a `xor` b) 
-  xor   a b = BinOp BitwiseXor a b 
-  
-  --TODO: See that this is not breaking something (32/64 bit, CUDA/Haskell)
-  complement (Literal i) = Literal (complement i)
-  
-  complement a = UnOp BitwiseNeg a
-  shiftL a i = BinOp ShiftL  a (Literal i)
-  shiftR a i = BinOp ShiftR  a (Literal i)
-  bitSize a  = sizeOf a * 8
-  isSigned a = True
-
-  bit  = error "bit: is undefined for Exp Int"
-  testBit = error "testBit: is undefined for Exp Int"
-  popCount = error "popCoint: is undefined for Exp Int"
-
-
--- TODO: change undefined to some specific error.
-instance Real (Exp Int) where
-  toRational = error "toRational: not implemented for Exp Int)"  
-
-instance Enum (Exp Int) where
-  toEnum = error "toEnum: not implemented for Exp Int" 
-  fromEnum = error "fromEnum: not implemented for Exp Int"
-         
-instance Integral (Exp Int) where
-  mod (Literal a) (Literal b) = Literal (a `mod` b) 
-  mod a b = BinOp Mod a b
-  div _ (Literal 0) = error "Division by zero in expression" 
-  div a b = BinOp Div a b
-  quotRem = error "quotRem: not implemented for Exp Int" 
-  toInteger = error "toInteger: not implemented for Exp Int" 
-
----------------------------------------------------------------------------
--- Int32
----------------------------------------------------------------------------
-instance Num (Exp Int32) where 
-  (+) a (Literal 0) = a
-  (+) (Literal 0) a = a
-  (+) (Literal a) (Literal b) = Literal (a+b)
-  -- Added 2 Oct 2012
-  (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
-  (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
-  (+) a b = BinOp Add a b  
-  
-  (-) a (Literal 0) = a 
-  (-) (Literal a) (Literal b) = Literal (a - b) 
-  (-) a b = BinOp Sub a b 
-  
-  (*) a (Literal 1) = a 
-  (*) (Literal 1) a = a
-  (*) _ (Literal 0) = 0
-  (*) (Literal 0) _ = 0 
-  (*) (Literal a) (Literal b) = Literal (a*b) 
-  (*) a b = BinOp Mul a b 
-  
-  signum = error "signum: not implemented for Exp Int32"
-  abs = error "abs: not implemented for Exp Int32" 
-  fromInteger a = Literal (fromInteger a) 
-  
--- Added new cases for literal 0 (2012/09/25)
-instance Bits (Exp Int32) where  
-  (.&.) x (Literal 0) = Literal 0
-  (.&.) (Literal 0) x = Literal 0 
-  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
-  (.&.) a b = BinOp BitwiseAnd a b
-  (.|.) (Literal a) (Literal b) = Literal (a .|. b)
-  (.|.) a b = BinOp BitwiseOr  a b
-  xor (Literal a) (Literal b) = Literal (a `xor` b) 
-  xor   a b = BinOp BitwiseXor a b 
-  
-  --TODO: See that this is not breaking something (32/64 bit, CUDA/Haskell)
-  complement (Literal i) = Literal (complement i)
-  
-  complement a = UnOp BitwiseNeg a
-  shiftL a i = BinOp ShiftL  a (Literal i)
-  shiftR a i = BinOp ShiftR  a (Literal i)
-  bitSize a  = 32 -- sizeeOf a * 8
-  isSigned a = True
-
-  bit  = error "bit: is undefined for Exp Int32"
-  testBit = error "testBit: is undefined for Exp Int32"
-  popCount = error "popCoint: is undefined for Exp Int32"
-
-
--- TODO: change undefined to some specific error.
-instance Real (Exp Int32) where
-  toRational = error "toRational: not implemented for Exp Int32"
-
-instance Enum (Exp Int32) where
-  toEnum = error "toEnum: not implemented for Exp Int32" 
-  fromEnum = error "fromEnum: not implemented for Exp Int32" 
-         
-instance Integral (Exp Int32) where
-  mod (Literal a) (Literal b) = Literal (a `mod` b) 
-  mod a b = BinOp Mod a b
-  div _ (Literal 0) = error "Division by zero in expression" 
-  div a b = BinOp Div a b
-  quotRem = error "quotRem: not implemented for Exp Int32" 
-  toInteger = error "toInteger: not implemented for Exp Int32" 
-
-
----------------------------------------------------------------------------
--- Word32 Instances
----------------------------------------------------------------------------
-instance Num (Exp Word32) where 
-  (+) a (Literal 0) = a
-  (+) (Literal 0) a = a
-  (+) (Literal a) (Literal b) = Literal (a+b)
-
-  -- Added 15 Jan 2013
-  (+) (BinOp Mul (BinOp Div x (Literal a)) (Literal b))
-       (BinOp Mod y (Literal c))
-        | x == y && a == b && b == c = x 
-      -- This spots the kind of indexing that occurs from 
-      --  converting a bix tix view to and from gix view
-        
-  -- Added 2 oct 2012
-  (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
-  (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
- 
-  (+) a b = BinOp Add a b  
-  
-  (-) a (Literal 0) = a 
-  (-) (Literal a) (Literal b) = Literal (a - b) 
-  (-) a b = BinOp Sub a b 
-  
-  (*) a (Literal 1) = a 
-  (*) (Literal 1) a = a
-  (*) _ (Literal 0) = Literal 0
-  (*) (Literal 0) _ = Literal 0
-  (*) (Literal a) (Literal b) = Literal (a*b) 
-  (*) a b = BinOp Mul a b 
-  
-  signum = error "signum: not implemented for Exp Word32"
-  abs = error "abs: not implemented for Exp Word32" 
-  fromInteger a = Literal (fromInteger a) 
-  
-
--- adding special shift operators for when both inputs are 
--- runtime values (2013-01-08) 
-(<<*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
-(<<*) a b = BinOp ShiftL a b 
-
-(>>*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
-(>>*) a b = BinOp ShiftR a b 
-
-
- -- Added new cases for literal 0 (2012/09/25)
-instance Bits (Exp Word32) where 
-  (.&.) x (Literal 0) = Literal 0
-  (.&.) (Literal 0) x = Literal 0 
-  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
-  (.&.) a b = BinOp BitwiseAnd a b   
-  (.|.) (Literal a) (Literal b) = Literal (a .|. b) 
-  (.|.) a b = BinOp BitwiseOr  a b
-  xor (Literal a) (Literal b) = Literal (a `xor` b) 
-  xor   a b = BinOp BitwiseXor a b 
-  complement (Literal i) = Literal (complement i) 
-  complement a = UnOp BitwiseNeg a
-  
-  shiftL (Literal j) i = Literal (j `shiftL` i) 
-  shiftL a i = BinOp ShiftL a (Literal i)
-  
-  shiftR (Literal j) i = Literal (j `shiftL` i)
-  shiftR a i = BinOp ShiftR a (Literal i)
-  bitSize a  = 32
-  isSigned a = False
-
-  bit  = error "bit: is undefined for Exp Word32"
-  testBit = error "testBit: is undefined for Exp Word32"
-  popCount = error "popCoint: is undefined for Exp Word32"
-
-instance Real (Exp Word32) where 
-  toRational = error "toRational: not implemented for Exp Word32" 
-  
-
-instance Enum (Exp Word32) where
-  toEnum = error "toEnum: not implemented for Exp Word32" 
-  fromEnum = error "fromEnum: not implemented for Exp Word32" 
-
-instance Integral (Exp Word32) where
-  mod (Literal a) (Literal b) = Literal (a `mod` b) 
-  mod a b = BinOp Mod a b
-  div _ (Literal 0) = error "Division by zero in expression"
-  div (Literal a) (Literal b) = Literal (a `div` b) 
-  div a b = BinOp Div a b
-  quotRem = error "quotRem: not implemented for Exp Word32" 
-  toInteger = error "toInteger: not implemented for Exp Word32"
-  
-instance Num (Exp Float) where
-  (+) a (Literal 0) = a
-  (+) (Literal 0) a = a
-  (+) (Literal a) (Literal b) = Literal (a + b)
-  (+) a b = BinOp Add a b
-  
-  (-) a (Literal 0) = a
-  (-) (Literal a) (Literal b) = Literal (a - b)
-  (-) a b = BinOp Sub a b
-  
-  (*) a (Literal 1) = a
-  (*) (Literal 1) a = a
-  (*) _ (Literal 0) = Literal 0
-  (*) (Literal 0) _ = Literal 0
-  (*) (Literal a) (Literal b) = Literal (a * b)
-  (*) a b = BinOp Mul a b
-  
-  signum = undefined
-  abs = undefined
-  fromInteger a = Literal (fromInteger a)
-
-instance Fractional (Exp Float) where
-  (/) (Literal a) (Literal b) = Literal (a/b)
-  (/) a b = BinOp FDiv a b
-  recip a = (Literal 1) / a
-  fromRational a = Literal (fromRational a)
-
-instance Floating (Exp Float) where
-  pi = Literal pi
-  exp a = UnOp Exp a
-  sqrt a = UnOp Sqrt a
-  log a = UnOp Log a
-  (**) a b = BinOp Pow a b
-  
-  -- log_b(x) = log_e(x) / log_e(b)
-  logBase (Literal 2) b = UnOp Log2 b
-  logBase (Literal 10) b = UnOp Log10 b
-  logBase a b = (UnOp Log b) / (UnOp Log a)
-  
-  sin (Literal 0) = Literal 0
-  sin a = UnOp Sin a
-  tan (Literal 0) = Literal 0
-  tan a = UnOp Tan a
-  cos (Literal 0) = Literal 1
-  cos a = UnOp Cos a
-  
-  asin (Literal 0) = Literal 0
-  asin a = UnOp ASin a
-  atan (Literal 0) = Literal 0
-  atan a = UnOp ATan a
-  acos (Literal 1) = Literal 0
-  acos a = UnOp ACos a
-  
-  sinh (Literal 0) = Literal 0
-  sinh a = UnOp Sin a
-  tanh (Literal 0) = Literal 0
-  tanh a = UnOp Tan a
-  cosh (Literal 0) = Literal 1
-  cosh a = UnOp Cos a
-  
-  asinh a = UnOp ASinH a
-  atanh a = UnOp ATanH a
-  acosh a = UnOp ACosH a
-  
-  -- Y-Less's comment
-  -- Don't second guess the CUDA compiler (or, more accurately, assume that
-  -- other compilers have this).
-  --(/) (Literal 1) (UnOp Sqrt b) = UnOp RSqrt b -- Optimisation.
-
-  
----------------------------------------------------------------------------
--- Word8 Instances
+-- Num instance Exp a?
 ---------------------------------------------------------------------------
 instance (Scalar a ,Num a) => Num (Exp a) where 
   (+) a (Literal 0) = a
@@ -647,7 +352,302 @@ instance (Scalar a, Integral a) => Integral (Exp a) where
   div a b = BinOp Div a b
   quotRem = error "quotRem: not implemented for Exp a" 
   toInteger = error "toInteger: not implemented for Exp a"
+
+---------------------------------------------------------------------------
+-- INT Instances
+---------------------------------------------------------------------------
+-- instance Num (Exp Int) where 
+--   (+) a (Literal 0) = a
+--   (+) (Literal 0) a = a
+--   (+) (Literal a) (Literal b) = Literal (a+b)
+--   -- Added 2 Oct 2012
+--   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
+--   (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
+--   (+) a b = BinOp Add a b  
   
+--   (-) a (Literal 0) = a 
+--   (-) (Literal a) (Literal b) = Literal (a - b) 
+--   (-) a b = BinOp Sub a b 
+  
+--   (*) a (Literal 1) = a 
+--   (*) (Literal 1) a = a
+--   (*) _ (Literal 0) = Literal 0
+--   (*) (Literal 0) _ = Literal 0
+--   (*) (Literal a) (Literal b) = Literal (a*b) 
+--   (*) a b = BinOp Mul a b 
+  
+--   signum = error "signum: not implemented for Exp Int" 
+--   abs = error "abs: not implemented for Exp Int" 
+--   fromInteger a = Literal (fromInteger a) 
+  
+-- Added new cases for literal 0 (2012/09/25)
+instance Bits (Exp Int) where  
+  (.&.) x (Literal 0) = Literal 0
+  (.&.) (Literal 0) x = Literal 0 
+  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
+  (.&.) a b = BinOp BitwiseAnd a b
+  (.|.) (Literal a) (Literal b) = Literal (a .|. b)
+  (.|.) a b = BinOp BitwiseOr  a b
+  xor (Literal a) (Literal b) = Literal (a `xor` b) 
+  xor   a b = BinOp BitwiseXor a b 
+  
+  --TODO: See that this is not breaking something (32/64 bit, CUDA/Haskell)
+  complement (Literal i) = Literal (complement i)
+  
+  complement a = UnOp BitwiseNeg a
+  shiftL a i = BinOp ShiftL  a (Literal i)
+  shiftR a i = BinOp ShiftR  a (Literal i)
+  bitSize a  = sizeOf a * 8
+  isSigned a = True
+
+  bit  = error "bit: is undefined for Exp Int"
+  testBit = error "testBit: is undefined for Exp Int"
+  popCount = error "popCoint: is undefined for Exp Int"
+
+
+-- TODO: change undefined to some specific error.
+-- instance Real (Exp Int) where
+--   toRational = error "toRational: not implemented for Exp Int)"  
+
+-- instance Enum (Exp Int) where
+--   toEnum = error "toEnum: not implemented for Exp Int" 
+--   fromEnum = error "fromEnum: not implemented for Exp Int"
+         
+-- instance Integral (Exp Int) where
+--   mod (Literal a) (Literal b) = Literal (a `mod` b) 
+--   mod a b = BinOp Mod a b
+--   div _ (Literal 0) = error "Division by zero in expression" 
+--   div a b = BinOp Div a b
+--   quotRem = error "quotRem: not implemented for Exp Int" 
+--   toInteger = error "toInteger: not implemented for Exp Int" 
+
+
+---------------------------------------------------------------------------
+-- Int32
+---------------------------------------------------------------------------
+-- instance Num (Exp Int32) where 
+--   (+) a (Literal 0) = a
+--   (+) (Literal 0) a = a
+--   (+) (Literal a) (Literal b) = Literal (a+b)
+--   -- Added 2 Oct 2012
+--   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
+--   (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
+--   (+) a b = BinOp Add a b  
+  
+--   (-) a (Literal 0) = a 
+--   (-) (Literal a) (Literal b) = Literal (a - b) 
+--   (-) a b = BinOp Sub a b 
+  
+--   (*) a (Literal 1) = a 
+--   (*) (Literal 1) a = a
+--   (*) _ (Literal 0) = 0
+--   (*) (Literal 0) _ = 0 
+--   (*) (Literal a) (Literal b) = Literal (a*b) 
+--   (*) a b = BinOp Mul a b 
+  
+--   signum = error "signum: not implemented for Exp Int32"
+--   abs = error "abs: not implemented for Exp Int32" 
+--   fromInteger a = Literal (fromInteger a) 
+  
+-- Added new cases for literal 0 (2012/09/25)
+instance Bits (Exp Int32) where  
+  (.&.) x (Literal 0) = Literal 0
+  (.&.) (Literal 0) x = Literal 0 
+  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
+  (.&.) a b = BinOp BitwiseAnd a b
+  (.|.) (Literal a) (Literal b) = Literal (a .|. b)
+  (.|.) a b = BinOp BitwiseOr  a b
+  xor (Literal a) (Literal b) = Literal (a `xor` b) 
+  xor   a b = BinOp BitwiseXor a b 
+  
+  --TODO: See that this is not breaking something (32/64 bit, CUDA/Haskell)
+  complement (Literal i) = Literal (complement i)
+  
+  complement a = UnOp BitwiseNeg a
+  shiftL a i = BinOp ShiftL  a (Literal i)
+  shiftR a i = BinOp ShiftR  a (Literal i)
+  bitSize a  = 32 -- sizeeOf a * 8
+  isSigned a = True
+
+  bit  = error "bit: is undefined for Exp Int32"
+  testBit = error "testBit: is undefined for Exp Int32"
+  popCount = error "popCoint: is undefined for Exp Int32"
+
+
+-- TODO: change undefined to some specific error.
+-- instance Real (Exp Int32) where
+--   toRational = error "toRational: not implemented for Exp Int32"
+
+-- instance Enum (Exp Int32) where
+--   toEnum = error "toEnum: not implemented for Exp Int32" 
+--   fromEnum = error "fromEnum: not implemented for Exp Int32" 
+         
+-- instance Integral (Exp Int32) where
+--   mod (Literal a) (Literal b) = Literal (a `mod` b) 
+--   mod a b = BinOp Mod a b
+--   div _ (Literal 0) = error "Division by zero in expression" 
+--   div a b = BinOp Div a b
+--   quotRem = error "quotRem: not implemented for Exp Int32" 
+--   toInteger = error "toInteger: not implemented for Exp Int32" 
+
+
+---------------------------------------------------------------------------
+-- Word32 Instances
+---------------------------------------------------------------------------
+-- instance Num (Exp Word32) where 
+--   (+) a (Literal 0) = a
+--   (+) (Literal 0) a = a
+--   (+) (Literal a) (Literal b) = Literal (a+b)
+
+--   -- Added 15 Jan 2013
+--   (+) (BinOp Mul (BinOp Div x (Literal a)) (Literal b))
+--        (BinOp Mod y (Literal c))
+--         | x == y && a == b && b == c = x 
+--       -- This spots the kind of indexing that occurs from 
+--       --  converting a bix tix view to and from gix view
+        
+--   -- Added 2 oct 2012
+--   (+) (BinOp Sub b (Literal a)) (Literal c) | a == c  = b 
+--   (+) (Literal b) (BinOp Sub a (Literal c)) | b == c  = a 
+ 
+--   (+) a b = BinOp Add a b  
+  
+--   (-) a (Literal 0) = a 
+--   (-) (Literal a) (Literal b) = Literal (a - b) 
+--   (-) a b = BinOp Sub a b 
+  
+--   (*) a (Literal 1) = a 
+--   (*) (Literal 1) a = a
+--   (*) _ (Literal 0) = Literal 0
+--   (*) (Literal 0) _ = Literal 0
+--   (*) (Literal a) (Literal b) = Literal (a*b) 
+--   (*) a b = BinOp Mul a b 
+  
+--   signum = error "signum: not implemented for Exp Word32"
+--   abs = error "abs: not implemented for Exp Word32" 
+--   fromInteger a = Literal (fromInteger a) 
+  
+
+-- adding special shift operators for when both inputs are 
+-- runtime values (2013-01-08) 
+(<<*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
+(<<*) a b = BinOp ShiftL a b 
+
+(>>*) :: (Scalar b, Scalar a, Bits a, Num b ) => Exp a -> Exp b -> Exp a 
+(>>*) a b = BinOp ShiftR a b 
+
+
+ -- Added new cases for literal 0 (2012/09/25)
+instance Bits (Exp Word32) where 
+  (.&.) x (Literal 0) = Literal 0
+  (.&.) (Literal 0) x = Literal 0 
+  (.&.) (Literal a) (Literal b) = Literal (a .&. b) 
+  (.&.) a b = BinOp BitwiseAnd a b   
+  (.|.) (Literal a) (Literal b) = Literal (a .|. b) 
+  (.|.) a b = BinOp BitwiseOr  a b
+  xor (Literal a) (Literal b) = Literal (a `xor` b) 
+  xor   a b = BinOp BitwiseXor a b 
+  complement (Literal i) = Literal (complement i) 
+  complement a = UnOp BitwiseNeg a
+  
+  shiftL (Literal j) i = Literal (j `shiftL` i) 
+  shiftL a i = BinOp ShiftL a (Literal i)
+  
+  shiftR (Literal j) i = Literal (j `shiftL` i)
+  shiftR a i = BinOp ShiftR a (Literal i)
+  bitSize a  = 32
+  isSigned a = False
+
+  bit  = error "bit: is undefined for Exp Word32"
+  testBit = error "testBit: is undefined for Exp Word32"
+  popCount = error "popCoint: is undefined for Exp Word32"
+
+-- instance Real (Exp Word32) where 
+--   toRational = error "toRational: not implemented for Exp Word32" 
+  
+
+-- instance Enum (Exp Word32) where
+--   toEnum = error "toEnum: not implemented for Exp Word32" 
+--   fromEnum = error "fromEnum: not implemented for Exp Word32" 
+
+-- instance Integral (Exp Word32) where
+--   mod (Literal a) (Literal b) = Literal (a `mod` b) 
+--   mod a b = BinOp Mod a b
+--   div _ (Literal 0) = error "Division by zero in expression"
+--   div (Literal a) (Literal b) = Literal (a `div` b) 
+--   div a b = BinOp Div a b
+--   quotRem = error "quotRem: not implemented for Exp Word32" 
+--   toInteger = error "toInteger: not implemented for Exp Word32"
+  
+-- instance Num (Exp Float) where
+--   (+) a (Literal 0) = a
+--   (+) (Literal 0) a = a
+--   (+) (Literal a) (Literal b) = Literal (a + b)
+--   (+) a b = BinOp Add a b
+  
+--   (-) a (Literal 0) = a
+--   (-) (Literal a) (Literal b) = Literal (a - b)
+--   (-) a b = BinOp Sub a b
+  
+--   (*) a (Literal 1) = a
+--   (*) (Literal 1) a = a
+--   (*) _ (Literal 0) = Literal 0
+--   (*) (Literal 0) _ = Literal 0
+--   (*) (Literal a) (Literal b) = Literal (a * b)
+--   (*) a b = BinOp Mul a b
+  
+--   signum = undefined
+--   abs = undefined
+--   fromInteger a = Literal (fromInteger a)
+
+instance Fractional (Exp Float) where
+  (/) (Literal a) (Literal b) = Literal (a/b)
+  (/) a b = BinOp FDiv a b
+  recip a = (Literal 1) / a
+  fromRational a = Literal (fromRational a)
+
+instance Floating (Exp Float) where
+  pi = Literal pi
+  exp a = UnOp Exp a
+  sqrt a = UnOp Sqrt a
+  log a = UnOp Log a
+  (**) a b = BinOp Pow a b
+  
+  -- log_b(x) = log_e(x) / log_e(b)
+  logBase (Literal 2) b = UnOp Log2 b
+  logBase (Literal 10) b = UnOp Log10 b
+  logBase a b = (UnOp Log b) / (UnOp Log a)
+  
+  sin (Literal 0) = Literal 0
+  sin a = UnOp Sin a
+  tan (Literal 0) = Literal 0
+  tan a = UnOp Tan a
+  cos (Literal 0) = Literal 1
+  cos a = UnOp Cos a
+  
+  asin (Literal 0) = Literal 0
+  asin a = UnOp ASin a
+  atan (Literal 0) = Literal 0
+  atan a = UnOp ATan a
+  acos (Literal 1) = Literal 0
+  acos a = UnOp ACos a
+  
+  sinh (Literal 0) = Literal 0
+  sinh a = UnOp Sin a
+  tanh (Literal 0) = Literal 0
+  tanh a = UnOp Tan a
+  cosh (Literal 0) = Literal 1
+  cosh a = UnOp Cos a
+  
+  asinh a = UnOp ASinH a
+  atanh a = UnOp ATanH a
+  acosh a = UnOp ACosH a
+  
+  -- Y-Less's comment
+  -- Don't second guess the CUDA compiler (or, more accurately, assume that
+  -- other compilers have this).
+  --(/) (Literal 1) (UnOp Sqrt b) = UnOp RSqrt b -- Optimisation.
+
 ---------------------------------------------------------------------------
   
 infix 4 ==*, /=*, <*, >*, >=*, <=* 
