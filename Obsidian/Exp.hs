@@ -245,33 +245,6 @@ warpSize :: Exp Word32
 warpSize = WarpSize
 
 ---------------------------------------------------------------------------
--- Collect array names
-
-collectArrays :: Scalar a => Exp a -> [Name]
-collectArrays (Literal _) = []
-collectArrays (ThreadIdx _) = []
-collectArrays (BlockIdx _) = [] 
-collectArrays (Index (name,[])) = []
-collectArrays (Index (name,_)) = [name]
-collectArrays (BinOp _ e1 e2) = collectArrays e1 ++ collectArrays e2
-collectArrays (UnOp  _ e) = collectArrays e
-collectArrays (If b e1 e2) = collectArrays b ++ 
-                             collectArrays e1 ++ 
-                             collectArrays e2
--- collectArrays a = error $ show a
-
-collectArrayIndexPairs :: Scalar a => Exp a -> [(Name,Exp Word32)]
-collectArrayIndexPairs (Literal _) = []
-collectArrayIndexPairs (Index (name,[])) = []
-collectArrayIndexPairs (Index (name,[ix])) = [(name,ix)]
-collectArrayIndexPairs (BinOp _ e1 e2) = collectArrayIndexPairs e1 ++ collectArrayIndexPairs e2
-collectArrayIndexPairs (UnOp  _ e) = collectArrayIndexPairs e
-collectArrayIndexPairs (If b e1 e2) = collectArrayIndexPairs b ++ 
-                                      collectArrayIndexPairs e1 ++ 
-                                      collectArrayIndexPairs e2
-
-
----------------------------------------------------------------------------
 -- Typecasts
 ---------------------------------------------------------------------------
 i32ToW32 = UnOp Int32ToWord32
@@ -928,9 +901,10 @@ collectArraysI pre e = go e
   where
     go (IVar name _) = if isPrefixOf pre name then [name] else []
     go (IIndex (ne,es) _) = go ne ++ concatMap go es 
---    go (IIndex (name,[]) _) = []
---    go (IIndex (name,_) _) = if isPrefixOf pre name then [name] else []
     go (IBinOp _ e1 e2 _) = go e1 ++ go e2
     go (IUnOp  _ e _) = go e
     go (ICond b e1 e2 _) = go b ++ go e1 ++ go e2
+    go (IFunCall _ es _) = concatMap go es
+    go (ICast e _) = go e 
     go _ = [] 
+
