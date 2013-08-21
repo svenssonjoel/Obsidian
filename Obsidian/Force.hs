@@ -43,17 +43,14 @@ instance Write Pull where
   unsafeWrite arr = 
     do
       (mut :: M.Mutable M.Shared a) <- M.newS parr 
-      --(mut :: M.Mutable M.Shared a) <- M.newS (len arr)
-      M.writeTo mut parr
       return $ M.pullFrom mut
+      
    where parr = push arr 
 
 instance Write (Push Block) where
   unsafeWrite arr  = 
     do
       (mut :: M.Mutable M.Shared a) <- M.newS arr
-      -- (mut :: M.Mutable M.Shared a) <- M.newS (len arr)
-      M.writeTo mut arr 
       return $ M.pullFrom mut 
 
 -- Still not using the Mutable arrays.. problematic 
