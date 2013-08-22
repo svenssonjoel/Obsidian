@@ -13,7 +13,7 @@
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Step, Zero,
+  Thread, Block, Grid, Step, Zero, 
   -- Program type 
   Program(..), -- all exported.. for now
   TProgram, BProgram, GProgram,
@@ -56,12 +56,6 @@ type Thread = Zero
 type Block  = Step Thread 
 type Grid   = Step Block  
 
--- type family Below a
-
--- type instance Below Zero = Zero
--- type instance Below (Step Zero) = Zero
--- type instance Below (Step (Step Zero)) = Step Zero 
-
 type Identifier = Int 
       
 ---------------------------------------------------------------------------
@@ -96,28 +90,20 @@ data Program t a where
   SeqWhile :: Exp Bool ->
               Program Thread () ->
               Program Thread () 
-  
-
-            
+              
   Break  :: Program Thread () 
  
   ForAll :: EWord32 
             -> (EWord32 -> Program t ())
             -> Program (Step t) ()
 
-
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> Program Block () 
+  Allocate :: Name -> Word32 -> Type -> BProgram () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
                 
   Sync     :: Program Block ()
-  -- Two very experimental threadfence constructs.
-  -- should correspond to cuda __threadfence();
-  -- and __threadfenceBlock(); 
-  ThreadFence :: Program Grid ()
-  ThreadFenceBlock :: Program Block () 
 
   -- Parallel composition of Programs
   -- TODO: Will I use this ? 

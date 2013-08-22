@@ -16,7 +16,7 @@
 
 -}
 
-module Obsidian.Force (force,unsafeForce,unsafeWrite) where
+module Obsidian.Force (force,unsafeForce,unsafeWrite, forceScalar) where
 
 
 import Obsidian.Program
@@ -51,7 +51,7 @@ instance Write (Push Block) where
   unsafeWrite arr  = 
     do
       (mut :: M.Mutable M.Shared a) <- M.newS arr
-      return $ M.pullFrom mut 
+      return $ M.pullFrom mut
 
 -- Still not using the Mutable arrays.. problematic 
 instance Write (Push Thread) where
@@ -68,6 +68,7 @@ instance Write (Push Thread) where
       p <: moAssignArray snames
       
     return $ moPullFrom snames n
+
 
   
 force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
@@ -99,3 +100,4 @@ forceScalar a =
     moAllocateScalar names
     moAssignScalar names a
     return $ moReadFrom names 
+

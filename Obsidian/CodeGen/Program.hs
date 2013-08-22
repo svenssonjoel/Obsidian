@@ -80,8 +80,8 @@ instance Compile (Step Zero) where
       v = variable nom
       p = f v  -- (ThreadIdx X)
       (a,im) = compile s p
-  compile s p = cs s p 
-
+      
+  compile s p = cs s p
 
 -- Compile a Grid Program 
 instance Compile (Step (Step (Zero))) where
@@ -97,7 +97,6 @@ instance Compile (Step (Step (Zero))) where
 ---------------------------------------------------------------------------
 cs :: Compile t => Supply Int -> P.Program t a -> (a,IM) 
 cs i P.Identifier = (supplyValue i, [])
-
 cs i (P.Assign name ix e) =
   ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
  

@@ -1,5 +1,6 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-} 
 
 {- 2013
    Joel Svensson

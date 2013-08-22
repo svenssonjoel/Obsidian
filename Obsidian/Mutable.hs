@@ -84,14 +84,13 @@ newS arr = do
   where
     n = len arr
 
-
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
 writeTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
-           -> BProgram ()
+           -> Program Block ()
 writeTo (Mutable n snames) p 
   | n <= m = p <: (moAssignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 

@@ -28,13 +28,12 @@ import Data.Word
 ---------------------------------------------------------------------------
 class MemoryOps a where
   moNames          :: String -> Program t (Names a) 
-  moAllocateArray  :: Names a -> Word32 -> Program Block ()
+  moAllocateArray  :: Names a -> Word32 -> BProgram ()
   moAllocateScalar :: Names a -> Program t () 
   moAssignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
   moAssignScalar   :: Names a -> a -> TProgram () 
   moPullFrom       :: Names a -> Word32 -> Pull Word32 a
   moReadFrom       :: Names a -> a
-
 
 ---------------------------------------------------------------------------
 -- Instances
