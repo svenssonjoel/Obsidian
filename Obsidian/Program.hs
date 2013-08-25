@@ -13,7 +13,7 @@
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Step, Zero, 
+  Thread, Block, Grid, Step, Zero, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
   TProgram, BProgram, GProgram,
@@ -54,7 +54,9 @@ data Zero
   
 type Thread = Zero 
 type Block  = Step Thread 
-type Grid   = Step Block  
+type Grid   = Step Block
+
+data Warp   = Warp 
 
 type Identifier = Int 
       
@@ -97,6 +99,12 @@ data Program t a where
             -> (EWord32 -> Program t ())
             -> Program (Step t) ()
 
+  --        #w          warpId     warpIx
+  NWarps :: EWord32 -> (EWord32 -> EWord32 -> Program Warp ()) -> Program Block () 
+
+  WarpForAll :: (EWord32 -> Program Thread ())
+                 -> EWord32 -> Program Warp ()   -- WProgram () 
+
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> BProgram () 
 
@@ -122,6 +130,7 @@ type TProgram = Program Thread
 type BProgram = Program Block
 type GProgram = Program Grid 
 
+-- type WProgram a = EWord32 -> Program Warp a
 
 ---------------------------------------------------------------------------
 -- Helpers 

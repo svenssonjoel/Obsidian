@@ -5,12 +5,14 @@ import Obsidian
 
 import Prelude hiding (zipWith)
 
+import Control.Monad
+
 reduceLocal :: MemoryOps a
                => (a -> a -> a)
                -> SPull a
-               -> BProgram (SPush Block a)
+               -> BProgram (SPull a)
 reduceLocal f arr
-  | len arr == 1 = return $ push arr
+  | len arr == 1 = return $ arr
   | otherwise    =
     do
       let (a1,a2) = halve arr
@@ -20,7 +22,7 @@ reduceLocal f arr
 reduce :: MemoryOps a
           => (a -> a -> a)
           -> DPull (SPull a) -> DPush Grid a
-reduce f = pConcatMap $ pJoin . reduceLocal f 
+reduce f = pConcatMap $ pJoin . liftM push . reduceLocal f 
 
 
 input :: DPull EInt32
