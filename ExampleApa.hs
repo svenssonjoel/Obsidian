@@ -57,8 +57,8 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 -- Warp experiment
 ---------------------------------------------------------------------------
 
--- warpLocal :: SPull EInt32 -> SPush Warp EInt32
--- warpLocal = push . reverse 
+warpLocal :: SPull EInt32 -> SPush Warp EInt32
+warpLocal arr = push . reverse $ arr
 
 -- warpLocal2 :: SPull EInt32 -> Program Warp (SPush Warp EInt32)
 -- warpLocal2 arr =
@@ -68,8 +68,8 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 --     return $ warpLocal arr2
              
 
--- block :: SPull EInt32 -> SPush Block EInt32
--- block arr = wConcat $ fmap warpLocal (splitUp 32 arr)
+block :: SPull EInt32 -> SPush Block EInt32
+block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
 
 -- block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
 -- block2 arr =
@@ -83,8 +83,8 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 
 
 
--- grid :: DPull EInt32 -> DPush Grid EInt32
--- grid arr = pConcat $ fmap block (splitUp 256 arr)
+grid :: DPull EInt32 -> DPush Grid EInt32
+grid arr = pConcat $ fmap block (splitUp 256 arr)
 
 -- grid2 :: DPull EInt32 -> DPush Grid EInt32
 -- grid2 arr = pConcat $ fmap (pJoin . block2) (splitUp 256 arr)
@@ -95,9 +95,16 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 
 
 
+genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+   where
+      (a,im) = toProgram_ 0 grid
+      iml = computeLiveness im
+      (m,mm) = mmIM iml sharedMem (M.empty)
+      rim = renameIM mm iml
+
 -- genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
---   where
---      (a,im) = toProgram_ 0 grid3
---      iml = computeLiveness im
---      (m,mm) = mmIM iml sharedMem (M.empty)
---      rim = renameIM mm iml
+--    where
+--       (a,im) = toProgram_ 0 grid3
+--       iml = computeLiveness im
+--       (m,mm) = mmIM iml sharedMem (M.empty)
+--       rim = renameIM mm iml

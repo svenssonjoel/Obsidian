@@ -7,6 +7,10 @@
 {- Joel Svensson 2012
 
    Notes:
+    2013-08-26: Experimenting with warp programs.
+                These do not fit that well in established Idioms!
+                TODO: Improve this situation. 
+    ---- OUTDATED ----
     2013-01-08: Removed number-of-blocks field from Distribs
     2012-12-10: Drastically shortened. 
 -}
@@ -17,7 +21,8 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        mkPush,
                        push,
                        pushN,
-                       setSize, 
+                       setSize,
+                       toDynamic, 
                        (!),
                        (<:), 
                        Array(..),
@@ -82,8 +87,20 @@ mkPush n p = Push n p
 -- | Create a pull array. 
 mkPull n p = Pull n p 
 
+ 
 setSize :: l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
+
+---------------------------------------------------------------------------
+-- to, from Dynamic
+--------------------------------------------------------------------------- 
+toDynamic :: SPull a -> DPull a
+toDynamic (Pull n ixf) = Pull (fromIntegral n) ixf 
+
+fromDynamic :: Word32 -> DPull a -> SPull a
+fromDynamic n (Pull _ ixf) = Pull n ixf 
+-- The above should be generalised for push and pull arrays both. 
+
 
 -- Fix this.
 --   * you cannot safely resize either push or pull arrays
@@ -134,6 +151,19 @@ instance Pushable Block where
   push (Pull n ixf) =
     Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
 
+instance Pushable Warp where
+  push (Pull n ixf) =
+    Push n $ \wf ->
+
+    -- WarpForAll should be compiled down to parallel for loop of length 32
+    --  if necessary inside a sequential for loop.
+    --  And potentially with a "partial warp" running last as a special
+    --   case (for non 32element multiples) 
+    WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
+    -- Special constructor to signal its special significance to the compiler. 
+  
+    -- NWarps interplay. (CONSIDER THIS).
+
 class PushableN t where
   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
 
@@ -148,8 +178,8 @@ instance PushableN Grid where
     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
     forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
                                               (bix * fromIntegral n + tix) 
- 
- --------------------------------------------------------------------------
+
+--------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
 

@@ -61,9 +61,9 @@ pConcat arr =
 wConcat :: SPull (EWord32 -> SPush Warp a) -> SPush Block a
 wConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
-     NWarps (fromIntegral n) $ \warpID warpIx -> 
+     NWarps (fromIntegral n) $ \warpID -> 
         let p = arr ! warpID
-            wf' a ix = wf a (warpID * sizeConv rn + warpIx)
+            wf' a ix = wf a (warpID * sizeConv rn + ix)
         in (p warpID)  <: wf'
   where
     n  = len arr

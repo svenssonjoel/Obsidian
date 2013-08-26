@@ -323,9 +323,9 @@ instance (Scalar a, Integral a) => Integral (Exp a) where
   mod a b = BinOp Mod a b
   div _ (Literal 0) = error "Division by zero in expression" 
   div a b = BinOp Div a b
-  quotRem = error "quotRem: not implemented for Exp a" 
+  quotRem   = error "quotRem: not implemented for Exp a" 
   toInteger = error "toInteger: not implemented for Exp a"
-
+ 
 ---------------------------------------------------------------------------
 -- INT Instances
 ---------------------------------------------------------------------------

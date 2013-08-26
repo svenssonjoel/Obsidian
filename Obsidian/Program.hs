@@ -100,10 +100,11 @@ data Program t a where
             -> Program (Step t) ()
 
   --        #w          warpId     warpIx
-  NWarps :: EWord32 -> (EWord32 -> EWord32 -> Program Warp ()) -> Program Block () 
+  NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
 
-  WarpForAll :: (EWord32 -> Program Thread ())
-                 -> EWord32 -> Program Warp ()   -- WProgram () 
+  WarpForAll :: EWord32 
+                -> (EWord32 -> Program Thread ()) 
+                -> Program Warp ()   
 
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> BProgram () 
