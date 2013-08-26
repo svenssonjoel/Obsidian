@@ -80,8 +80,41 @@ instance Compile (Step Zero) where
       v = variable nom
       p = f v  -- (ThreadIdx X)
       (a,im) = compile s p
+  compile s (P.NWarps n f) = compileW s n f 
       
   compile s p = cs s p
+
+
+-- Compile a Warp program 
+compileW :: Supply Int -> EWord32 -> (EWord32 -> P.Program P.Warp a) -> (a,IM)
+compileW i (Literal nWarps) prg = go (prg (tid `div` 32)) 
+  where
+    nom = "tid" 
+    tid = variable nom
+    go :: P.Program P.Warp a -> (a,IM) 
+    go (P.WarpForAll (Literal iters) prgf) =
+      let (i1,i2) = split2 i
+          snom = "i" ++ show (supplyValue i1)
+          sv = variable snom
+          p = prgf (sv * 32 + (tid `mod` 32)) -- virtualWarp * 32 + warpIx
+          ((),im) = compile i2 p
+      in ((),out (SForAll nom (expToIExp (fromIntegral (nWarps * iters) ::EWord32)) 
+                  (out (SSeqFor snom (expToIExp (fromIntegral (iters `div` 32) ::EWord32))
+                        im))))
+--        where
+--          (i1,i2) = split2 i
+--          snom = "i" ++ show (supplyValue i1)
+--          sv = variable nom
+--          p = prgf (sv * 32 + (tid `mod` 32)) -- virtualWarp * 32 + warpIx
+--          (a,im) = compile i2 p
+                        
+--        P.ForAll (fromIntegral (nWarps * iters))
+--        $ \tid -> let warpID = tid `div` 32
+--                     warpIx = tid `mod` 32
+--                  in  P.SeqFor (fromIntegral (iters `div` 32))
+--                      $ \vwid -> prgf (warpID * fromIntegral iters + vwid * 32 + warpIx)
+
+
 
 -- Compile a Grid Program 
 instance Compile (Step (Step (Zero))) where
@@ -207,3 +240,8 @@ printStm (SForAllBlocks n im,m) =
 
 meta :: Show a => a -> String
 meta m = "\t//" ++ show m ++ "\n" 
+
+
+
+      
+

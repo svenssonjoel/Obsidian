@@ -69,7 +69,7 @@ warpLocal arr = push . reverse $ arr
              
 
 block :: SPull EInt32 -> SPush Block EInt32
-block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
+block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 64 arr)
 
 -- block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
 -- block2 arr =

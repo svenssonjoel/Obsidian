@@ -164,6 +164,9 @@ compileStm p c (SAssign name [ix] e)
   = [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
 compileStm p c (SCond be im) 
   = [[cstm| if ($(compileExp be)) { $stms:(compileIM p c im) } |]]
+compileStm p c (SSeqFor loopVar n im) 
+  = [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
+                { $stms:(compileIM p c im) } |]]
 compileStm p c a@(SForAll loopVar n im) = compileForAll p c a
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
 compileStm p c (SForAllBlocks n im) 
