@@ -60,25 +60,25 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 warpLocal :: SPull EInt32 -> SPush Warp EInt32
 warpLocal arr = push . reverse $ arr
 
--- warpLocal2 :: SPull EInt32 -> Program Warp (SPush Warp EInt32)
--- warpLocal2 arr =
---   do
---     arr1 <- forceWarp $ warpLocal arr
---     arr2 <- forceWarp $ warpLocal arr1
---     return $ warpLocal arr2
+warpLocal2 :: SPull EInt32 -> EWord32 -> Program Warp (SPush Warp EInt32)
+warpLocal2 arr warpID =
+  do
+   arr1 <- forceWarp warpID $ warpLocal arr
+   arr2 <- forceWarp warpID $ warpLocal arr1
+   return $ warpLocal arr2
              
 
 block :: SPull EInt32 -> SPush Block EInt32
-block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 64 arr)
+block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
 
--- block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
--- block2 arr =
---   do
---     arr1 <- force $ wConcat $ fmap warpLocal (splitUp 32 arr)
---     return $ wConcat $ fmap  warpLocal (splitUp 32 arr1) 
+block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
+block2 arr =
+  do
+    arr1 <- force $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
+    return $ wConcat $ fmap  (\a _ -> warpLocal a)  (splitUp 32 arr1) 
 
--- block3 :: SPull EInt32 -> SPush Block EInt32
--- block3 arr = wConcat $ fmap (pJoin . warpLocal2) (splitUp 32 arr)
+block3 :: SPull EInt32 -> SPush Block EInt32
+block3 arr = wConcat $ fmap (\a wid -> pJoin $ warpLocal2 a wid) (splitUp 32 arr)
 
 
 
@@ -86,25 +86,32 @@ block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 64 arr)
 grid :: DPull EInt32 -> DPush Grid EInt32
 grid arr = pConcat $ fmap block (splitUp 256 arr)
 
--- grid2 :: DPull EInt32 -> DPush Grid EInt32
--- grid2 arr = pConcat $ fmap (pJoin . block2) (splitUp 256 arr)
+grid2 :: DPull EInt32 -> DPush Grid EInt32
+grid2 arr = pConcat $ fmap (pJoin . block2) (splitUp 256 arr)
 
 
--- grid3 :: DPull EInt32 -> DPush Grid EInt32
--- grid3 arr = pConcat $ fmap  block3 (splitUp 256 arr)
+grid3 :: DPull EInt32 -> DPush Grid EInt32
+grid3 arr = pConcat $ fmap  block3 (splitUp 256 arr)
 
 
 
-genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+genGrid = ppr $ compile PlatformCUDA (Config 192 1) "apa" (a,rim) 
    where
       (a,im) = toProgram_ 0 grid
       iml = computeLiveness im
       (m,mm) = mmIM iml sharedMem (M.empty)
       rim = renameIM mm iml
 
--- genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
---    where
---       (a,im) = toProgram_ 0 grid3
---       iml = computeLiveness im
---       (m,mm) = mmIM iml sharedMem (M.empty)
---       rim = renameIM mm iml
+genGrid2 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+   where
+      (a,im) = toProgram_ 0 grid2
+      iml = computeLiveness im
+      (m,mm) = mmIM iml sharedMem (M.empty)
+      rim = renameIM mm iml
+
+genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+   where
+      (a,im) = toProgram_ 0 grid3
+      iml = computeLiveness im
+      (m,mm) = mmIM iml sharedMem (M.empty)
+      rim = renameIM mm iml

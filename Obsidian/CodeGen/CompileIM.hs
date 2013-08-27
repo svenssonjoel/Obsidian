@@ -171,11 +171,13 @@ compileStm p c a@(SForAll loopVar n im) = compileForAll p c a
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
 compileStm p c (SForAllBlocks n im) 
   = [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
+compileStm p c (SNWarps n im) = compileWarp p c n im 
 compileStm p c SSynchronize 
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
-compileStm _ _ a = []
+compileStm _ _ (SWarpForAll _ _  n im) = error "WarpForAll"
+compileStm _ _ a = [] -- error  $ "compileStm: missing case "
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
@@ -198,14 +200,68 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = goQ ++ goR
     goR  = 
       case r of 
         0 -> [] 
-        n -> [[cstm| if (threadIdx.x < $int:n) { $stms:(compileIM PlatformCUDA c im) } |]]
+        n -> [[cstm| if (threadIdx.x < $int:n) { 
+                       $id:loopVar = $int:(q*nt) + threadIdx.x;  
+                       $stms:(compileIM PlatformCUDA c im) } |]]
  
 compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go 
   where
-    body = compileIM PlatformC c im 
+    body = compileIM PlatformC c im    
     go = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
       
 
+---------------------------------------------------------------------------
+-- compileWarp (needs fixing so that warpIx and warpID are always correct) 
+---------------------------------------------------------------------------
+compileWarp PlatformCUDA c (IWord32 warps) im 
+  = concatMap (go . fst)  im
+  where
+    go (SAllocate nom n t) = []
+    go (SWarpForAll warpID warpIx (IWord32 n) im)
+      = case (wholeRealWarps `compare` warps) of
+          GT ->
+            [[cstm| if (threadIdx.x < $int:(warps*32)) {
+                      $stms:(goQ ++ goR) } |]]   
+
+          EQ -> goQ ++ goR
+
+          LT -> wQ ++ wR
+            
+      where
+        nt = configThreadsPerBlock c
+        wholeRealWarps = nt `quot` 32
+        threadsPartialWarp = nt `rem` 32 -- Do not use partial warps! 
+        nVirtualWarps = warps - wholeRealWarps
+
+        threadQ = n `quot` 32   -- Set up virtual threads within warp
+        threadR = n `rem`  32   --    
+        goQ = case threadQ of 
+                0 -> [] 
+                1 -> [cstm| $id:warpIx = threadIdx.x % 32; |]:compileIM PlatformCUDA c im
+                n -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) { $stms:body } |]]
+                    where 
+                      body = [cstm| $id:warpIx = i*32 + threadIdx.x % 32; |] : compileIM PlatformCUDA c im  
+        goR = case threadR of 
+                0 -> [] 
+                n -> [[cstm| if ( threadIdx.x % 32 < $int:n) { 
+                               $id:warpIx = $int:(threadQ*32) + threadIdx.x % 32;
+                               $stms:(compileIM PlatformCUDA c im) } |]]
+
+        warpQ = warps `quot` wholeRealWarps 
+        warpR = warps `rem`  wholeRealWarps
+
+        wQ = case warpQ of 
+               0 -> [] 
+               1 -> goQ 
+               n -> [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |]]
+                   where 
+                     body = [cstm| $id:warpID = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : compileIM PlatformCUDA c im 
+
+        wR = case warpR of 
+               0 -> [] 
+               n -> [[cstm| if (threadIdx.x / 32 < $int:n) {
+                              $id:warpID = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
+                              $stms:(compileIM PlatformCUDA c im) } |]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
@@ -232,7 +288,9 @@ compile pform config kname (params,im)
       = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
     cudabody = [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |], 
-                BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |] ] ++
+                BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |],
+                BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |] ] ++
                 map BlockStm stms
 
     cbody = -- add memory allocation 

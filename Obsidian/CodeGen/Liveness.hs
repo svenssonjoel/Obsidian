@@ -140,6 +140,23 @@ cl im = mapM process im
             ns  = s `Set.union` l
         put ns
         return (SForAllBlocks n iml,ns)
+    process (SNWarps n im,_) = 
+      do 
+        s <- get
+        let iml = computeLiveness1 s im 
+            l   = safeHead iml 
+            ns  = s `Set.union` l
+        put ns
+        return (SNWarps n iml,ns)
+    process (SWarpForAll warpID warpIx n im,_) =  
+      do 
+        s <- get 
+        let iml = computeLiveness1 s im 
+            l   = safeHead iml 
+            ns  = s `Set.union` l
+        put ns
+        return (SWarpForAll warpID warpIx n iml,ns) 
+
 
     -- process (SForAllThreads n im,_) = 
     --   do 

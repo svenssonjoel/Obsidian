@@ -105,10 +105,10 @@ data Program t a where
   WarpForAll :: EWord32 
                 -> (EWord32 -> Program Thread ()) 
                 -> Program Warp ()
-  WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
+  -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> BProgram () 
+  Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 

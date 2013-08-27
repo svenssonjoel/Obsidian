@@ -16,7 +16,7 @@
 
 -}
 
-module Obsidian.Force (force,unsafeForce,unsafeWrite, forceScalar) where
+module Obsidian.Force (force,unsafeForce,unsafeWrite, forceScalar, forceWarp) where
 
 
 import Obsidian.Program
@@ -99,5 +99,18 @@ forceScalar a =
     names <- moNames "s"
     moAllocateScalar names
     moAssignScalar names a
-    return $ moReadFrom names 
-
+    return $ moReadFrom names
+    
+---------------------------------------------------------------------------
+-- Force in a warp program
+---------------------------------------------------------------------------
+forceWarp :: MemoryOps a => EWord32 -> SPush Warp a -> Program Warp (SPull a)
+forceWarp warpID p  =
+  do
+    --let p = push arr
+    let n = len p
+    names <- moNames "arr"
+    moAllocateArray names n
+    p <: (moWarpAssignArray names warpID n) 
+    return $ moWarpPullFrom names warpID n
+   

@@ -28,11 +28,13 @@ import Data.Word
 ---------------------------------------------------------------------------
 class MemoryOps a where
   moNames          :: String -> Program t (Names a) 
-  moAllocateArray  :: Names a -> Word32 -> BProgram ()
+  moAllocateArray  :: Names a -> Word32 -> Program t ()
   moAllocateScalar :: Names a -> Program t () 
   moAssignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
+  moWarpAssignArray ::  Names a -> EWord32 -> Word32 -> a -> EWord32 -> TProgram () 
   moAssignScalar   :: Names a -> a -> TProgram () 
   moPullFrom       :: Names a -> Word32 -> Pull Word32 a
+  moWarpPullFrom   :: Names a -> EWord32 -> Word32 -> Pull Word32 a
   moReadFrom       :: Names a -> a
 
 ---------------------------------------------------------------------------
@@ -46,9 +48,13 @@ instance Scalar a => MemoryOps (Exp a) where
   moAllocateScalar (Single name) =
     Declare name (typeOf (undefined :: Exp a)) 
   moAssignArray  (Single name) a ix = Assign name [ix] a
+  moWarpAssignArray (Single name) warpID step a ix =
+    Assign name [warpID * fromIntegral step + ix] a 
 
   moAssignScalar (Single name) a    = Assign name [] a  
-  moPullFrom (Single name) n = mkPull n (\i -> index name i) 
+  moPullFrom (Single name) n = mkPull n (\i -> index name i)
+  moWarpPullFrom (Single name) warpID n
+    = mkPull n (\i -> index name (warpID * fromIntegral n + i))
   moReadFrom  (Single name) = variable name
 
 
@@ -70,7 +76,12 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
     do
       moAssignArray ns1 a ix 
       moAssignArray ns2 b ix
-
+  moWarpAssignArray (Tuple ns1 ns2) warpID step (a,b) ix =
+    do
+      moWarpAssignArray ns1 warpID step a ix
+      moWarpAssignArray ns2 warpID step b ix
+      
+  
   moAssignScalar (Tuple ns1 ns2) (a,b) =
     do
       moAssignScalar ns1 a 
@@ -80,6 +91,11 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
     let p1 = moPullFrom ns1 n
         p2 = moPullFrom ns2 n
     in mkPull n (\ix -> (p1 ! ix, p2 ! ix))
+  moWarpPullFrom (Tuple ns1 ns2) warpID n
+    = let p1 = moWarpPullFrom ns1 warpID n
+          p2 = moWarpPullFrom ns2 warpID n
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix)) 
+
   moReadFrom (Tuple ns1 ns2)  =
     let p1 = moReadFrom ns1
         p2 = moReadFrom ns2
@@ -108,6 +124,12 @@ instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
       moAssignArray ns1 a ix 
       moAssignArray ns2 b ix
       moAssignArray ns3 c ix
+  moWarpAssignArray (Triple ns1 ns2 ns3) warpID step (a,b,c) ix =
+    do
+      moWarpAssignArray ns1 warpID step a ix 
+      moWarpAssignArray ns2 warpID step b ix 
+      moWarpAssignArray ns3 warpID step c ix 
+  
 
   moAssignScalar (Triple ns1 ns2 ns3) (a,b,c) =
     do
@@ -120,6 +142,12 @@ instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
         p2 = moPullFrom ns2 n
         p3 = moPullFrom ns3 n
     in mkPull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
+  moWarpPullFrom (Triple ns1 ns2 ns3) warpID n
+    = let p1 = moWarpPullFrom ns1 warpID n
+          p2 = moWarpPullFrom ns2 warpID n
+          p3 = moWarpPullFrom ns3 warpID n
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix)) 
+
   moReadFrom (Triple ns1 ns2 ns3)  =
     let p1 = moReadFrom ns1
         p2 = moReadFrom ns2
