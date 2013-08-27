@@ -104,9 +104,10 @@ forceScalar a =
 ---------------------------------------------------------------------------
 -- Force in a warp program
 ---------------------------------------------------------------------------
-forceWarp :: MemoryOps a => EWord32 -> SPush Warp a -> Program Warp (SPull a)
-forceWarp warpID p  =
-  do
+forceWarp :: MemoryOps a => SPush Warp a -> WProgram (SPull a) 
+forceWarp p =
+  WProgram $ \warpID -> 
+   do          
     --let p = push arr
     let n = len p
     names <- moNames "arr"

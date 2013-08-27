@@ -16,7 +16,7 @@ module Obsidian.Program  (
   Thread, Block, Grid, Step, Zero, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
-  TProgram, BProgram, GProgram,
+  TProgram, BProgram, GProgram, WProgram(..),
 
   -- helpers
   printPrg,
@@ -56,7 +56,7 @@ type Thread = Zero
 type Block  = Step Thread 
 type Grid   = Step Block
 
-data Warp   = Warp 
+data Warp   = Warp -- outside the hierarchy 
 
 type Identifier = Int 
       
@@ -132,7 +132,18 @@ type TProgram = Program Thread
 type BProgram = Program Block
 type GProgram = Program Grid 
 
--- type WProgram a = EWord32 -> Program Warp a
+-- WPrograms are a reader monad 
+newtype WProgram a = WProgram (EWord32 -> Program Warp a)
+
+instance Monad WProgram where
+    return x = WProgram $ \ _ -> return x
+    -- :: WProgram a -> (a -> WProgram b) -> WProgram b
+    (WProgram h) >>= f = WProgram
+                         $ \w ->
+                         do
+                           a <- h w
+                           let (WProgram g) = f a
+                           g w 
 
 ---------------------------------------------------------------------------
 -- Helpers 

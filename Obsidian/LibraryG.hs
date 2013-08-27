@@ -129,3 +129,11 @@ pJoin prg = mkPush n $ \wf -> do
 pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push
 
+
+-- wJoin for now.
+wJoin ::  WProgram (Push Warp s a) -> EWord32 -> Push Warp s a
+wJoin (WProgram prg) warpID = mkPush n $ \wf -> do
+  parr <- (prg warpID) 
+  parr <: wf
+  where n = len $ fst $ runPrg 0 (prg warpID)
+
