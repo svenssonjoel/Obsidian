@@ -7,7 +7,10 @@
 
 -}
 
-{-# LANGUAGE GADTs, TypeFamilies, EmptyDataDecls #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-} 
              
 
 
@@ -16,15 +19,18 @@ module Obsidian.Program  (
   Thread, Block, Grid, Step, Zero, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
-  TProgram, BProgram, GProgram, WProgram(..),
+  TProgram, BProgram, GProgram, WProgram(..), 
 
+  -- Class
+  Sync, 
+  
   -- helpers
   printPrg,
   runPrg,
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile --, 
+  seqFor, forAll, forAll2, seqWhile, sync  --, 
   -- module Control.Applicative                          
   ) where 
  
@@ -203,7 +209,26 @@ instance Applicative (Program t) where
   ff <*> fa = 
     do
       f <- ff
-      fmap f fa 
+      fmap f fa
+
+---------------------------------------------------------------------------
+-- Class Sync
+---------------------------------------------------------------------------
+class Monad p => Sync p where
+  sync :: p () 
+
+instance Sync WProgram where
+  sync = return ()
+
+instance Sync (Program Thread) where
+  sync = return ()
+
+instance Sync (Program Block) where
+  sync = Sync
+
+instance Sync (Program Grid) where
+  sync = error "sync: not implemented" 
+  -- (implement this using counters and locks)
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)

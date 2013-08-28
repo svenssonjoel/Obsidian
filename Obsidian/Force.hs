@@ -1,5 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables,
-             FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 
 {- Joel Svensson 2012, 2013 
@@ -16,7 +18,7 @@
 
 -}
 
-module Obsidian.Force (force,unsafeForce,unsafeWrite, forceScalar, forceWarp) where
+module Obsidian.Force (force, forcePush, unsafeWrite) where -- (force,unsafeForce,unsafeWrite, forceScalar, forceWarp, force_) where
 
 
 import Obsidian.Program
@@ -36,82 +38,138 @@ import Data.Word
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
 
-class Array p => Write p where
-  unsafeWrite :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
+class Write p where
+  type HLevel p 
+  
+  unsafeWrite :: MemoryOps a => Push (HLevel p) Word32 a -> p (Pull Word32 a)
 
-instance Write Pull where
-  unsafeWrite arr = 
+
+instance Write WProgram where
+  type HLevel WProgram = Warp
+
+  unsafeWrite p =
+    WProgram $ \warpID -> 
+    do 
+      let n = len p
+      names <- moNames "arr"
+      moAllocateArray names n
+      p <: (moWarpAssignArray names warpID n) 
+      return $ moWarpPullFrom names warpID n
+
+instance Write (Program Block) where
+  type HLevel (Program Block) = Block 
+  unsafeWrite p =
     do
-      (mut :: M.Mutable M.Shared a) <- M.newS parr 
-      return $ M.pullFrom mut
-      
-   where parr = push arr 
-
-instance Write (Push Block) where
-  unsafeWrite arr  = 
-    do
-      (mut :: M.Mutable M.Shared a) <- M.newS arr
+      (mut :: M.Mutable M.Shared a) <- M.newS p
       return $ M.pullFrom mut
 
--- Still not using the Mutable arrays.. problematic 
-instance Write (Push Thread) where
-  unsafeWrite p = do 
-    (snames :: Names a)  <- moNames "arr" 
+instance Write (Program Thread) where
+  type HLevel (Program Thread) = Thread
 
-    -- Here I know that this pattern match will succeed
-    let n = len p
+  unsafeWrite p =
+    do 
+      (snames :: Names a)  <- moNames "arr" 
+
+      -- Here I know that this pattern match will succeed
+      let n = len p
       
-    moAllocateArray snames  n
+      moAllocateArray snames  n
 
---     let p = push arr
-    forAll 1 $ \_ ->
       p <: moAssignArray snames
       
-    return $ moPullFrom snames n
+      return $ moPullFrom snames n
+
+
+force :: (Sync p, Write p, MemoryOps a) =>  Push (HLevel p) Word32 a -> p (Pull Word32 a)
+force arr = do
+  rval <- unsafeWrite arr
+  sync
+  return rval
+
+forcePush :: (Sync p, Write p, MemoryOps a, Pushable (HLevel p))
+             => Pull Word32 a -> p (Pull Word32 a) 
+forcePush = force . push 
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
+-- class Array p => Write p where
+--   unsafeWrite :: MemoryOps a => p Word32 a -> BProgram (Pull Word32 a)
+
+-- instance Write Pull where
+--   unsafeWrite arr = 
+--     do
+--       (mut :: M.Mutable M.Shared a) <- M.newS parr 
+--       return $ M.pullFrom mut
+      
+--    where parr = push arr 
+
+-- instance Write (Push Block) where
+--   unsafeWrite arr  = 
+--     do
+--       (mut :: M.Mutable M.Shared a) <- M.newS arr
+--       return $ M.pullFrom mut
+
+-- -- Still not using the Mutable arrays.. problematic 
+-- instance Write (Push Thread) where
+--   unsafeWrite p = do 
+--     (snames :: Names a)  <- moNames "arr" 
+
+--     -- Here I know that this pattern match will succeed
+--     let n = len p
+      
+--     moAllocateArray snames  n
+
+-- --     let p = push arr
+--     forAll 1 $ \_ ->
+--       p <: moAssignArray snames
+      
+--     return $ moPullFrom snames n
 
 
   
-force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
-force arr = do
-  rval <- unsafeWrite arr
-  Sync
-  return rval
+-- force :: (Write p, MemoryOps a) =>  p Word32 a -> BProgram (Pull Word32 a)
+-- force arr = do
+--   rval <- unsafeWrite arr
+--   Sync
+--   return rval
 
--- Is there an issue with force and Push arrays ?
---  # Threads can write at other locations than thread id!
---  # what does pullFrom do ? (does it make sense!)
--- We are in some sense assuming well-behaved push arrays here !
---  # can we force a 32 element push array without syncing?
-
-
-unsafeForce :: MemoryOps a => SPull a -> BProgram (SPull a) 
-unsafeForce arr | len arr <= 32 = unsafeWrite arr 
-unsafeForce arr = force arr
+-- -- Is there an issue with force and Push arrays ?
+-- --  # Threads can write at other locations than thread id!
+-- --  # what does pullFrom do ? (does it make sense!)
+-- -- We are in some sense assuming well-behaved push arrays here !
+-- --  # can we force a 32 element push array without syncing?
 
 
----------------------------------------------------------------------------
--- Force a scalar
----------------------------------------------------------------------------
+-- unsafeForce :: MemoryOps a => SPull a -> BProgram (SPull a) 
+-- unsafeForce arr | len arr <= 32 = unsafeWrite arr 
+-- unsafeForce arr = force arr
 
-forceScalar :: MemoryOps a => a -> TProgram a
-forceScalar a =
-  do
-    names <- moNames "s"
-    moAllocateScalar names
-    moAssignScalar names a
-    return $ moReadFrom names
+
+-- ---------------------------------------------------------------------------
+-- -- Force a scalar
+-- ---------------------------------------------------------------------------
+
+-- forceScalar :: MemoryOps a => a -> TProgram a
+-- forceScalar a =
+--   do
+--     names <- moNames "s"
+--     moAllocateScalar names
+--     moAssignScalar names a
+--     return $ moReadFrom names
     
----------------------------------------------------------------------------
--- Force in a warp program
----------------------------------------------------------------------------
-forceWarp :: MemoryOps a => SPush Warp a -> WProgram (SPull a) 
-forceWarp p =
-  WProgram $ \warpID -> 
-   do          
-    --let p = push arr
-    let n = len p
-    names <- moNames "arr"
-    moAllocateArray names n
-    p <: (moWarpAssignArray names warpID n) 
-    return $ moWarpPullFrom names warpID n
+-- ---------------------------------------------------------------------------
+-- -- Force in a warp program
+-- ---------------------------------------------------------------------------
+-- forceWarp :: MemoryOps a => SPush Warp a -> WProgram (SPull a) 
+-- forceWarp p =
+--   WProgram $ \warpID -> 
+--    do          
+--     --let p = push arr
+--     let n = len p
+--     names <- moNames "arr"
+--     moAllocateArray names n
+--     p <: (moWarpAssignArray names warpID n) 
+--     return $ moWarpPullFrom names warpID n
    
