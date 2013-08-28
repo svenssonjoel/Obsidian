@@ -4,6 +4,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 
+
 {- Joel Svensson 2012, 2013 
 
    Notes:
@@ -18,7 +19,7 @@
 
 -}
 
-module Obsidian.Force (force, forcePush, unsafeWrite) where -- (force,unsafeForce,unsafeWrite, forceScalar, forceWarp, force_) where
+module Obsidian.Force (forceP, force, unsafeWrite) where -- (force,unsafeForce,unsafeWrite, forceScalar, forceWarp, force_) where
 
 
 import Obsidian.Program
@@ -78,17 +79,17 @@ instance Write (Program Thread) where
       p <: moAssignArray snames
       
       return $ moPullFrom snames n
-
-
-force :: (Sync p, Write p, MemoryOps a) =>  Push (HLevel p) Word32 a -> p (Pull Word32 a)
-force arr = do
+  
+forceP :: (Sync p, Write p, MemoryOps a) =>  Push (HLevel p) Word32 a -> p (Pull Word32 a)
+forceP arr = do
   rval <- unsafeWrite arr
   sync
   return rval
 
-forcePush :: (Sync p, Write p, MemoryOps a, Pushable (HLevel p))
+
+force :: (Sync p, Write p, MemoryOps a, Pushable (HLevel p))
              => Pull Word32 a -> p (Pull Word32 a) 
-forcePush = force . push 
+force = forceP . push 
 
 ---------------------------------------------------------------------------
 --

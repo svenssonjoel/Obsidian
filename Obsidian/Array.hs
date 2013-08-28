@@ -172,7 +172,6 @@ instance Pushable Warp where
     WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
     -- Special constructor to signal its special significance to the compiler. 
 
-
 class PushableN t where
   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
 

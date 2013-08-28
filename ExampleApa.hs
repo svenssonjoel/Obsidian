@@ -34,8 +34,8 @@ import Obsidian.Run.CUDA.Exec
 mapFusion :: SPull EInt32 -> BProgram (SPush Block EInt32)
 mapFusion arr =
   do
-    imm <- forcePush $ (fmap (+1) . fmap (*2)) arr
-    imm1 <- forcePush $ (fmap (+3) . fmap (*4)) imm
+    imm <- force $ (fmap (+1) . fmap (*2)) arr
+    imm1 <- force $ (fmap (+3) . fmap (*4)) imm
     return $ push imm1
 
 input1 :: DPull EInt32
@@ -68,9 +68,9 @@ warpLocal arr = push . reverse $ arr
 warpLocal2 :: SPull EInt32 -> WProgram (SPush Warp EInt32) 
 warpLocal2 arr =
   do
-   arr1 <- force $ warpLocal arr
-   arr2 <- force $ warpLocal arr1
-   arr3 <- force $ push $ fmap (+100)  arr2
+   arr1 <- forceP $ warpLocal arr
+   arr2 <- forceP $ warpLocal arr1
+   arr3 <- force  $ fmap (+100)  arr2
    return $ push $ fmap (\x -> x-100) arr3
              
 
@@ -80,7 +80,7 @@ block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
 block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
 block2 arr =
   do
-    arr1 <- force $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
+    arr1 <- forceP $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
     return $ wConcat $ fmap  (\a _ -> warpLocal a)  (splitUp 32 arr1) 
 
 block3 :: SPull EInt32 -> SPush Block EInt32
@@ -127,7 +127,7 @@ genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 performGrid =
   withCUDA $
   do
-    kern <- capture 40 grid3
+    kern <- capture 256 grid3
 
     useVector (V.fromList [0..255::Int32]) $ \i ->
       allocaVector 256 $ \(o :: CUDAVector Int32)  ->

@@ -1,5 +1,5 @@
 
-module Histogram (histogram, getHistogram) where
+module Histogram (histogram) where -- , getHistogram) where
 
 import Obsidian
 
@@ -25,5 +25,5 @@ input = undefinedGlobal (variable "X")
 inputM :: Mutable Global EWord32
 inputM = undefinedMutable (variable "X")
 
-getHistogram = putStrLn $ genKernel "histo" (histogram 256 256) (inputM :- input :- ())
+-- getHistogram = putStrLn $ genKernel "histo" (histogram 256 256) (inputM :- input :- ())
 
