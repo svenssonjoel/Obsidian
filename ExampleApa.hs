@@ -127,11 +127,12 @@ genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 performGrid =
   withCUDA $
   do
-    kern <- capture 256 grid3
+    kern <- capture 196 grid3
 
     useVector (V.fromList [0..255::Int32]) $ \i ->
       allocaVector 256 $ \(o :: CUDAVector Int32)  ->
       do
+        fill o 0 
         o <== (1,kern) <> i
 
         r <- peekCUDAVector o
