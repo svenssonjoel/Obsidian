@@ -153,97 +153,56 @@ compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 -- ** 
 --------------------------------------------------------------------------- 
 
-newtype CInfo a = CInfo (State CInfoState a)
-                deriving (Monad, MonadState CInfoState) 
+-- newtype CInfo a = CInfo (State CInfoState a)
+--                 deriving (Monad, MonadState CInfoState) 
 
-data CInfoState = CInfoState { cInfoTid  :: (Bool,Exp),
-                               cInfoWarpID     :: (Bool,Exp),
-                               cInfoWarpIx     :: (Bool,Exp) } 
-evalCInfo (CInfo s) = evalState s                     
-
-updateTid :: Exp -> CInfo [Stm]
-updateTid e =
-  do
-    (is_set,to_this) <- gets cInfoTid
-    case is_set of
-      True -> if e == to_this
-              then return []
-              else
-                do
-                  modify (\s -> s {cInfoTid = (True, e)})
-                  return [ [cstm| $id:("tid") = $exp:e; |]]
-
-updateWarpID :: Exp -> CInfo [Stm]
-updateWarpID e =
-  do
-    (is_set,to_this) <- gets cInfoWarpID
-    case is_set of
-      True -> if e == to_this
-              then return []
-              else
-                do
-                  modify (\s -> s {cInfoWarpID = (True, e)})
-                  return [ [cstm| $id:("warpID") = $exp:e; |]]
-
-
-updateWarpIx :: Exp -> CInfo [Stm]
-updateWarpIx e =
-  do
-    (is_set,to_this) <- gets cInfoWarpIx
-    case is_set of
-      True -> if e == to_this
-              then return []
-              else
-                do
-                  modify (\s -> s {cInfoWarpIx = (True, e)})
-                  return [ [cstm| $id:("warpID") = $exp:e; |]]
-
-
+-- data CInfoState = CInfoState { cInfoTid  :: (Bool,Exp),
+--                                cInfoWarpID     :: (Bool,Exp),
+--                                cInfoWarpIx     :: (Bool,Exp) } 
+-- evalCInfo (CInfo s) = evalState s                     
 
 ---------------------------------------------------------------------------
 -- Statement t to Stm
 ---------------------------------------------------------------------------
 
 
-compileStm :: Platform -> Config -> Statement t -> CInfo [Stm]
+compileStm :: Platform -> Config -> Statement t -> [Stm]
 compileStm p c (SAssign name [] e) =
-  return [[cstm| $(compileExp name) = $(compileExp e);|]]
+   [[cstm| $(compileExp name) = $(compileExp e);|]]
 compileStm p c (SAssign name [ix] e) = 
-  return [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
-compileStm p c (SCond be im) =
-  do
-    body <- compileIM p c im  -- (compileIM p c im)
-    return [[cstm| if ($(compileExp be)) { $stms:body } |]]
+   [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
+compileStm p c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
+  where 
+    body = compileIM p c im  -- (compileIM p c im)
 compileStm p c (SSeqFor loopVar n im) = 
-  do
-    body <- compileIM p c im -- (compileIM p c im)
-    return [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
-                       { $stms:body } |]]
+    [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
+              { $stms:body } |]]
+  where
+    body = compileIM p c im -- (compileIM p c im)
 compileStm p c a@(SForAll loopVar n im) = compileForAll p c a
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
 compileStm p c (SForAllBlocks n im) =
-  do
-    body <- compileIM p c im 
-    return [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
+    [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
+  where 
+    body = compileIM p c im 
 compileStm p c (SNWarps n im) = compileWarp p c n im 
 compileStm p c SSynchronize 
   = case p of
-      PlatformCUDA -> return [[cstm| __syncthreads(); |]]
-      PlatformOpenCL -> return [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
+      PlatformCUDA -> [[cstm| __syncthreads(); |]]
+      PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
 compileStm _ _ (SWarpForAll _ _  n im) = error "WarpForAll"
-compileStm _ _ a = return [] -- error  $ "compileStm: missing case "
+compileStm _ _ a = [] -- error  $ "compileStm: missing case "
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
-compileForAll :: Platform -> Config -> Statement t -> CInfo [Stm]
-compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) =
-  do
-    cim <- compileIM PlatformCUDA c im
-    qcode <- goQ cim
-    rcode <- goR cim 
-    return $ qcode ++ rcode -- goQ cim ++ goR cim
+compileForAll :: Platform -> Config -> Statement t -> [Stm]
+compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -- goQ cim ++ goR cim
   where
+    cim = compileIM PlatformCUDA c im
+    qcode = goQ cim -- REMOVE CIM 
+    rcode = goR cim
+    
     nt = configThreadsPerBlock c 
 
     q  = n `quot` nt
@@ -251,65 +210,51 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) =
     
     goQ cim =
       case q of
-        0 -> return []
-        1 -> return cim
+        0 -> []
+        1 -> cim
             --do
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
-        n -> return [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
+        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
              where 
                body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] : cim
    
     goR cim = 
       case r of 
-        0 -> return [] 
-        n -> return [[cstm| if (threadIdx.x < $int:n) { 
+        0 -> [] 
+        n -> [[cstm| if (threadIdx.x < $int:n) { 
                               $id:loopVar = $int:(q*nt) + threadIdx.x;  
                               $stms:cim } |], 
                      [cstm| $id:loopVar = threadIdx.x; |]]
  -- 
-compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = 
-  do
-    body <- compileIM PlatformC c im 
-    return $ go body 
+compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go
   where
-    go body = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
+    body = compileIM PlatformC c im 
+    go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
       
 
 ---------------------------------------------------------------------------
 -- compileWarp (needs fixing so that warpIx and warpID are always correct) 
 ---------------------------------------------------------------------------
-compileWarp :: Platform -> Config -> IExp -> IMList t -> CInfo [Stm]
+compileWarp :: Platform -> Config -> IExp -> IMList t -> [Stm]
 compileWarp PlatformCUDA c (IWord32 warps) im = 
-    liftM concat $ mapM (go . fst)  im
+    concatMap (go . fst)  im
   where
-    go (SAllocate nom n t) = return []
+    go (SAllocate nom n t) = []
     go (SWarpForAll warpID warpIx (IWord32 n) im) = 
-      do     		    
-        cim <- compileIM PlatformCUDA c im
-        when (wholeRealWarps <= 0) $ error "compileWarp: Atleast one full warp of real threads needed!"
-        
-        case (wholeRealWarps `compare` warps) of
-          GT -> -- we have more warps then needed
-             do 
-               qcode <- goQ cim
-               rcode <- goR cim
-               return [[cstm| if (threadIdx.x < $int:(warps*32)) {
-                           $stms:(qcode ++ rcode) } |]]   
-
-          EQ -> 
-             do 
-               qcode <- goQ cim
-               rcode <- goR cim
-               return $ qcode ++ rcode
-
-          LT -> -- virtual warps needed
-             do 
-               qcode <- wQ cim 
-               rcode <- wR cim
-               return $ qcode ++ rcode
-            
+        if (wholeRealWarps <= 0)
+        then error "compileWarp: Atleast one full warp of real threads needed!"
+        else 
+          case (wholeRealWarps `compare` warps) of
+            GT -> -- we have more warps then needed
+              [[cstm| if (threadIdx.x < $int:(warps*32)) {
+                           $stms:(goQ ++ goR) } |]]   
+            EQ -> goQ ++ goR  
+            LT -> wQ ++ wR -- virtual warps needed
+             
        where
+        cim = compileIM PlatformCUDA c im
+ 
         nt = configThreadsPerBlock c
         wholeRealWarps = nt `quot` 32
         threadsPartialWarp = nt `rem` 32 -- Do not use partial warps! 
@@ -319,23 +264,19 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
         threadR = n `rem`  32   -- 
 
         -- Compile for warps, potentially with virtual threads  
-        goQ :: [Stm] -> CInfo [Stm]
-        goQ cim = case threadQ of 
-                0 -> return [] 
-                1 -> return cim 
-                   --do 
-                   --   stm <- updateWarpIx [cexp| threadIdx.x % 32 |]
-                   --   return $ [stm] ++ cim
-                   --   [cstm| $id:warpIx = threadIdx.x % 32; |] : cim
-                n -> return [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
+        goQ :: [Stm]
+        goQ = case threadQ of 
+                0 -> [] 
+                1 -> cim 
+                n -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
                                         $stms:body } |],
                                  [cstm| $id:warpIx = threadIdx.x % 32; |]]
                     where 
                       body = [cstm| $id:warpIx = i*32 + threadIdx.x % 32; |] : cim
-        goR :: [Stm] -> CInfo [Stm] 
-        goR cim = case threadR of 
-                0 -> return [] 
-                n -> return [[cstm| if ( threadIdx.x % 32 < $int:n) { 
+        goR :: [Stm] 
+        goR = case threadR of 
+                0 -> [] 
+                n -> [[cstm| if ( threadIdx.x % 32 < $int:n) { 
                                $id:warpIx = $int:(threadQ*32) + threadIdx.x % 32;
                                $stms:cim } |],
                         [cstm| $id:warpIx = threadIdx.x %32;|]]
@@ -345,25 +286,25 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
         warpQ = warps `quot` wholeRealWarps -- wholeRealWarps may be zero! 
         warpR = warps `rem`  wholeRealWarps
 
-        wQ cim = case warpQ of 
-               0 -> return [] 
-               1 -> goQ cim 
-               n -> return [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
-                            [cstm| id:warpID = threadIdx.x / 32; |]]
+        wQ = case warpQ of 
+               0 -> [] 
+               1 -> goQ 
+               n -> [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
+                     [cstm| id:warpID = threadIdx.x / 32; |]]
                    where 
                      body = [cstm| $id:warpID = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : cim 
 
-        wR cim = case warpR of 
-               0 -> return [] 
-               n -> return [[cstm| if (threadIdx.x / 32 < $int:n) {
+        wR = case warpR of 
+               0 -> [] 
+               n -> [[cstm| if (threadIdx.x / 32 < $int:n) {
                               $id:warpID = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
                               $stms:cim } |],
                             [cstm| $id:warpID = threadIdx.x / 32;|]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
-compileIM :: Platform -> Config -> IMList a -> CInfo [Stm]
-compileIM pform conf im = liftM concat $  mapM ((compileStm pform conf) . fst) im
+compileIM :: Platform -> Config -> IMList a -> [Stm]
+compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 
 
 ---------------------------------------------------------------------------
@@ -375,10 +316,8 @@ compile :: Platform -> Config -> String -> (Parameters,IMList a) -> Definition
 compile pform config kname (params,im)
   = go pform 
   where
-    stms = evalCInfo (compileIM pform config im) (CInfoState (False,[cexp| threadIdx.x |])   -- tid
-                                                             (False,[cexp| threadIdx.x / 32 |])   -- warpID
-                                                             (False,[cexp| threadIdx.x % 32 |]))  -- warpIx
-                                                               
+    stms = compileIM pform config im
+    
     ps = compileParams pform params
     go PlatformCUDA
       = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
