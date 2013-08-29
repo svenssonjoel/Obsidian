@@ -182,7 +182,20 @@ updateWarpID e =
               then return []
               else
                 do
-                  modify (\s -> s {cInfoTid = (True, e)})
+                  modify (\s -> s {cInfoWarpID = (True, e)})
+                  return [ [cstm| $id:("warpID") = $exp:e; |]]
+
+
+updateWarpIx :: Exp -> CInfo [Stm]
+updateWarpIx e =
+  do
+    (is_set,to_this) <- gets cInfoWarpIx
+    case is_set of
+      True -> if e == to_this
+              then return []
+              else
+                do
+                  modify (\s -> s {cInfoWarpIx = (True, e)})
                   return [ [cstm| $id:("warpID") = $exp:e; |]]
 
 
@@ -239,11 +252,10 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) =
     goQ cim =
       case q of
         0 -> return []
-        1 ->
-            do
-              -- (already_set, to_this) <- gets cInfoTid
-              stm <- updateTid [cexp| threadIdx.x |]
-              return $ stm ++ cim -- [cstm| $id:loopVar = threadIdx.x; |] : cim 
+        1 -> return cim
+            --do
+            --  stm <- updateTid [cexp| threadIdx.x |]
+            --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
         n -> return [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
              where 
                body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] : cim
@@ -251,13 +263,11 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) =
     goR cim = 
       case r of 
         0 -> return [] 
-        n -> 
-          do 
-            stm <- updateTid [cexp| $int:(q*nt) + threadIdx.x|] 
-            return [[cstm| if (threadIdx.x < $int:n) { 
-                       $stms:stm
-                       $stms:cim } |]]
- -- $id:loopVar = $int:(q*nt) + threadIdx.x;  
+        n -> return [[cstm| if (threadIdx.x < $int:n) { 
+                              $id:loopVar = $int:(q*nt) + threadIdx.x;  
+                              $stms:cim } |], 
+                     [cstm| $id:loopVar = threadIdx.x; |]]
+ -- 
 compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = 
   do
     body <- compileIM PlatformC c im 
@@ -283,7 +293,7 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
           GT -> -- we have more warps then needed
              do 
                qcode <- goQ cim
-               rcode <- goR cim 
+               rcode <- goR cim
                return [[cstm| if (threadIdx.x < $int:(warps*32)) {
                            $stms:(qcode ++ rcode) } |]]   
 
@@ -312,8 +322,14 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
         goQ :: [Stm] -> CInfo [Stm]
         goQ cim = case threadQ of 
                 0 -> return [] 
-                1 -> return $ [cstm| $id:warpIx = threadIdx.x % 32; |] : cim
-                n -> return [[cstm| for (int i = 0; i < $int:threadQ; ++i) { $stms:body } |]]
+                1 -> return cim 
+                   --do 
+                   --   stm <- updateWarpIx [cexp| threadIdx.x % 32 |]
+                   --   return $ [stm] ++ cim
+                   --   [cstm| $id:warpIx = threadIdx.x % 32; |] : cim
+                n -> return [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
+                                        $stms:body } |],
+                                 [cstm| $id:warpIx = threadIdx.x % 32; |]]
                     where 
                       body = [cstm| $id:warpIx = i*32 + threadIdx.x % 32; |] : cim
         goR :: [Stm] -> CInfo [Stm] 
@@ -321,7 +337,8 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                 0 -> return [] 
                 n -> return [[cstm| if ( threadIdx.x % 32 < $int:n) { 
                                $id:warpIx = $int:(threadQ*32) + threadIdx.x % 32;
-                               $stms:cim } |]]
+                               $stms:cim } |],
+                        [cstm| $id:warpIx = threadIdx.x %32;|]]
 
 
         -- Compile for virtual warps 
@@ -331,7 +348,8 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
         wQ cim = case warpQ of 
                0 -> return [] 
                1 -> goQ cim 
-               n -> return [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |]]
+               n -> return [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
+                            [cstm| id:warpID = threadIdx.x / 32; |]]
                    where 
                      body = [cstm| $id:warpID = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : cim 
 
@@ -339,7 +357,8 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                0 -> return [] 
                n -> return [[cstm| if (threadIdx.x / 32 < $int:n) {
                               $id:warpID = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
-                              $stms:cim } |]]
+                              $stms:cim } |],
+                            [cstm| $id:warpID = threadIdx.x / 32;|]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
