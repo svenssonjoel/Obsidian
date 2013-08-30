@@ -45,6 +45,9 @@ generate n f = pConcat $ fmap f $ iterations n
 -- Various concatenation
 ---------------------------------------------------------------------------
 
+
+ 
+               
 -- parallel concat of a pull of push 
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =

@@ -68,8 +68,8 @@ warpLocal arr = push . reverse $ arr
 warpLocal2 :: SPull EInt32 -> WProgram (SPush Warp EInt32) 
 warpLocal2 arr =
   do
-   arr1 <- forceP $ warpLocal arr
-   arr2 <- forceP $ warpLocal arr1
+   arr1 <- force $ warpLocal arr
+   arr2 <- force $ warpLocal arr1
    arr3 <- force  $ fmap (+100)  arr2
    return $ push $ fmap (\x -> x-100) arr3
              
@@ -80,7 +80,7 @@ block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
 block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
 block2 arr =
   do
-    arr1 <- forceP $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
+    arr1 <- force $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
     return $ wConcat $ fmap  (\a _ -> warpLocal a)  (splitUp 32 arr1) 
 
 

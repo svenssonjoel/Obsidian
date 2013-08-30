@@ -64,8 +64,8 @@ type Grid   = Step Block
 
 data Warp   = Warp -- outside the hierarchy 
 
-type Identifier = Int 
-      
+type Identifier = Int
+                  
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------

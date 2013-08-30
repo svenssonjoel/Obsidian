@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-} 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 
 
@@ -19,7 +20,7 @@
 
 -}
 
-module Obsidian.Force (forceP, force, unsafeWrite) where -- (force,unsafeForce,unsafeWrite, forceScalar, forceWarp, force_) where
+module Obsidian.Force (force, unsafeWrite) where 
 
 
 import Obsidian.Program
@@ -39,18 +40,16 @@ import Data.Word
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
 
-class Write p where
+class Sync p => Write p where
   type HLevel p 
-  
-  unsafeWrite :: MemoryOps a => Push (HLevel p) Word32 a -> p (Pull Word32 a)
-
+  unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
 
 instance Write WProgram where
-  type HLevel WProgram = Warp
-
-  unsafeWrite p =
+  type HLevel WProgram = Warp 
+  unsafeWrite arr  =
     WProgram $ \warpID -> 
-    do 
+    do
+      let p = toPush arr
       let n = len p
       names <- moNames "arr"
       moAllocateArray names n
@@ -59,37 +58,86 @@ instance Write WProgram where
 
 instance Write (Program Block) where
   type HLevel (Program Block) = Block 
-  unsafeWrite p =
+  unsafeWrite arr =
     do
+      let p = toPush arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
       return $ M.pullFrom mut
 
-instance Write (Program Thread) where
+instance (ToPush arr Thread) => Write (Program Thread) where
   type HLevel (Program Thread) = Thread
-
-  unsafeWrite p =
-    do 
+  unsafeWrite arr =
+    do
+      let p = toPush arr
       (snames :: Names a)  <- moNames "arr" 
 
       -- Here I know that this pattern match will succeed
       let n = len p
-      
+    
       moAllocateArray snames  n
-
       p <: moAssignArray snames
       
       return $ moPullFrom snames n
-  
-forceP :: (Sync p, Write p, MemoryOps a) =>  Push (HLevel p) Word32 a -> p (Pull Word32 a)
-forceP arr = do
+
+force :: (MemoryOps a, Write p,
+          ToPush arr (HLevel p)) =>
+         arr Word32 a -> p (Pull Word32 a)      
+force arr = do
   rval <- unsafeWrite arr
   sync
   return rval
 
+-- class Write p where
+--   type HLevel p 
+  
+--   unsafeWrite :: MemoryOps a => Push (HLevel p) Word32 a -> p (Pull Word32 a)
 
-force :: (Sync p, Write p, MemoryOps a, Pushable (HLevel p))
-             => Pull Word32 a -> p (Pull Word32 a) 
-force = forceP . push 
+
+-- instance Write WProgram where
+--   type HLevel WProgram = Warp
+
+--   unsafeWrite p =
+--     WProgram $ \warpID -> 
+--     do 
+--       let n = len p
+--       names <- moNames "arr"
+--       moAllocateArray names n
+--       p <: (moWarpAssignArray names warpID n) 
+--       return $ moWarpPullFrom names warpID n
+
+-- instance Write (Program Block) where
+--   type HLevel (Program Block) = Block 
+--   unsafeWrite p =
+--     do
+--       (mut :: M.Mutable M.Shared a) <- M.newS p
+--       return $ M.pullFrom mut
+
+-- instance Write (Program Thread) where
+--   type HLevel (Program Thread) = Thread
+
+--   unsafeWrite p =
+--     do 
+--       (snames :: Names a)  <- moNames "arr" 
+
+--       -- Here I know that this pattern match will succeed
+--       let n = len p
+      
+--       moAllocateArray snames  n
+
+--       p <: moAssignArray snames
+      
+--       return $ moPullFrom snames n
+  
+--forceP :: (Sync p, Write p, MemoryOps a) =>  Push (HLevel p) Word32 a -> p (Pull Word32 a)
+--forceP arr = do
+--  rval <- unsafeWrite arr
+--  sync
+--  return rval
+
+
+--force :: (Sync p, Write p, MemoryOps a, Pushable (HLevel p))
+--             => Pull Word32 a -> p (Pull Word32 a) 
+--force = forceP . push 
 
 ---------------------------------------------------------------------------
 --
