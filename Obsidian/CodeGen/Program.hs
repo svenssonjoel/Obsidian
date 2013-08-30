@@ -62,6 +62,26 @@ data Statement t = SAssign IExp [IExp] IExp
     -- Synchronisation
                  | SSynchronize
 
+usesWarps :: IMList t -> Bool
+usesWarps = any (go . fst)
+  where
+    go (SWarpForAll _ _ _ _) = True
+    go (SNWarps _ _) = True
+    go (SForAllBlocks _ im) = usesWarps im 
+    go _ = False
+
+usesTid :: IMList t -> Bool
+usesTid = any (go . fst)
+  where
+    go (SForAll _ _ _) = True
+    go (SForAllBlocks _ im) = usesTid im
+    go _ = False 
+
+
+---------------------------------------------------------------------------
+-- COmpilation of Program to IM
+--------------------------------------------------------------------------- 
+
 compileStep1 :: Compile t => P.Program t a -> IM
 compileStep1 p = snd $ compile ns p
   where
@@ -207,25 +227,6 @@ cs i (P.Return a) = (a,[])
 -- The nested ForAll case. 
 cs i p = error $ P.printPrg p -- compile i p 
 
-
-
----------------------------------------------------------------------------
--- Analysis (Old: Not used anymore) 
---------------------------------------------------------------------------- 
-numThreads :: IMList a -> Maybe Word32 
-numThreads im = foldl maxCheck (Just 0) $ map process im
-  where
-    process (SCond bexp im,_) = numThreads im
-    process (SSeqFor _ _ _,_) = Just 1
-    process (SForAll _ (IWord32 n) _,_) = Just n
-    process (SForAll _ n _,_) = Nothing
-    process (SForAllBlocks _ im,_) = numThreads im
---     process (SForAllThreads n im,_) = Right (ariable "UNKNOWN") --fix this!
-    process a = Just 0 -- ok ? 
-
-    maxCheck (Just a) (Just  b)  = Just  $ max a b
-    maxCheck _ _ = Nothing
-
 ---------------------------------------------------------------------------
 -- Turning IM to strings
 ---------------------------------------------------------------------------
@@ -265,6 +266,8 @@ printStm (SForAll nom n im,m) =
 printStm (SForAllBlocks n im,m) =
   "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
+
+printSTM (SWarpForAll _ _ _ _) = "OK" 
 --printStm (SForAllThreads n im,m) =
 --  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
 --  concatMap printStm im ++ "\ndone;\n"

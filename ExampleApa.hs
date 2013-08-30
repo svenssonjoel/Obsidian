@@ -83,8 +83,9 @@ block2 arr =
     arr1 <- forceP $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
     return $ wConcat $ fmap  (\a _ -> warpLocal a)  (splitUp 32 arr1) 
 
+
 block3 :: SPull EInt32 -> SPush Block EInt32
-block3 arr = wConcat $ fmap (\a -> wJoin $ warpLocal2 a) (splitUp 32 arr)
+block3 arr = wConcat $ fmap (\a -> wJoin $ warpLocal2 a) (splitUp 100 arr)
 
 
 
@@ -97,11 +98,11 @@ grid2 arr = pConcat $ fmap (pJoin . block2) (splitUp 256 arr)
 
 
 grid3 :: DPull EInt32 -> DPush Grid EInt32
-grid3 arr = pConcat $ fmap  block3 (splitUp 256 arr)
+grid3 arr = pConcat $ fmap  block3 (splitUp 500 arr)
 
 
 
-genGrid = ppr $ compile PlatformCUDA (Config 192 1) "apa" (a,rim) 
+genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
    where
       (a,im) = toProgram_ 0 grid
       iml = computeLiveness im
@@ -127,10 +128,10 @@ genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 performGrid =
   withCUDA $
   do
-    kern <- capture 196 grid3
+    kern <- capture 196  grid3
 
-    useVector (V.fromList [0..255::Int32]) $ \i ->
-      allocaVector 256 $ \(o :: CUDAVector Int32)  ->
+    useVector (V.fromList [0..500::Int32]) $ \i ->
+      allocaVector 500 $ \(o :: CUDAVector Int32)  ->
       do
         fill o 0 
         o <== (1,kern) <> i
