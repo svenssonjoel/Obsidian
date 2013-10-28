@@ -87,8 +87,8 @@ data Program t a where
               -> Program Thread (Exp a)
 
   Cond :: Exp Bool
-          -> Program t ()
-          -> Program t ()
+          -> Program Thread ()
+          -> Program Thread ()
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
