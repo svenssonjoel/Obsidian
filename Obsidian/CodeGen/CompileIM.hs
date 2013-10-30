@@ -186,12 +186,22 @@ compileStm p c (SForAllBlocks n im) =
   where 
     body = compileIM p c im 
 compileStm p c (SNWarps n im) = compileWarp p c n im 
+
+compileStm p c (SSeqWhile b im) =
+  [[cstm| while ($(compileExp b)) { $stms:body}|]]
+  where
+    body = compileIM p c im 
+
 compileStm p c SSynchronize 
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
 compileStm _ _ (SWarpForAll _ _  n im) = error "WarpForAll"
-compileStm _ _ a = [] -- error  $ "compileStm: missing case "
+
+compileStm _ _ (SAllocate _ _ _) = []
+compileStm _ _ (SDeclare name t) = []
+
+compileStm _ _ a = error  $ "compileStm: missing case "
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
@@ -336,10 +346,20 @@ compile pform config kname (params,im)
                 then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                        BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
                 else []) ++
+                concatMap declares im ++ 
                 map BlockStm stms
 
     cbody = -- add memory allocation 
             map BlockStm stms
+
+declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
+declares (SCond _ im,_) = concatMap declares im 
+declares (SSeqWhile _ im,_) = concatMap declares im
+declares (SForAll _ _ im,_) = concatMap declares im
+declares (SForAllBlocks _ im,_) = concatMap declares im
+declares (SNWarps _ im,_) = concatMap declares im
+declares (SWarpForAll _ _ _ im,_) = concatMap declares im 
+declares _ = []
 
 
 --------------------------------------------------------------------------- 

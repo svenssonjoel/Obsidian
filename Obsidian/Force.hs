@@ -87,6 +87,8 @@ force arr = do
   sync
   return rval
 
+
+
 -- class Write p where
 --   type HLevel p 
   
