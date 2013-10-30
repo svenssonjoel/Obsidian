@@ -346,12 +346,18 @@ compile pform config kname (params,im)
                 then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                        BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
                 else []) ++
+                -- All variables used will be unique and can be declared 
+                -- at the top level 
                 concatMap declares im ++ 
+                -- Not sure if I am using language.C correctly. 
+                -- Maybe compileSTM should create BlockStms ?
+                -- TODO: look how Nikola does it. 
                 map BlockStm stms
 
     cbody = -- add memory allocation 
             map BlockStm stms
 
+-- Declare variables. 
 declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
 declares (SCond _ im,_) = concatMap declares im 
 declares (SSeqWhile _ im,_) = concatMap declares im
