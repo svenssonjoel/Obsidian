@@ -37,7 +37,10 @@ import Data.Int
       - Sequential C
       - C with OpenMP ? 
    * rewrite some functions here to use  a reader monad. 
-   
+
+
+
+   * TODO: Make sure tid always has correct Value 
 -} 
 
 ---------------------------------------------------------------------------
@@ -211,7 +214,7 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
     goQ cim =
       case q of
         0 -> []
-        1 -> cim
+        1 -> [cstm|$id:loopVar = threadIdx.x; |]:cim
             --do
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
