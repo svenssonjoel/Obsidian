@@ -20,7 +20,7 @@
 
 -}
 
-module Obsidian.Force (force, unsafeWrite) where 
+module Obsidian.Force (force, unsafeForce, unsafeWrite) where 
 
 
 import Obsidian.Program
@@ -35,6 +35,8 @@ import Obsidian.Names
 import qualified Obsidian.Mutable as M
 
 import Data.Word
+
+import Control.Monad
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 -- A higher level interface over (forceTo, writeTo) 
@@ -86,6 +88,16 @@ force arr = do
   rval <- unsafeWrite arr
   sync
   return rval
+
+unsafeForce :: (Array arr, MemoryOps a, Write p,
+          ToPush arr (HLevel p)) =>
+         arr Word32 a -> p (Pull Word32 a)      
+unsafeForce arr = do
+  rval <- unsafeWrite arr
+  when (len arr > 32) sync
+  return rval
+
+
 
 
 

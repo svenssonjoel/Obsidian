@@ -218,3 +218,4 @@ genKernelSpecsNL nt kn prg = (prgStr,bytesShared)
     (m,mm) = mmIM iml sharedMem (M.empty)
     bytesShared = size m 
     rim = renameIM mm iml
+

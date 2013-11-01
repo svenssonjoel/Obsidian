@@ -217,7 +217,9 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
 
     q  = n `quot` nt
     r  = n `rem`  nt 
-    
+
+    -- q is the number full "passes" needed to cover the iteration
+    -- space given we have nt threads. 
     goQ cim =
       case q of
         0 -> []
@@ -225,17 +227,23 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
             --do
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
-        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
+        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |], 
+              [cstm| $id:loopVar = threadIdx.x; |]]
              where 
                body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] : cim
    
+    -- r is the number of elements left. 
+    -- This generates code for example when fewer threads are 
+    -- needed than available. (some threads shut down due to the conditional). 
     goR cim = 
-      case r of 
-        0 -> [] 
-        n -> [[cstm| if (threadIdx.x < $int:n) { 
-                              $id:loopVar = $int:(q*nt) + threadIdx.x;  
-                              $stms:cim } |], 
-                     [cstm| $id:loopVar = threadIdx.x; |]]
+      case (r,q) of 
+        (0,_) -> [] 
+        (n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
+                            $stms:cim } |]] 
+        (n,m) -> [[cstm| if (threadIdx.x < $int:n) { 
+                            $id:loopVar = $int:(q*nt) + threadIdx.x;  
+                            $stms:cim } |], 
+                  [cstm| $id:loopVar = threadIdx.x; |]]
  -- 
 compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go
   where
