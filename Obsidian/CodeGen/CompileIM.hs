@@ -189,12 +189,22 @@ compileStm p c (SForAllBlocks n im) =
   where 
     body = compileIM p c im 
 compileStm p c (SNWarps n im) = compileWarp p c n im 
+
+compileStm p c (SSeqWhile b im) =
+  [[cstm| while ($(compileExp b)) { $stms:body}|]]
+  where
+    body = compileIM p c im 
+
 compileStm p c SSynchronize 
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
 compileStm _ _ (SWarpForAll _ _  n im) = error "WarpForAll"
-compileStm _ _ a = [] -- error  $ "compileStm: missing case "
+
+compileStm _ _ (SAllocate _ _ _) = []
+compileStm _ _ (SDeclare name t) = []
+
+compileStm _ _ a = error  $ "compileStm: missing case "
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
@@ -210,7 +220,9 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
 
     q  = n `quot` nt
     r  = n `rem`  nt 
-    
+
+    -- q is the number full "passes" needed to cover the iteration
+    -- space given we have nt threads. 
     goQ cim =
       case q of
         0 -> []
@@ -218,17 +230,23 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
             --do
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
-        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |]]
+        n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |], 
+              [cstm| $id:loopVar = threadIdx.x; |]]
              where 
                body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] : cim
    
+    -- r is the number of elements left. 
+    -- This generates code for example when fewer threads are 
+    -- needed than available. (some threads shut down due to the conditional). 
     goR cim = 
-      case r of 
-        0 -> [] 
-        n -> [[cstm| if (threadIdx.x < $int:n) { 
-                              $id:loopVar = $int:(q*nt) + threadIdx.x;  
-                              $stms:cim } |], 
-                     [cstm| $id:loopVar = threadIdx.x; |]]
+      case (r,q) of 
+        (0,_) -> [] 
+        (n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
+                            $stms:cim } |]] 
+        (n,m) -> [[cstm| if (threadIdx.x < $int:n) { 
+                            $id:loopVar = $int:(q*nt) + threadIdx.x;  
+                            $stms:cim } |], 
+                  [cstm| $id:loopVar = threadIdx.x; |]]
  -- 
 compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go
   where
@@ -339,10 +357,26 @@ compile pform config kname (params,im)
                 then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                        BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
                 else []) ++
+                -- All variables used will be unique and can be declared 
+                -- at the top level 
+                concatMap declares im ++ 
+                -- Not sure if I am using language.C correctly. 
+                -- Maybe compileSTM should create BlockStms ?
+                -- TODO: look how Nikola does it. 
                 map BlockStm stms
 
     cbody = -- add memory allocation 
             map BlockStm stms
+
+-- Declare variables. 
+declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
+declares (SCond _ im,_) = concatMap declares im 
+declares (SSeqWhile _ im,_) = concatMap declares im
+declares (SForAll _ _ im,_) = concatMap declares im
+declares (SForAllBlocks _ im,_) = concatMap declares im
+declares (SNWarps _ im,_) = concatMap declares im
+declares (SWarpForAll _ _ _ im,_) = concatMap declares im 
+declares _ = []
 
 
 --------------------------------------------------------------------------- 

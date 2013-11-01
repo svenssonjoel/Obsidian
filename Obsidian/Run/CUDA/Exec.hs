@@ -47,7 +47,7 @@ import Control.Monad.State
 
 
 
-debug = True
+debug = False
 
 
 ---------------------------------------------------------------------------

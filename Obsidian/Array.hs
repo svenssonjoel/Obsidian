@@ -147,7 +147,7 @@ class ToPush arr t where
 instance Pushable t => ToPush Pull t where
   toPush = push
 
-instance ToPush (Push t) t where
+instance Pushable t => ToPush (Push t) t where
   toPush = id 
 
 class Pushable t where
