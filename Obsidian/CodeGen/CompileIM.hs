@@ -346,7 +346,9 @@ compile pform config kname (params,im)
     go PlatformC
       = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
-    cudabody = [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |]] ++ 
+    cudabody = (if (configSharedMem config > 0)
+                then [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |]] 
+                else []) ++
                (if (usesTid im) 
                 then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
                 else []) ++
