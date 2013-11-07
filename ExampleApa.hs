@@ -138,3 +138,6 @@ performGrid =
 
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
+
+
+
