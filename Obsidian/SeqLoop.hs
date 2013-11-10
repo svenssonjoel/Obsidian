@@ -22,10 +22,10 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- seqReduce (actually reduce) 
 ---------------------------------------------------------------------------
-seqReduce :: (ASize l, MemoryOps a)
+seqReduce :: (MemoryOps a)
            => (a -> a -> a)
-           -> Pull l a
-           -> Push Thread l a
+           -> SPull a
+           -> SPush Thread a
 seqReduce op arr =
   mkPush 1 $ \wf -> 
   do
@@ -48,11 +48,11 @@ seqReduce op arr =
 ---------------------------------------------------------------------------
 -- Iterate
 ---------------------------------------------------------------------------
-seqIterate :: (ASize l, MemoryOps a)
+seqIterate :: (MemoryOps a)
               => EWord32
               -> (EWord32 -> a -> a)
               -> a
-              -> Push Thread l a
+              -> SPush Thread a
 seqIterate n f init =
   mkPush 1 $  \wf -> 
   do
@@ -69,11 +69,11 @@ seqIterate n f init =
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------    
-seqUntil :: (ASize l, MemoryOps a) 
+seqUntil :: (MemoryOps a) 
             => (a -> a)
             -> (a -> EBool)
             -> a
-            -> Push Thread l a
+            -> SPush Thread a
 seqUntil f p init =
   mkPush 1 $ \wf -> 
   do 
@@ -93,10 +93,10 @@ seqUntil f p init =
 -- Sequential scan
 ---------------------------------------------------------------------------
 
-seqScan :: (ASize l, MemoryOps a)
+seqScan :: (MemoryOps a)
            => (a -> a -> a)
-           -> Pull l a
-           -> Push Thread l a
+           -> SPull a
+           -> SPush Thread a
 seqScan op arr {-(Pull n ixf)-}  =
   mkPush n $ \wf -> do
     (ns :: Names a) <- moNames "v" -- (ixf 0) 
@@ -110,11 +110,11 @@ seqScan op arr {-(Pull n ixf)-}  =
       n = len arr
 
 
-seqScanCin :: (ASize l, MemoryOps a)
+seqScanCin :: (MemoryOps a)
            => (a -> a -> a)
            -> a -- cin  
-           -> Pull l a
-           -> Push Thread l a
+           -> SPull a
+           -> SPush Thread a
 seqScanCin op a arr {-(Pull n ixf)-} =
   mkPush n $ \wf -> do
     (ns :: Names a) <- moNames "v" -- (ixf 0) 
@@ -130,10 +130,9 @@ seqScanCin op a arr {-(Pull n ixf)-} =
 -- Sequential Map (here for uniformity) 
 ---------------------------------------------------------------------------
 
-seqMap :: ASize l
-          => (a -> b)
-          -> Pull l a
-          -> Push Thread l b
+seqMap :: (a -> b)
+          -> SPull a
+          -> SPush Thread b
 seqMap f arr =
   mkPush (len arr) $ \wf -> do
     seqFor (sizeConv (len arr)) $ \ix ->

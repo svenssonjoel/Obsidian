@@ -209,6 +209,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
+-- TODO: remove loopvar from forAll, these will be tid always!
 compileForAll :: Platform -> Config -> Statement t -> [Stm]
 compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -- goQ cim ++ goR cim
   where
@@ -226,7 +227,7 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
     goQ cim =
       case q of
         0 -> []
-        1 -> [cstm|$id:loopVar = threadIdx.x; |]:cim
+        1 -> cim -- [cstm|$id:loopVar = threadIdx.x; |]:cim
             --do
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 

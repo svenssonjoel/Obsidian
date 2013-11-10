@@ -5,6 +5,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{- LANGUAGE UndecidableInstances -} -- remove
 
 {- 2013
    Joel Svensson
@@ -55,14 +57,14 @@ type instance ElementType (Push t l a) = a
 type instance ElementType (Program t (Push t l a)) = a
 type instance ElementType (Program t (Pull l a)) = a 
 
-class Concat p t where
+class Concat p t | p -> t where
   pConcat :: ASize l => Pull l p -> Push (Step t) l (ElementType p)
 
 instance Concat (Push t Word32 a) t where
-  pConcat = pConcatP . fmap return 
+  pConcat = pConcatP . fmap return
  
-instance Pushable t => Concat (Pull Word32 a) t where
-  pConcat arr = pConcatP (fmap (return . push) arr)
+--instance Pushable t => Concat (Pull Word32 a) t where -- dangerous! 
+--  pConcat arr = pConcatP (fmap (return . push) arr)
 
 instance Concat (Program t (Push t Word32 a)) t where
   pConcat prg = pConcatP prg

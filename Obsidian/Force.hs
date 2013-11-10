@@ -41,7 +41,7 @@ import Control.Monad
 -- Force local (requires static lengths!)
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
-
+-- Rewrite with functional dependency
 class Sync p => Write p where
   type HLevel p 
   unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
