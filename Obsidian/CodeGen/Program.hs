@@ -47,13 +47,14 @@ data Statement t = SAssign IExp [IExp] IExp
                  | SBreak
                  | SSeqWhile IExp (IMList t)
 
-                 --        loopVar  Iters   Body
-                 | SForAll String   IExp    (IMList t) 
+                 --        Iters   Body
+                 | SForAll IExp    (IMList t) 
                  | SForAllBlocks IExp (IMList t)
  
                  | SNWarps IExp (IMList t)
-                 --              warpID   warpIx      (ThreadIM) 
-                 | SWarpForAll String    String IExp (IMList t) 
+                 --                  (ThreadIM)
+                 | SWarpForAll  IExp (IMList t)                    
+--                 | SWarpForAll String   String IExp (IMList t) 
 
     -- Memory Allocation..
                  | SAllocate Name Word32 Type
@@ -65,7 +66,8 @@ data Statement t = SAssign IExp [IExp] IExp
 usesWarps :: IMList t -> Bool
 usesWarps = any (go . fst)
   where
-    go (SWarpForAll _ _ _ _) = True
+--    go (SWarpForAll _ _ _ _) = True
+    go (SWarpForAll _ _) = True
     go (SNWarps _ _) = True
     go (SForAllBlocks _ im) = usesWarps im 
     go _ = False
@@ -73,7 +75,8 @@ usesWarps = any (go . fst)
 usesTid :: IMList t -> Bool
 usesTid = any (go . fst)
   where
-    go (SForAll _ _ _) = True
+  --  go (SForAll _ _ _) = True
+    go (SForAll _ _) = True
     go (SForAllBlocks _ im) = usesTid im
     go _ = False 
 
@@ -97,7 +100,7 @@ instance Compile Zero  where
 
 -- Compile Block program 
 instance Compile (Step Zero) where
-  compile s (P.ForAll n f) = (a,out (SForAll nom (expToIExp n) im))
+  compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
     where
       --(i1,i2) = split2 s
       nom = "tid" 
@@ -115,11 +118,11 @@ compileW :: Supply Int -> EWord32 -> P.Program P.Warp a -> (a,IM)
 compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `div` 32)
   where
     warpIDNom = "warpID"
+    warpIxNom = "warpIx"
     go :: P.Program P.Warp a -> (a,IM)
     go (P.WarpForAll iters prgf)
-      = (a,out $ SNWarps (expToIExp nWarps) [(SWarpForAll warpIDNom warpIxNom (expToIExp iters) im,())])
+      = (a,out $ SNWarps (expToIExp nWarps) [(SWarpForAll (expToIExp iters) im,())])
       where
-        warpIxNom = "warpIx"
         p = prgf (variable warpIxNom) -- correct
         (a,im) = compile i p    -- Compile the inner threadProgram
     go (P.Allocate nom n t)
@@ -131,44 +134,6 @@ compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `di
         (b,im2) = compileW s2 nWarps (f a)
     go (P.Return a) = (a,[])
     go (P.Identifier) = (supplyValue i, [])
-
---cs i (P.Bind p f) = (b,im1 ++ im2) 
---  where
---    (s1,s2) = split2 i
---    (a,im1) = compile s1 p
---    (b,im2) = compile s2 (f a)
-
---cs i (P.Return a) = (a,[])
-        
-                                      
--- compileW :: Supply Int -> EWord32 -> (EWord32 -> P.Program P.Warp a) -> (a,IM)
--- compileW i (Literal nWarps) prg = go (prg (tid `div` 32)) 
---   where
---     nom = "tid" 
---     tid = variable nom
---     go :: P.Program P.Warp a -> (a,IM) 
---     go (P.WarpForAll (Literal iters) prgf) =
---       let (i1,i2) = split2 i
---           snom = "i" ++ show (supplyValue i1)
---           sv = variable snom
---           p = prgf (sv * 32 + (tid `mod` 32)) -- virtualWarp * 32 + warpIx
---           ((),im) = compile i2 p
---       in ((),out (SForAll nom (expToIExp (fromIntegral (nWarps * iters) :: EWord32)) 
---                   (out (SSeqFor snom (expToIExp (fromIntegral (iters `div` 32) :: EWord32))
---                         im))))
---        where
---          (i1,i2) = split2 i
---          snom = "i" ++ show (supplyValue i1)
---          sv = variable nom
---          p = prgf (sv * 32 + (tid `mod` 32)) -- virtualWarp * 32 + warpIx
---          (a,im) = compile i2 p
-                        
---        P.ForAll (fromIntegral (nWarps * iters))
---        $ \tid -> let warpID = tid `div` 32
---                     warpIx = tid `mod` 32
---                  in  P.SeqFor (fromIntegral (iters `div` 32))
---                      $ \vwid -> prgf (warpID * fromIntegral iters + vwid * 32 + warpIx)
-
 
 
 -- Compile a Grid Program 
@@ -259,15 +224,15 @@ printStm (SSeqFor name n im,m) =
   "for " ++ name  ++ " in [0.." ++ show n ++"] do" ++ meta m ++ 
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SForAll nom n im,m) =
-  "forAll" ++ nom ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+printStm (SForAll n im,m) =
+  "forAll tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
 printStm (SForAllBlocks n im,m) =
   "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printSTM (SWarpForAll _ _ _ _) = "OK" 
+printSTM (SWarpForAll _ _) = "OK" 
 --printStm (SForAllThreads n im,m) =
 --  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
 --  concatMap printStm im ++ "\ndone;\n"

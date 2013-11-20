@@ -182,7 +182,7 @@ compileStm p c (SSeqFor loopVar n im) =
               { $stms:body } |]]
   where
     body = compileIM p c im -- (compileIM p c im)
-compileStm p c a@(SForAll loopVar n im) = compileForAll p c a
+compileStm p c a@(SForAll n im) = compileForAll p c a
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
 compileStm p c (SForAllBlocks n im) =
     [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
@@ -199,7 +199,7 @@ compileStm p c SSynchronize
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
-compileStm _ _ (SWarpForAll _ _  n im) = error "WarpForAll"
+compileStm _ _ (SWarpForAll n im) = error "WarpForAll"
 
 compileStm _ _ (SAllocate _ _ _) = []
 compileStm _ _ (SDeclare name t) = []
@@ -211,7 +211,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 ---------------------------------------------------------------------------
 -- TODO: remove loopvar from forAll, these will be tid always!
 compileForAll :: Platform -> Config -> Statement t -> [Stm]
-compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -- goQ cim ++ goR cim
+compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = qcode ++ rcode 
   where
     cim = compileIM PlatformCUDA c im
     qcode = goQ cim -- REMOVE CIM 
@@ -232,9 +232,9 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
         n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |], 
-              [cstm| $id:loopVar = threadIdx.x; |]]
+              [cstm| $id:("tid") = threadIdx.x; |]]
              where 
-               body = [cstm|$id:loopVar =  i*$int:nt + threadIdx.x; |] : cim
+               body = [cstm|$id:("tid") =  i*$int:nt + threadIdx.x; |] : cim
    
     -- r is the number of elements left. 
     -- This generates code for example when fewer threads are 
@@ -245,11 +245,11 @@ compileForAll PlatformCUDA c (SForAll loopVar (IWord32 n) im) = qcode ++ rcode -
         (n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
                             $stms:cim } |]] 
         (n,m) -> [[cstm| if (threadIdx.x < $int:n) { 
-                            $id:loopVar = $int:(q*nt) + threadIdx.x;  
+                            $id:("tid") = $int:(q*nt) + threadIdx.x;  
                             $stms:cim } |], 
-                  [cstm| $id:loopVar = threadIdx.x; |]]
+                  [cstm| $id:("tid") = threadIdx.x; |]]
  -- 
-compileForAll PlatformC c (SForAll loopVar (IWord32 n) im) = go
+compileForAll PlatformC c (SForAll (IWord32 n) im) = go
   where
     body = compileIM PlatformC c im 
     go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
@@ -263,7 +263,7 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
     concatMap (go . fst)  im
   where
     go (SAllocate nom n t) = []
-    go (SWarpForAll warpID warpIx (IWord32 n) im) = 
+    go (SWarpForAll (IWord32 n) im) = 
         if (wholeRealWarps <= 0)
         then error "compileWarp: Atleast one full warp of real threads needed!"
         else 
@@ -294,16 +294,16 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                 1 -> cim 
                 n -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
                                         $stms:body } |],
-                                 [cstm| $id:warpIx = threadIdx.x % 32; |]]
+                                 [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
                     where 
-                      body = [cstm| $id:warpIx = i*32 + threadIdx.x % 32; |] : cim
+                      body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
         goR :: [Stm] 
         goR = case threadR of 
                 0 -> [] 
                 n -> [[cstm| if ( threadIdx.x % 32 < $int:n) { 
-                               $id:warpIx = $int:(threadQ*32) + threadIdx.x % 32;
+                               $id:("warpIx") = $int:(threadQ*32) + threadIdx.x % 32;
                                $stms:cim } |],
-                        [cstm| $id:warpIx = threadIdx.x %32;|]]
+                        [cstm| $id:("warpIx") = threadIdx.x %32;|]]
 
 
         -- Compile for virtual warps 
@@ -314,16 +314,16 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                0 -> [] 
                1 -> goQR 
                n -> [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
-                     [cstm| $id:warpID = threadIdx.x / 32; |]]
+                     [cstm| $id:("warpID") = threadIdx.x / 32; |]]
                    where 
-                     body = [cstm| $id:warpID = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : goQR -- cim 
+                     body = [cstm| $id:("warpID") = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : goQR -- cim 
 
         wR = case warpR of 
                0 -> [] 
                n -> [[cstm| if (threadIdx.x / 32 < $int:n) {
-                              $id:warpID = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
+                              $id:("warpID") = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
                               $stms:goQR } |], -- cim
-                            [cstm| $id:warpID = threadIdx.x / 32;|]]
+                            [cstm| $id:("warpID") = threadIdx.x / 32;|]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
@@ -375,10 +375,10 @@ compile pform config kname (params,im)
 declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
 declares (SCond _ im,_) = concatMap declares im 
 declares (SSeqWhile _ im,_) = concatMap declares im
-declares (SForAll _ _ im,_) = concatMap declares im
+declares (SForAll _ im,_) = concatMap declares im
 declares (SForAllBlocks _ im,_) = concatMap declares im
 declares (SNWarps _ im,_) = concatMap declares im
-declares (SWarpForAll _ _ _ im,_) = concatMap declares im 
+declares (SWarpForAll _ im,_) = concatMap declares im 
 declares _ = []
 
 

@@ -141,11 +141,11 @@ mmIM im memory memmap = r im (memory,memmap)
     process (SSeqFor _ n im,_) m mm = mmIM im m mm
     process (SSeqWhile b im,_) m mm = mmIM im m mm 
     -- Yet another tricky case.
-    process (SForAll _ n im,_) m mm = mmIM im m mm 
+    process (SForAll n im,_) m mm = mmIM im m mm 
     -- The worst of them all.
 --    process (SForAllThreads n im,_) m mm = mmIM im m mm
     process (SNWarps _ im,_) m mm = mmIM im m mm
-    process (SWarpForAll _ _ _ im,_) m mm = mmIM im m mm 
+    process (SWarpForAll _ im,_) m mm = mmIM im m mm 
 
     process (_,_) m mm = (m,mm) 
 
@@ -171,17 +171,15 @@ renameIM mm im = zip (map (go . fst) im) (repeat ())
     go SBreak = SBreak
     go (SSeqWhile n im) = SSeqWhile (renameIExp mm n)
                                     (renameIM mm im)
-    go (SForAll loopVar n im)   = SForAll loopVar (renameIExp mm n)
-                                                  (renameIM mm im) 
+    go (SForAll n im)   = SForAll (renameIExp mm n)
+                                  (renameIM mm im) 
 
     go (SForAllBlocks n im) = SForAllBlocks (renameIExp mm n)
                                             (renameIM mm im)
     go (SNWarps n im) = SNWarps (renameIExp mm n)
                                 (renameIM mm im)
-    go (SWarpForAll warpID warpIx n im) = SWarpForAll warpID
-                                                      warpIx
-                                                      (renameIExp mm n)
-                                                      (renameIM mm im) 
+    go (SWarpForAll n im) = SWarpForAll (renameIExp mm n)
+                                        (renameIM mm im) 
     -- Strip this out earlier. 
     go (SAllocate name n t)  = SAllocate name n t 
     go (SDeclare name t) = SDeclare name t
