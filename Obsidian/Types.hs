@@ -18,7 +18,7 @@ data Type
   | Pointer Type   -- C thing 
   | Global Type    -- OpenCL thing
   | Local Type     -- OpenCL thing
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
            
 typeSize Int8 = 1
 typeSize Int16 = 2

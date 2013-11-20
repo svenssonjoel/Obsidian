@@ -20,7 +20,8 @@
           + Merge (todo) 
           + Filter (todo, Tricky, whats the lengths?) 
   
-* Latest tweaks 
+* Latest tweaks
+  + Replacing code generation with something new based on Language.C.Quote 
   + pMap is now just fmap! (simplification)
   
 

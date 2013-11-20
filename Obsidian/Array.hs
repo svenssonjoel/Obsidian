@@ -7,6 +7,10 @@
 {- Joel Svensson 2012
 
    Notes:
+    2013-08-26: Experimenting with warp programs.
+                These do not fit that well in established Idioms!
+                TODO: Improve this situation. 
+    ---- OUTDATED ----
     2013-01-08: Removed number-of-blocks field from Distribs
     2012-12-10: Drastically shortened. 
 -}
@@ -17,11 +21,13 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        mkPush,
                        push,
                        pushN,
-                       setSize, 
+                       setSize,
+                       toDynamic, 
                        (!),
                        (<:), 
                        Array(..),
                        ASize(..),
+                       ToPush(..),
                        namedGlobal,
                        undefinedGlobal) where
 
@@ -82,8 +88,20 @@ mkPush n p = Push n p
 -- | Create a pull array. 
 mkPull n p = Pull n p 
 
+ 
 setSize :: l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
+
+---------------------------------------------------------------------------
+-- to, from Dynamic
+--------------------------------------------------------------------------- 
+toDynamic :: SPull a -> DPull a
+toDynamic (Pull n ixf) = Pull (fromIntegral n) ixf 
+
+fromDynamic :: Word32 -> DPull a -> SPull a
+fromDynamic n (Pull _ ixf) = Pull n ixf 
+-- The above should be generalised for push and pull arrays both. 
+
 
 -- Fix this.
 --   * you cannot safely resize either push or pull arrays
@@ -103,7 +121,6 @@ instance Array (Push t) where
   len      (Push s _) = s
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
-  
 
 class Indexible a where 
   access :: a s e -> Exp Word32 -> e 
@@ -120,6 +137,18 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
+convertToPush :: Pull Word32 e -> Push Block Word32 e 
+convertToPush (Pull n ixf) =
+    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
+
+class ToPush arr t where
+  toPush :: ASize s => arr s e -> Push t s e
+
+instance Pushable t => ToPush Pull t where
+  toPush = push
+
+instance Pushable t => ToPush (Push t) t where
+  toPush = id 
 
 class Pushable t where
   push :: ASize s => Pull s e -> Push t s e 
@@ -132,6 +161,26 @@ instance Pushable Block where
   push (Pull n ixf) =
     Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
 
+instance Pushable Warp where
+  push (Pull n ixf) =
+    Push n $ \wf ->
+
+    -- WarpForAll should be compiled to a ForAll of length n
+    -- but it should use information from the enclosing NWarps "annotation"
+    -- NWarps 4 
+    -- WarpForAll 256 prgF 
+    --  ==> 
+    -- ForAll (4*32)            -- (now have threadBudget 128) 
+    --   (\ix -> let warpID = ix `div` 32  -- Actual warpID
+    --               warpIx = ix `mod` 32  -- Index within a warp 
+    --
+    --           in SeqFor (256 `div` 32)
+    --                   (\i ->                -- i = Virtual warp id
+    --                          prgF ( warpID * 256 + i * 32 + warpIx ))  
+    --  
+    -- Will need special case for WarpForAll loop that is not multiple of 32 
+    WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
+    -- Special constructor to signal its special significance to the compiler. 
 
 class PushableN t where
   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
@@ -147,21 +196,10 @@ instance PushableN Grid where
     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
     forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
                                               (bix * fromIntegral n + tix) 
- 
-    
--- pushGrid :: Word32 ->  DPull a -> DPush Grid a
--- pushGrid m (Pull n ixf) =
---   Push n $ \ wf -> ForAll (n `div` fromIntegral m) $ \bix ->
---    ForAll (fromIntegral m) $ \tix -> wf (ixf (bix * fromIntegral m + tix))
---                                              (bix * fromIntegral m + tix)
-                                     
-      
 
----------------------------------------------------------------------------
+--------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
---namedArray name n = mkPull n (\ix -> index name ix)
---indexArray n      = mkPull n (\ix -> ix)
 
 pushApp (Push _ p) a = p a
 infixl 9 <:

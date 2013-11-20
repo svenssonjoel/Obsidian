@@ -157,9 +157,9 @@ odds  = snd . evenOdds
 ---------------------------------------------------------------------------
 conc :: (ASize l, Choice a) => Pull l a -> Pull l a -> Pull l a 
 conc a1 a2 = mkPull (n1+n2)
-               $ \ix -> ifThenElse (ix <* (fromIntegral n1)) 
+               $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
                        (a1 ! ix) 
-                       (a2 ! (ix - (fromIntegral n1)))
+                       (a2 ! (ix - (sizeConv n1)))
   where 
     n1 = len a1
     n2 = len a2 
@@ -194,6 +194,7 @@ zipp3 (arr1,arr2,arr3) =
     
 
 zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
+--zipWith :: Ord l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
 zipWith op a1 a2 =  
   mkPull (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))

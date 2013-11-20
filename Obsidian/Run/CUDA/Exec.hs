@@ -19,14 +19,13 @@ import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
 import Obsidian.CodeGen.Program
-import Obsidian.CodeGen.CUDA
-import Obsidian.CodeGen.InOut
-import Obsidian.CodeGen.Common (genType,GenConfig(..))
+import Obsidian.CodeGen.Reify
+
 import Obsidian.Types -- experimental
 import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Program (Grid, GProgram)
-import Obsidian.Mutable 
+import Obsidian.Mutable
 
 import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
@@ -45,6 +44,11 @@ import System.IO.Unsafe
 import System.Process 
 
 import Control.Monad.State
+
+
+
+debug = False
+
 
 ---------------------------------------------------------------------------
 -- An array located in GPU memory
@@ -209,8 +213,8 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
 ---------------------------------------------------------------------------    
-capture :: ToProgram prg => prg -> CUDA (KernelT prg) 
-capture f =
+capture :: ToProgram prg => Word32 -> prg -> CUDA (KernelT prg) 
+capture threadsPerBlock f =
   do
     i <- newIdent
 
@@ -220,18 +224,25 @@ capture f =
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
 
-        (prgstr,nt,bs) = genKernelSpecsNL kn f
+        (prgstr,bytesShared) = genKernelSpecsNL threadsPerBlock kn f
         header = "#include <stdint.h>\n" -- more includes ? 
-         
-    lift $ storeAndCompile (archStr props) (fn) (header ++ prgstr)
 
+    when debug $ 
+      do 
+        lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
+        lift $ putStrLn $ prgstr
+
+    let arch = archStr props
+        
+    lift $ storeAndCompile arch (fn) (header ++ prgstr)
+    
     mod <- liftIO $ CUDA.loadFile cub
     fun <- liftIO $ CUDA.getFun mod kn 
 
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $ KernelT fun nt bs [] []
+    return $ KernelT fun threadsPerBlock bytesShared [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 

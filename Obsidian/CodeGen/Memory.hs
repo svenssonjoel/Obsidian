@@ -15,7 +15,8 @@ module Obsidian.CodeGen.Memory
         sharedMem,  
         Address,
         Bytes,
-        mmIM) 
+        mmIM,
+        renameIM ) 
        where 
 
 import qualified Data.List as List
@@ -31,8 +32,9 @@ import Obsidian.CodeGen.Liveness
 
 import qualified Data.Map as Map 
 
-------------------------------------------------------------------------------
+---------------------------------------------------------------------------
 -- Memory layout
+---------------------------------------------------------------------------
 
 type MemMap = Map.Map Name (Word32,Type)
 
@@ -141,7 +143,9 @@ mmIM im memory memmap = r im (memory,memmap)
     -- Yet another tricky case.
     process (SForAll n im,_) m mm = mmIM im m mm 
     -- The worst of them all.
-    process (SForAllThreads n im,_) m mm = mmIM im m mm
+--    process (SForAllThreads n im,_) m mm = mmIM im m mm
+    process (SNWarps _ im,_) m mm = mmIM im m mm
+    process (SWarpForAll _ im,_) m mm = mmIM im m mm 
 
     process (_,_) m mm = (m,mm) 
 
@@ -150,3 +154,92 @@ getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness
 getFreeableSet (_,l) [] = Set.empty -- not l ! 
 getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1
 
+---------------------------------------------------------------------------
+-- Rename arrays in IM
+--------------------------------------------------------------------------- 
+
+renameIM :: MemMap -> IML -> IMList ()
+renameIM mm im = zip (map (go . fst) im) (repeat ())
+  where
+    go (SAssign name ix e) = SAssign (renameIVar mm name)
+                                     (map (renameIExp mm) ix)
+                                     (renameIExp mm e)
+    go (SCond be im) = SCond (renameIExp mm be)
+                             (renameIM mm im)
+    go (SSeqFor str n im) = SSeqFor str (renameIExp mm n)
+                                        (renameIM mm im)
+    go SBreak = SBreak
+    go (SSeqWhile n im) = SSeqWhile (renameIExp mm n)
+                                    (renameIM mm im)
+    go (SForAll n im)   = SForAll (renameIExp mm n)
+                                  (renameIM mm im) 
+
+    go (SForAllBlocks n im) = SForAllBlocks (renameIExp mm n)
+                                            (renameIM mm im)
+    go (SNWarps n im) = SNWarps (renameIExp mm n)
+                                (renameIM mm im)
+    go (SWarpForAll n im) = SWarpForAll (renameIExp mm n)
+                                        (renameIM mm im) 
+    -- Strip this out earlier. 
+    go (SAllocate name n t)  = SAllocate name n t 
+    go (SDeclare name t) = SDeclare name t
+    go SSynchronize      = SSynchronize 
+
+---------------------------------------------------------------------------
+-- Memory map the arrays in an CExpr
+---------------------------------------------------------------------------
+renameIExp mm e@(IVar nom t) =  renameIVar mm e 
+renameIExp mm (IIndex (e1,es) t) = IIndex (renameIExp mm e1, map (renameIExp mm) es) t
+renameIExp mm (IBinOp op e1 e2 t) = IBinOp op (renameIExp mm e1) (renameIExp mm e2) t
+renameIExp mm (IUnOp op e t) = IUnOp op (renameIExp mm e) t 
+renameIExp mm (IFunCall nom exprs t) = IFunCall nom (map (renameIExp mm) exprs) t
+renameIExp mm (ICast e t) = ICast (renameIExp mm e) t
+renameIExp mm (ICond e1 e2 e3 t) = ICond (renameIExp mm e1)
+                                         (renameIExp mm e2)
+                                         (renameIExp mm e3)
+                                         t
+renameIExp mm a = a
+
+
+renameIVar mm (IVar name t) =
+    case Map.lookup name mm of 
+    Just (addr,t) -> 
+      let core = sbaseIExp addr 
+          cast c = ICast c t
+      in cast core
+    
+    Nothing -> IVar name t
+    where
+      sbaseIExp 0    = IVar "sbase" (Pointer Word8) 
+      sbaseIExp addr = IBinOp IAdd (IVar "sbase" (Pointer Word8)) 
+                                   (IWord32 addr) 
+                                   (Pointer Word8) 
+
+
+-- reference
+{-
+---------------------------------------------------------------------------
+-- Memory map the arrays in an SPMDC
+---------------------------------------------------------------------------
+mmSPMDC :: MemMap -> [SPMDC] -> [SPMDC] 
+mmSPMDC mm [] = [] 
+mmSPMDC mm (x:xs) = mmSPMDC' mm x : mmSPMDC mm xs
+
+mmSPMDC' :: MemMap -> SPMDC -> SPMDC
+mmSPMDC' mm (CAssign e1 es e2) = 
+  cAssign (mmCExpr mm e1) 
+          (map (mmCExpr mm) es)    
+          (mmCExpr mm e2)
+mmSPMDC' mm (CAtomic op e1 e2 e3) = cAtomic op (mmCExpr mm e1)
+                                               (mmCExpr mm e2)
+                                               (mmCExpr mm e3) 
+mmSPMDC' mm (CFunc name es) = cFunc name (map (mmCExpr mm) es) 
+mmSPMDC' mm CSync           = CSync
+mmSPMDC' mm (CIf   e s1 s2) = cIf (mmCExpr mm e) (mmSPMDC mm s1) (mmSPMDC mm s2)
+mmSPMDC' mm (CFor name e s) = cFor name (mmCExpr mm e) (mmSPMDC mm s)
+mmSPMDC' mm (CWhile b s)    = cWhile (mmCExpr mm b) (mmSPMDC mm s) 
+mmSPMDC' mm CBreak = cBreak 
+mmSPMDC' mm (CDeclAssign t nom e) = cDeclAssign t nom (mmCExpr mm e)
+mmSPMDC' mm a@(CDecl t nom) = a
+mmSPMDC' mm a = error $ "mmSPMDC': " ++ show a
+-} 

@@ -11,21 +11,11 @@
 {- Joel Svensson 2012, 2013
    Niklas Ulvinge 2013
 
-  Notes:
-
-  2013-07-08: Mutable inputs
-  2013-04-28: Big Changes. Allows empty lists of inputs
-              that are represented by ().
-              TODO: Add Niklas modifications that allow tuples in input arrays.
-
-  2013-01-24: Changes with the new Array types in mind
-  2013-01-08: Edited
-  2012-12-10: Edited
-
+ 
 -} 
 
 
-module Obsidian.CodeGen.InOut where 
+module Obsidian.CodeGen.Reify where 
 
 import Obsidian.Exp 
 import Obsidian.Array
@@ -40,36 +30,28 @@ import Obsidian.Memory
 import Obsidian.Names
 import Obsidian.LibraryG
 
-import qualified Obsidian.CodeGen.Program as CG 
+import qualified Obsidian.CodeGen.Program as CG
+import Obsidian.CodeGen.CompileIM
+import Obsidian.CodeGen.Liveness
+import Obsidian.CodeGen.Memory
+import Text.PrettyPrint.Mainland
 
 import Data.Word
 import Data.Int
+import qualified Data.Map as M 
       
 ---------------------------------------------------------------------------
 -- New approach (hopefully)
 ---------------------------------------------------------------------------
 -- "reify" Haskell functions into CG.Programs
 
-{-
-   Blocks needs to be of specific sizes (a design choice we've made).
-   Because of this a prototypical input array needs to be provided
-   that has a static block size (the number of blocks is dynamic).
-
-   To make things somewhat general a heterogeneous list of input arrays
-   that has same shape as the actual parameter list of the function
-   is passed into toProgram (the reifyer). 
-
--} 
-  
-type Inputs = [(Name,Type)]
-
 
 ---------------------------------------------------------------------------
 --
 --------------------------------------------------------------------------- 
 class ToProgram a where
-  toProgram :: Int -> a -> InputList a -> (Inputs,CG.IM)
-  toProgram_ :: Int -> a -> (Inputs, CG.IM)
+  toProgram :: Int -> a -> InputList a -> (Parameters,CG.IM)
+  toProgram_ :: Int -> a -> (Parameters, CG.IM)
 
 
 typeOf_ a = typeOf (Literal a)
@@ -101,25 +83,33 @@ instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) whe
 
 
 instance Scalar a => ToProgram (Push Grid l (Exp a)) where
-  toProgram i p {-(Push _ p)-} a =
-    let prg = do
-          output <- Output $ Pointer $ typeOf_ (undefined :: a)
-          p <: (\a ix -> assignOut output a ix)
-    in 
-     toProgram i prg a
+  toProgram i p a =
+    let outT = Pointer $ typeOf_ (undefined :: a)
+        outN = "output" ++ show i
+        
+        prg = p <: (\a ix -> assignOut outN a ix)
+        
+        (inputs,im) = toProgram (i+1) prg a
+        
+    in (inputs++[(outN,outT)],im) 
+     
     where
       assignOut out a ix = Assign out [ix] a
   toProgram_ i p = toProgram i p () 
 
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
-  toProgram i p {-(Push _ p)-} a =
-    let prg = do
-          out1 <- Output $ Pointer $ typeOf_ (undefined :: a)
-          out2 <- Output $ Pointer $ typeOf_ (undefined :: b)
+  toProgram i p a =
+    let   outT1 = Pointer $ typeOf_ (undefined :: a)
+          outT2 = Pointer $ typeOf_ (undefined :: b)
+          outN1 = "output" ++ show i
+          outN2 = "output" ++ show (i+1)
           
-          p <: (\(a,b) ix -> assignOut (out1,out2) (a,b) ix)
-    in 
-     toProgram i prg a
+
+          prg = p <: (\(a,b) ix -> assignOut (outN1,outN2) (a,b) ix)
+            
+          (inputs,im) = toProgram (i+2) prg a
+          
+    in (inputs++[(outN1,outT1),(outN2,outT2)],im)
     where
       assignOut (o1,o2) (a,b) ix =
         do
@@ -214,4 +204,18 @@ type instance InputList (Push Grid l b) = ()
 type instance InputList (GProgram b)    = () 
 
 
+
+---------------------------------------------------------------------------
+-- Generate CUDA kernels
+---------------------------------------------------------------------------
+
+genKernelSpecsNL :: ToProgram prg => Word32 -> String -> prg -> (String, Word32)
+genKernelSpecsNL nt kn prg = (prgStr,bytesShared) 
+  where
+    prgStr = pretty 75 $ ppr $ compile PlatformCUDA (Config nt bytesShared) kn (a,rim) 
+    (a,im) = toProgram_ 0 prg
+    iml = computeLiveness im
+    (m,mm) = mmIM iml sharedMem (M.empty)
+    bytesShared = size m 
+    rim = renameIM mm iml
 

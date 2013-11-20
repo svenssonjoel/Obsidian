@@ -1,5 +1,12 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{- LANGUAGE UndecidableInstances -} -- remove
 
 {- 2013
    Joel Svensson
@@ -44,17 +51,67 @@ generate n f = pConcat $ fmap f $ iterations n
 -- Various concatenation
 ---------------------------------------------------------------------------
 
--- parallel concat of a pull of push 
-pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
-pConcat arr =
+type family ElementType a
+type instance ElementType (Pull l a) = a
+type instance ElementType (Push t l a) = a
+type instance ElementType (Program t (Push t l a)) = a
+type instance ElementType (Program t (Pull l a)) = a 
+
+class Concat p t | p -> t where
+  pConcat :: ASize l => Pull l p -> Push (Step t) l (ElementType p)
+
+instance Concat (Push t Word32 a) t where
+  pConcat = pConcatP . fmap return
+ 
+--instance Pushable t => Concat (Pull Word32 a) t where -- dangerous! 
+--  pConcat arr = pConcatP (fmap (return . push) arr)
+
+instance Concat (Program t (Push t Word32 a)) t where
+  pConcat prg = pConcatP prg
+
+instance Pushable t => Concat (Program t (Pull Word32 a)) t where
+  pConcat prg = pConcatP (fmap (liftM push) prg) 
+
+
+pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
+pConcatP arr =
   mkPush (n * fromIntegral rn) $ \wf ->
     forAll (sizeConv n) $ \bix ->
-      let p = arr ! bix -- (Push _ p) = arr ! bix
+      let bp = arr ! bix -- (Push _ p) = arr ! bix
           wf' a ix = wf a (bix * sizeConv rn + ix)
-      in p <: wf'
+          
+      in do p <- bp 
+            p <: wf'
   where
     n  = len arr
-    rn = len $ arr ! 0
+    rn = len $ fst $ runPrg 0 $ arr ! 0
+
+                 
+-- parallel concat of a pull of push 
+--pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
+--pConcat arr =
+--  mkPush (n * fromIntegral rn) $ \wf ->
+--    forAll (sizeConv n) $ \bix ->
+--      let p = arr ! bix -- (Push _ p) = arr ! bix
+--          wf' a ix = wf a (bix * sizeConv rn + ix)
+--      in p <: wf'
+--  where
+--    n  = len arr
+--    rn = len $ arr ! 0
+
+--                warpID
+wConcat :: SPull (EWord32 -> SPush Warp a) -> SPush Block a
+wConcat arr =
+  mkPush (n * fromIntegral rn) $ \wf ->
+     NWarps (fromIntegral n) $ \warpID -> 
+        let p = arr ! warpID
+            wf' a ix = wf a (warpID * sizeConv rn + ix)
+        in (p warpID)  <: wf'
+  where
+    n  = len arr
+    rn = len $ (arr ! 0) 0  -- bit awkward. 
+    
+         
 
 -- sequential concatenation of a pull of push 
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
@@ -113,4 +170,12 @@ pJoin prg = mkPush n $ \wf -> do
 
 pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push
+
+
+-- wJoin for now.
+wJoin ::  WProgram (Push Warp s a) -> EWord32 -> Push Warp s a
+wJoin (WProgram prg) warpID = mkPush n $ \wf -> do
+  parr <- (prg warpID) 
+  parr <: wf
+  where n = len $ fst $ runPrg 0 (prg warpID)
 

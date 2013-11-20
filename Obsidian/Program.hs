@@ -7,24 +7,30 @@
 
 -}
 
-{-# LANGUAGE GADTs, TypeFamilies, EmptyDataDecls #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE FlexibleInstances #-} 
              
 
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Step, Zero,
+  Thread, Block, Grid, Step, Zero, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
-  TProgram, BProgram, GProgram,
+  TProgram, BProgram, GProgram, WProgram(..), 
 
+  -- Class
+  Sync, 
+  
   -- helpers
   printPrg,
   runPrg,
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile --, 
+  seqFor, forAll, forAll2, seqWhile, sync  --, 
   -- module Control.Applicative                          
   ) where 
  
@@ -54,16 +60,12 @@ data Zero
   
 type Thread = Zero 
 type Block  = Step Thread 
-type Grid   = Step Block  
+type Grid   = Step Block
 
--- type family Below a
+data Warp   = Warp -- outside the hierarchy 
 
--- type instance Below Zero = Zero
--- type instance Below (Step Zero) = Zero
--- type instance Below (Step (Step Zero)) = Step Zero 
-
-type Identifier = Int 
-      
+type Identifier = Int
+                  
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
@@ -85,8 +87,8 @@ data Program t a where
               -> Program Thread (Exp a)
 
   Cond :: Exp Bool
-          -> Program t ()
-          -> Program t ()
+          -> Program Thread ()
+          -> Program Thread ()
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
@@ -96,40 +98,28 @@ data Program t a where
   SeqWhile :: Exp Bool ->
               Program Thread () ->
               Program Thread () 
-  
-
-            
+              
   Break  :: Program Thread () 
  
   ForAll :: EWord32 
             -> (EWord32 -> Program t ())
             -> Program (Step t) ()
 
+  --        #w          warpId     
+  NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
+
+  WarpForAll :: EWord32 
+                -> (EWord32 -> Program Thread ()) 
+                -> Program Warp ()
+  -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> Program Block () 
+  Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
-              
-  {- About Output (Creates a named output array). 
-     This is similar to Allocate but concerning global arrays.
-
-     Since we cannot synchronize writes to a global array inside of an
-     kernel, global arrays will only be written as outputs of the kernel
-
-     Also used this when doing 
-  -}
-  
-  Output   :: Type -> Program t Name
-  -- (Output may be replaced by AllocateG) 
-  
+                
   Sync     :: Program Block ()
-  -- Two very experimental threadfence constructs.
-  -- should correspond to cuda __threadfence();
-  -- and __threadfenceBlock(); 
-  ThreadFence :: Program Grid ()
-  ThreadFenceBlock :: Program Block () 
 
   -- Parallel composition of Programs
   -- TODO: Will I use this ? 
@@ -148,6 +138,18 @@ type TProgram = Program Thread
 type BProgram = Program Block
 type GProgram = Program Grid 
 
+-- WPrograms are a reader monad 
+newtype WProgram a = WProgram (EWord32 -> Program Warp a)
+
+instance Monad WProgram where
+    return x = WProgram $ \ _ -> return x
+    -- :: WProgram a -> (a -> WProgram b) -> WProgram b
+    (WProgram h) >>= f = WProgram
+                         $ \w ->
+                         do
+                           a <- h w
+                           let (WProgram g) = f a
+                           g w 
 
 ---------------------------------------------------------------------------
 -- Helpers 
@@ -207,7 +209,26 @@ instance Applicative (Program t) where
   ff <*> fa = 
     do
       f <- ff
-      fmap f fa 
+      fmap f fa
+
+---------------------------------------------------------------------------
+-- Class Sync
+---------------------------------------------------------------------------
+class Monad p => Sync p where
+  sync :: p () 
+
+instance Sync WProgram where
+  sync = return ()
+
+instance Sync (Program Thread) where
+  sync = return ()
+
+instance Sync (Program Block) where
+  sync = Sync
+
+instance Sync (Program Grid) where
+  sync = error "sync: not implemented" 
+  -- (implement this using counters and locks)
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
@@ -248,7 +269,6 @@ printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 
 printPrg' :: Int -> Program t a -> (a,String,Int)
 printPrg' i Identifier = (i,"getId;\n",i+1) 
--- printPrg' i Skip = ((),";\n", i)
 printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 
 printPrg' i (AtomicOp n ix e) =
@@ -262,9 +282,6 @@ printPrg' i (Allocate id n t) =
 printPrg' i (Declare id t) =
   let newname = id -- "arr" ++ show id
   in ((),show t ++ " " ++ newname ++ "\n",i+1)
-printPrg' i (Output t) =
-  let newname = "globalOut" ++ show i
-  in (newname,newname ++ " = new Global output;\n",i+1)
 printPrg' i (SeqFor n f) =
   let (a,prg2,i') = printPrg' i (f (variable "i"))
       

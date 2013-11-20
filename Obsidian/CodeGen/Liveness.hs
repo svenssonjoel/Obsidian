@@ -62,16 +62,17 @@ cl im = mapM process im
     process (SAssign nom ixs e,_) =
       do
         s <- get
-        let arrays = collectArrays e
-            living = Set.fromList (nom:arrays) `Set.union` s
+        let arrays = collectArraysI "arr" e
+            arrays1 = collectArraysI "arr" nom
+            living = Set.fromList (arrays1++arrays) `Set.union` s
         
         put living  -- update state   
         return (SAssign nom ixs e,living)
     
-    process (SAtomicOp n1 n2 ixs op,_) =
-      do
-        s <- get
-        return (SAtomicOp n1 n2 ixs op,s)
+--    process (SAtomicOp n1 n2 ixs op,_) =
+--      do
+--        s <- get
+--        return (SAtomicOp n1 n2 ixs op,s)
         
     process (SAllocate name size t,_) =
       do
@@ -83,11 +84,6 @@ cl im = mapM process im
       do 
         s <- get 
         return (SDeclare name t,s)
-
-    process (SOutput name t,_) = 
-      do 
-        s <- get 
-        return (SOutput name t,s)
 
     process (SSynchronize,_) = 
       do 
@@ -144,13 +140,30 @@ cl im = mapM process im
             ns  = s `Set.union` l
         put ns
         return (SForAllBlocks n iml,ns)
-
-    process (SForAllThreads n im,_) = 
+    process (SNWarps n im,_) = 
+      do 
+        s <- get
+        let iml = computeLiveness1 s im 
+            l   = safeHead iml 
+            ns  = s `Set.union` l
+        put ns
+        return (SNWarps n iml,ns)
+    process (SWarpForAll n im,_) =  
       do 
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
             ns  = s `Set.union` l
-        put ns 
-        return (SForAllThreads n iml,ns)
+        put ns
+        return (SWarpForAll n iml,ns) 
+
+
+    -- process (SForAllThreads n im,_) = 
+    --   do 
+    --     s <- get 
+    --     let iml = computeLiveness1 s im 
+    --         l   = safeHead iml 
+    --         ns  = s `Set.union` l
+    --     put ns 
+    --     return (SForAllThreads n iml,ns)
 
