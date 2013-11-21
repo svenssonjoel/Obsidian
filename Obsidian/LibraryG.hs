@@ -31,24 +31,14 @@ import Prelude hiding (zipWith)
 ---------------------------------------------------------------------------
 
 pConcatMap f = pConcat . fmap f
-pUnCoalesceMap f = pUnCoalesce . fmap f
-pConcatMapJoin f = pConcat . fmap (pJoin.f)
-pUnCoalesceMapJoin f = pUnCoalesce . fmap (pJoin.f)
-pCoalesceMap n f = pUnCoalesce . fmap f . coalesce n
+--pUnCoalesceMap f = pUnCoalesce . fmap f
+--pConcatMapJoin f = pConcat . fmap (pJoin.f)
+--pUnCoalesceMapJoin f = pUnCoalesce . fmap (pJoin.f)
+--pCoalesceMap n f = pUnCoalesce . fmap f . coalesce n
 pSplitMap n f = pConcat . fmap f . splitUp n
 
 ---------------------------------------------------------------------------
--- Parallel Generate 
----------------------------------------------------------------------------
-
-generate :: ASize l
-              => l
-              -> (EWord32 -> SPush t b)
-              -> Push (Step t) l b
-generate n f = pConcat $ fmap f $ iterations n 
-
----------------------------------------------------------------------------
--- Various concatenation
+-- Parallel distribution over threads and blocks 
 ---------------------------------------------------------------------------
 
 type family ElementType a
@@ -57,14 +47,79 @@ type instance ElementType (Push t l a) = a
 type instance ElementType (Program t (Push t l a)) = a
 type instance ElementType (Program t (Pull l a)) = a 
 
+
+class Concat p t where
+  pConcat :: ASize l => Pull l p -> Push t l (ElementType p)
+
+instance Concat (Program Thread (SPush Thread a)) Block where
+  pConcat arr =
+    mkPush (n * fromIntegral rn) $ \wf ->
+    forAll (sizeConv n) $ \tix ->
+    let bp = arr ! tix 
+        wf' a ix = wf a (tix * sizeConv rn + ix)
+          
+    in do p <- bp 
+          p <: wf'
+   where
+    n  = len arr
+    rn = len $ fst $ runPrg 0 $ arr ! 0
+ 
+
+instance Concat (SPush Thread a) Block where
+  pConcat = pConcat .
+            fmap (return :: SPush Thread a -> TProgram (SPush Thread a))
+
+
+instance Concat (SPull a) Block where
+  pConcat = pConcat .
+            fmap (return . push :: SPull a -> TProgram (SPush Thread a))
+
+instance Concat (Program Block (SPush Block a)) Grid where
+  pConcat arr = 
+    mkPush (n * fromIntegral rn) $ \wf ->
+    forAllG (sizeConv n) $ \bix ->
+    let bp = arr ! bix 
+        wf' a ix = wf a (bix * sizeConv rn + ix)
+          
+    in do p <- bp 
+          p <: wf'
+   where
+    n  = len arr
+    rn = len $ fst $ runPrg 0 $ arr ! 0
+
+instance Concat (SPush Block a) Grid where
+  pConcat = pConcat .
+            fmap (return :: SPush Block a -> BProgram (SPush Block a))
+
+
+instance Concat (SPull a) Grid where
+  pConcat = pConcat .
+            fmap (return . push :: SPull a -> BProgram (SPush Block a))
+
+
+---------------------------------------------------------------------------
+-- Parallel Generate 
+---------------------------------------------------------------------------
+
+
+-- generate :: ASize l
+--               => l
+--               -> (EWord32 -> SPush t b)
+--               -> Push (Step t) l b
+generate :: (ASize l, Concat p t) =>
+            l -> (EWord32 -> p) -> Push t l (ElementType p)
+generate n f = pConcat $ fmap f $ iterations n 
+
+---------------------------------------------------------------------------
+-- Various concatenation
+---------------------------------------------------------------------------
+
+{- 
 class Concat p t | p -> t where
   pConcat :: ASize l => Pull l p -> Push (Step t) l (ElementType p)
 
 instance Concat (Push t Word32 a) t where
-  pConcat = pConcatP . fmap return
- 
---instance Pushable t => Concat (Pull Word32 a) t where -- dangerous! 
---  pConcat arr = pConcatP (fmap (return . push) arr)
+  pConcat = pConcatP . fmap return 
 
 instance Concat (Program t (Push t Word32 a)) t where
   pConcat prg = pConcatP prg
@@ -85,7 +140,7 @@ pConcatP arr =
   where
     n  = len arr
     rn = len $ fst $ runPrg 0 $ arr ! 0
-
+-} 
                  
 -- parallel concat of a pull of push 
 --pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
@@ -109,11 +164,12 @@ wConcat arr =
         in (p warpID)  <: wf'
   where
     n  = len arr
-    rn = len $ (arr ! 0) 0  -- bit awkward. 
+    rn = len $ (arr ! 0) 0 
     
          
 
 -- sequential concatenation of a pull of push 
+-- Doesnt work on Grid computations. 
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
 sConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -125,8 +181,9 @@ sConcat arr =
   where 
     n  = len arr
     rn = len $ arr ! 0
-
--- pUnCoalesce adapted from Niklas branch. 
+ 
+-- pUnCoalesce adapted from Niklas branch.
+{- 
 pUnCoalesce :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pUnCoalesce arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -139,6 +196,7 @@ pUnCoalesce arr =
     rn = len $ arr ! 0
     s  = sizeConv rn 
     g wf a i = wf a (i `div` s + (i`mod`s)*(sizeConv n))
+-}
 
 ---------------------------------------------------------------------------
 -- load 

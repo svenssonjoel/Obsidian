@@ -16,7 +16,7 @@
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Step, Zero, Warp, 
+  Thread, Block, Grid, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
   TProgram, BProgram, GProgram, WProgram(..), 
@@ -30,7 +30,8 @@ module Obsidian.Program  (
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync  --, 
+  seqFor, forAll, forAll2, seqWhile, sync,
+  forAllG, 
   -- module Control.Applicative                          
   ) where 
  
@@ -55,31 +56,36 @@ import Control.Applicative
 ---------------------------------------------------------------------------
 
 -- A hierarchy! 
-data Step a -- A step in the hierarchy
-data Zero
+--data Step a -- A step in the hierarchy
+--data Zero
   
-type Thread = Zero 
-type Block  = Step Thread 
-type Grid   = Step Block
+--type Thread = Zero 
+--type Block  = Step Thread 
+--type Grid   = Step Block
 
+-- The Hierarchy is a bit risky. 
+data Thread = Thread 
 data Warp   = Warp -- outside the hierarchy 
+data Block  = Block
+data Grid   = Grid 
+
 
 type Identifier = Int
                   
 ---------------------------------------------------------------------------
 -- Program datatype
---------------------------------------------------------------------------
+---------------------------------------------------------------------------
 data Program t a where
-  
-  Identifier :: Program t Identifier 
-  
+
+  -------------------------------------------------------------------------
+  -- Thread Programs 
+  -------------------------------------------------------------------------
   Assign :: Scalar a
             => Name
             -> [Exp Word32]
             -> (Exp a)
             -> Program Thread ()
            
-            
   AtomicOp :: Scalar a
               => Name 
               -> Exp Word32
@@ -90,8 +96,6 @@ data Program t a where
           -> Program Thread ()
           -> Program Thread ()
   
-  -- DONE: Code generation for this.
-  -- TODO: Generalize this loop! (Replace Thread with t) 
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
             -> Program t ()
             
@@ -99,37 +103,61 @@ data Program t a where
               Program Thread () ->
               Program Thread () 
               
-  Break  :: Program Thread () 
- 
+  Break  :: Program Thread ()
+
+  
+  -------------------------------------------------------------------------
+  -- Block Programs 
+  -------------------------------------------------------------------------
+  Sync     :: Program Block ()
+            
   ForAll :: EWord32 
-            -> (EWord32 -> Program t ())
-            -> Program (Step t) ()
+            -> (EWord32 -> Program Thread ())
+            -> Program Block ()
 
   --        #w          warpId     
   NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
 
+  -------------------------------------------------------------------------
+  -- Warp Programs 
+  -------------------------------------------------------------------------
   WarpForAll :: EWord32 
                 -> (EWord32 -> Program Thread ()) 
                 -> Program Warp ()
-  -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
-  -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> Program t () 
 
+  -------------------------------------------------------------------------
+  -- Grid Programs 
+  -------------------------------------------------------------------------
+  GForAll :: EWord32
+             -> (EWord32 -> Program Block ())
+             -> Program Grid ()
+              
+
+  -------------------------------------------------------------------------
+  -- Generic Programs 
+  -------------------------------------------------------------------------
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
-                
-  Sync     :: Program Block ()
-
-  -- Parallel composition of Programs
-  -- TODO: Will I use this ? 
-  --Par :: Program p () ->
-  --       Program p () ->
-  --       Program p () 
 
   -- Monad
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
+
+    
+  Identifier :: Program t Identifier 
+
+    
+  
+--data Device a = Device
+
+--data Grid a where
+  -- = Concat :: (EWord32 -> Program Block (SPush Block a)) -> Grid (Device a)
+--  Concat :: (Pull a -> Pull (Program Block (SPush Block b))) -> Device a -> Grid (Device b) 
+  
+  
+
 
 ---------------------------------------------------------------------------
 -- Aliases 
@@ -165,15 +193,16 @@ uniqueNamed pre = do
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
+forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Block ()
 forAll n f = ForAll n f
 
-forAll2
-  :: EWord32
-     -> EWord32
-     -> (EWord32 -> EWord32 -> Program t ())
-     -> Program (Step (Step t)) ()
-forAll2 b n f =  forAll b $ \bs -> forAll n (f bs) 
+forAll2 :: EWord32
+         -> EWord32
+         -> (EWord32 -> EWord32 -> Program Thread ())
+         -> Program Grid ()
+forAll2 b n f =  GForAll b $ \bs -> ForAll n (f bs) 
+
+forAllG n f = GForAll n f
 
 ---------------------------------------------------------------------------
 -- seqFor
@@ -226,9 +255,9 @@ instance Sync (Program Thread) where
 instance Sync (Program Block) where
   sync = Sync
 
-instance Sync (Program Grid) where
-  sync = error "sync: not implemented" 
-  -- (implement this using counters and locks)
+--instance Sync (Program Grid) where
+--  sync = error "sync: not implemented" 
+--  -- (implement this using counters and locks)
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)

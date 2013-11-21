@@ -19,7 +19,7 @@ import Obsidian.Types
 import Obsidian.Atomic
 
 import qualified Obsidian.Program as P
-import Obsidian.Program (Step,Zero)
+import Obsidian.Program  -- (Step,Zero)
 
 import Data.Word
 import Data.Supply
@@ -95,11 +95,11 @@ class Compile t where
   compile :: Supply Int -> P.Program t a -> (a,IM)
 
 -- Compile Thread program 
-instance Compile Zero  where 
+instance Compile Thread where 
   compile s p = cs s p 
 
 -- Compile Block program 
-instance Compile (Step Zero) where
+instance Compile Block where
   compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
     where
       --(i1,i2) = split2 s
@@ -137,8 +137,8 @@ compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `di
 
 
 -- Compile a Grid Program 
-instance Compile (Step (Step (Zero))) where
-  compile s (P.ForAll n f) = (a, out (SForAllBlocks (expToIExp n) im))
+instance Compile Grid where
+  compile s (P.GForAll n f) = (a, out (SForAllBlocks (expToIExp n) im))
     where 
       p = f (BlockIdx X)
       (a,im) = compile s p

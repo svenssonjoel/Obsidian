@@ -193,7 +193,7 @@ instance PushableN Block where
  
 instance PushableN Grid where
   pushN n (Pull m ixf) =
-    Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
+    Push m $ \ wf -> forAllG (sizeConv (m `div` fromIntegral n)) $ \bix ->
     forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
                                               (bix * fromIntegral n + tix) 
 

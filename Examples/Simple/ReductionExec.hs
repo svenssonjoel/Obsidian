@@ -21,12 +21,12 @@ import Data.Int
 performSmall =
   withCUDA $
   do
-    kern <- capture 256 (reduce (+) . splitUp 512) 
+    kern <- capture 1 (reduce (+) . splitUp 512) 
 
-    useVector (V.fromList [0..511 :: Int32]) $ \i ->
+    useVector (V.fromList [0..1023 :: Int32]) $ \i ->
       useVector (V.fromList [0,0 :: Int32]) $ \ o ->
       do
-        o <== (1,kern) <> i 
+        o <== (2,kern) <> i 
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
 
