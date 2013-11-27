@@ -19,7 +19,7 @@ module Obsidian.Program  (
   Thread, Block, Grid, Warp, 
   -- Program type 
   Program(..), -- all exported.. for now
-  TProgram, BProgram, GProgram, WProgram(..), 
+  TProgram, BProgram, GProgram, WProgram(..), Prog(..), p_app, ProgToProgram(..),
 
   -- Class
   Sync, 
@@ -30,8 +30,8 @@ module Obsidian.Program  (
   uniqueNamed,
 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync,
-  forAllG, 
+  seqFor, forAll, forAll2, warpForAll,  seqWhile, sync,
+  forAllG, nWarps, 
   -- module Control.Applicative                          
   ) where 
  
@@ -162,54 +162,102 @@ data Program t a where
 ---------------------------------------------------------------------------
 -- Aliases 
 ---------------------------------------------------------------------------
-type TProgram = Program Thread
-type BProgram = Program Block
-type GProgram = Program Grid 
+--type TProgram = Program Thread
+--type BProgram = Program Block
+--type GProgram = Program Grid 
 
--- WPrograms are a reader monad 
-newtype WProgram a = WProgram (EWord32 -> Program Warp a)
+type TProgram = Prog Thread
+type BProgram = Prog Block
+type GProgram = Prog Grid 
+type WProgram = Prog Warp 
 
-instance Monad WProgram where
-    return x = WProgram $ \ _ -> return x
+-- WPrograms are a reader monad
+--newtype WProgram a = WProgram (EWord32 -> Program Warp a)
+
+--instance Monad WProgram where
+--    return x = WProgram $ \ _ -> return x
     -- :: WProgram a -> (a -> WProgram b) -> WProgram b
-    (WProgram h) >>= f = WProgram
-                         $ \w ->
-                         do
-                           a <- h w
-                           let (WProgram g) = f a
-                           g w 
+--    (WProgram h) >>= f = WProgram
+--                         $ \w ->
+--                         do
+--                           a <- h w
+--                           let (WProgram g) = f a
+--                           g w
+
+-- Reader, knows "identity"
+--  identity is a dummy for all programs but Warp programs
+--  at the moment
+data Prog t a = Prog (EWord32 -> Program t a)
+
+instance Monad (Prog t) where
+  return x = Prog $ \ _ -> return x
+  (Prog h) >>= f = Prog
+                   $ \id ->
+                   do
+                     a <- h id
+                     let (Prog g) = f a
+                     g id
+
+p_app (Prog f) x = f x 
+
+applyIn f id ix = f ix `p_app` id
+
+-- Much hacking, little thought. 
+class ProgToProgram t where
+  progToProgram :: Prog t a -> Program t a
+
+instance ProgToProgram Warp where
+  progToProgram (Prog f) = f (variable "warpID")
+
+instance ProgToProgram Block where
+  progToProgram (Prog f) = f (variable "DUMMY_BLOCK_ID")
+
+instance ProgToProgram Thread where
+  progToProgram (Prog f) = f (variable "DUMMY_THREAD_ID")
+
+instance ProgToProgram Grid where
+  progToProgram (Prog f) = f (variable "DUMMY_GRID_ID")
+
 
 ---------------------------------------------------------------------------
 -- Helpers 
 --------------------------------------------------------------------------- 
-uniqueSM = do
+uniqueSM = Prog $ \_ -> do
   id <- Identifier
   return $ "arr" ++ show id 
 
-uniqueNamed pre = do
+uniqueNamed pre = Prog $ \_ -> do
   id <- Identifier
   return $ pre ++ show id 
 
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Block ()
-forAll n f = ForAll n f
-
+forAll :: EWord32 -> (EWord32 -> Prog Thread ()) -> Prog Block ()
+forAll n f = Prog $ \id -> ForAll n (applyIn f id)
+ 
 forAll2 :: EWord32
          -> EWord32
-         -> (EWord32 -> EWord32 -> Program Thread ())
-         -> Program Grid ()
-forAll2 b n f =  GForAll b $ \bs -> ForAll n (f bs) 
+         -> (EWord32 -> EWord32 -> Prog Thread ())
+         -> Prog Grid ()
+forAll2 b n f = Prog $ \id -> GForAll b $ applyIn (\bs -> forAll n (f bs)) id
 
-forAllG n f = GForAll n f
+forAllG n f = Prog $ \id -> GForAll n (applyIn f id) 
+
+
+warpForAll n f = Prog $ \id -> WarpForAll n (applyIn f id)
+
+nWarps n f = Prog $ \id -> NWarps n (applyIn f (variable "warpID"))
+
+-- WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
 
 ---------------------------------------------------------------------------
 -- seqFor
 ---------------------------------------------------------------------------
-seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
+-- if dummy here, fix for Warp
+seqFor :: EWord32 -> (EWord32 -> Prog t ()) -> Prog t ()
 seqFor (Literal 1) f = f 0
-seqFor n f = SeqFor n f
+seqFor n f = Prog $ \id -> SeqFor n (applyIn f id)
 
 ---------------------------------------------------------------------------
 -- seqWhile
@@ -246,14 +294,14 @@ instance Applicative (Program t) where
 class Monad p => Sync p where
   sync :: p () 
 
-instance Sync WProgram where
+instance Sync (Prog Warp) where
   sync = return ()
 
-instance Sync (Program Thread) where
+instance Sync (Prog Thread) where
   sync = return ()
 
-instance Sync (Program Block) where
-  sync = Sync
+instance Sync (Prog Block) where
+  sync = Prog $ \_ -> Sync
 
 --instance Sync (Program Grid) where
 --  sync = error "sync: not implemented" 

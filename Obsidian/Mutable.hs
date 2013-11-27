@@ -74,7 +74,7 @@ undefinedMutable v = Mutable v undefined
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: MemoryOps a => SPush Block a -> BProgram (Mutable Shared a)
+newS :: MemoryOps a => SPush Block a -> Prog Block (Mutable Shared a)
 newS arr = do
   (snames :: Names a) <- moNames "arr"
   moAllocateArray snames n
@@ -90,7 +90,7 @@ newS arr = do
 writeTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
-           -> Program Block ()
+           -> Prog Block ()
 writeTo (Mutable n snames) p 
   | n <= m = p <: (moAssignArray snames)
   | otherwise = error "forceTo: Incompatible sizes" 
@@ -101,16 +101,16 @@ writeTo (Mutable n snames) p
 forceTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
-           -> BProgram ()
+           -> Prog Block ()
 forceTo m arr =
   do
     writeTo m arr
-    Sync 
+    sync 
 ---------------------------------------------------------------------------
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: MemoryOps a => Mutable Shared a -> SPull  a
+pullFrom :: MemoryOps a => Mutable Shared a -> Prog Block (SPull a)
 pullFrom (Mutable n snames) = moPullFrom snames n  
 
 
@@ -121,10 +121,10 @@ pullFrom (Mutable n snames) = moPullFrom snames n
 atomicInc :: forall a s t . AtomicInc a
              => EWord32  
              -> Mutable s (Exp a)
-             -> TProgram ()
+             -> Prog Thread ()
 atomicInc ix (Mutable n noms) = mapNamesM_ f noms
   where
-    f nom = AtomicOp nom ix (AtomicInc  :: Atomic a) >> return ()
+    f nom = Prog $ \_ ->  AtomicOp nom ix (AtomicInc  :: Atomic a) >> return ()
   
 
 -- | Add atomically 
@@ -135,7 +135,7 @@ atomicAdd :: forall a s. AtomicAdd a
              -> TProgram ()
 atomicAdd ix v (Mutable n noms) = mapNamesM_ f noms
   where
-    f nom = AtomicOp nom ix (AtomicAdd v) >> return ()
+    f nom = Prog $ \_ -> AtomicOp nom ix (AtomicAdd v) >> return ()
   
 
 -- | Subtract atomically     
@@ -147,7 +147,7 @@ atomicSub :: forall a s. AtomicSub a
 atomicSub ix v (Mutable n noms) = mapNamesM_ f noms
                                
   where
-    f nom = AtomicOp nom ix (AtomicSub v) >> return ()
+    f nom = Prog $ \_ -> AtomicOp nom ix (AtomicSub v) >> return ()
 
 
 -- Special case ? No. 
@@ -158,7 +158,7 @@ atomicExch :: forall a s. AtomicExch a
               -> TProgram (Exp a)
 atomicExch ix v  (Mutable n (Single nom)) = f nom
   where
-    f nom = AtomicOp nom ix (AtomicExch v) 
+    f nom = Prog $ \_ -> AtomicOp nom ix (AtomicExch v) 
                          
   
 {-

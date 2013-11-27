@@ -74,15 +74,15 @@ instance ASize (Exp Word32) where
 ---------------------------------------------------------------------------
 -- | Push array. Parameterised over Program type and size type.
 data Push p s a =
-  Push s ((a -> EWord32 -> TProgram ()) -> Program p ())
+  Push s ((a -> EWord32 -> Prog Thread ()) -> Prog p ())
 
 -- | Pull array.
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: EWord32 -> a}
 
 -- | Create a push array. 
-mkPush :: s -> ((a -> EWord32 -> TProgram ())
-                             -> Program t ()) -> Push t s a
+mkPush :: s -> ((a -> EWord32 -> Prog Thread ())
+                             -> Prog t ()) -> Push t s a
 mkPush n p = Push n p 
 
 -- | Create a pull array. 
@@ -159,7 +159,7 @@ instance Pushable Thread where
 
 instance Pushable Block where
   push (Pull n ixf) =
-    Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
+    Push n $ \wf -> forAll (sizeConv n) $ \i -> wf (ixf i) i
 
 instance Pushable Warp where
   push (Pull n ixf) =
@@ -179,7 +179,7 @@ instance Pushable Warp where
     --                          prgF ( warpID * 256 + i * 32 + warpIx ))  
     --  
     -- Will need special case for WarpForAll loop that is not multiple of 32 
-    WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
+    warpForAll (sizeConv n) $ \i -> wf (ixf i) i
     -- Special constructor to signal its special significance to the compiler. 
 
 class PushableN t where
@@ -191,11 +191,11 @@ instance PushableN Block where
     seqFor (fromIntegral n) $ \ix -> wf (ixf (tix * fromIntegral n + ix))
                                              (tix * fromIntegral n + ix) 
  
-instance PushableN Grid where
-  pushN n (Pull m ixf) =
-    Push m $ \ wf -> forAllG (sizeConv (m `div` fromIntegral n)) $ \bix ->
-    forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
-                                              (bix * fromIntegral n + tix) 
+--instance PushableN Grid where
+--  pushN n (Pull m ixf) =
+--    Push m $ \ wf -> forAllG (sizeConv (m `div` fromIntegral n)) $ \bix ->
+--    forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
+--                                              (bix * fromIntegral n + tix) 
 
 --------------------------------------------------------------------------
 -- Indexing, array creation.

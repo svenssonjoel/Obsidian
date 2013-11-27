@@ -85,8 +85,8 @@ usesTid = any (go . fst)
 -- COmpilation of Program to IM
 --------------------------------------------------------------------------- 
 
-compileStep1 :: Compile t => P.Program t a -> IM
-compileStep1 p = snd $ compile ns p
+compileStep1 :: (ProgToProgram t, Compile t) => P.Prog t a -> IM
+compileStep1 p = snd $ compile ns (progToProgram p)
   where
     ns = unsafePerformIO$ newEnumSupply
 
@@ -232,11 +232,16 @@ printStm (SForAllBlocks n im,m) =
   "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printSTM (SWarpForAll _ _) = "OK" 
+printStm (SNWarps e im,m) = "NWarps " ++ show e ++ " { \n" ++
+  concatMap printStm im ++ "}\n"
+printStm (SWarpForAll n im,m) =
+  "warpForAll tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+  concatMap printStm im ++ "\ndone;\n" 
 --printStm (SForAllThreads n im,m) =
 --  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
 --  concatMap printStm im ++ "\ndone;\n"
 
+--printStm (x,m) = error $ show x 
 
   
 -- printStm (a,m) = error $ show m 

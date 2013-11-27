@@ -266,6 +266,7 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
     go (SWarpForAll (IWord32 n) im) = 
         if (wholeRealWarps <= 0)
         then error "compileWarp: Atleast one full warp of real threads needed!"
+        --then  goR   
         else 
           case (wholeRealWarps `compare` warps) of
             GT -> -- we have more warps then needed

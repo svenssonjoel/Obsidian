@@ -19,6 +19,7 @@ import Data.Word
 
 -- TODO: Rename module to something better
 
+{- 
 ---------------------------------------------------------------------------
 -- seqReduce (actually reduce) 
 ---------------------------------------------------------------------------
@@ -139,3 +140,4 @@ seqMap f arr =
       wf (f (arr ! ix)) ix 
 
 
+-} 

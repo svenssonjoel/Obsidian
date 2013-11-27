@@ -94,7 +94,7 @@ instance Scalar a => ToProgram (Push Grid l (Exp a)) where
     in (inputs++[(outN,outT)],im) 
      
     where
-      assignOut out a ix = Assign out [ix] a
+      assignOut out a ix = Prog $ \_ -> Assign out [ix] a
   toProgram_ i p = toProgram i p () 
 
 instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
@@ -111,8 +111,8 @@ instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
           
     in (inputs++[(outN1,outT1),(outN2,outT2)],im)
     where
-      assignOut (o1,o2) (a,b) ix =
-        do
+      assignOut (o1,o2) (a,b) ix = Prog $ \_ -> 
+        do 
           Assign o1 [ix] a
           Assign o2 [ix] b
   toProgram_ i p = toProgram i p () 

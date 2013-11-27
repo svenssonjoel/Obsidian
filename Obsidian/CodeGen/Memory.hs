@@ -49,6 +49,7 @@ data Memory = Memory {freeList  :: [(Address,Bytes)] ,
               
 -- 48 kilobytes of smem              
 sharedMem = Memory [(0,49152)] [] 0
+-- sharedMem = Memory [(0,2^60)] [] 0
 
 
 updateMax :: Memory -> Memory 
@@ -73,7 +74,7 @@ allocate m b =
                                 else fl
                       in  (updateMax (m {freeList = fl', 
                                          allocated = (a,b):allocated m}) ,a)
-    [] -> error "out of shared memory"
+    [] -> error $ "out of shared memory while allocating " ++ show b ++ " bytes." 
    
                           
 free :: Memory -> Address -> Memory

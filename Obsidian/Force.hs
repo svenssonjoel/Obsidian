@@ -5,6 +5,9 @@
 {-# LANGUAGE TypeFamilies #-}
 
 
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
+
 
 {- Joel Svensson 2012, 2013 
 
@@ -20,7 +23,7 @@
 
 -}
 
-module Obsidian.Force (force, unsafeForce, unsafeWrite) where 
+module Obsidian.Force (force, unsafeForce,Force(..)) where 
 
 
 import Obsidian.Program
@@ -42,64 +45,102 @@ import Control.Monad
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
 -- Rewrite with functional dependency
-class Sync p => Write p where
-  type HLevel p 
-  unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
+-- class Sync p => Write p where
+--   type HLevel p 
+--   unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
 
-instance Write WProgram where
-  type HLevel WProgram = Warp 
-  unsafeWrite arr  =
-    WProgram $ \warpID -> 
+-- instance Write WProgram where
+--   type HLevel WProgram = Warp 
+--   unsafeWrite arr  =
+--     WProgram $ \warpID -> 
+--     do
+--       let p = toPush arr
+--       let n = len p
+--       names <- moNames "arr"
+--       moAllocateArray names n
+--       p <: (moWarpAssignArray names warpID n) 
+--       return $ moWarpPullFrom names warpID n
+
+-- instance Write (Program Block) where
+--   type HLevel (Program Block) = Block 
+--   unsafeWrite arr =
+--     do
+--       let p = toPush arr
+--       (mut :: M.Mutable M.Shared a) <- M.newS p
+--       return $ M.pullFrom mut
+
+-- instance (ToPush arr Thread) => Write (Program Thread) where
+--   type HLevel (Program Thread) = Thread
+--   unsafeWrite arr =
+--     do
+--       let p = toPush arr
+--       (snames :: Names a)  <- moNames "arr" 
+
+--       -- Here I know that this pattern match will succeed
+--       let n = len p
+    
+--       moAllocateArray snames  n
+--       p <: moAssignArray snames
+      
+--       return $ moPullFrom snames n
+
+-- force :: (MemoryOps a, Write p,
+--           ToPush arr (HLevel p)) =>
+--          arr Word32 a -> p (Pull Word32 a)      
+-- force arr = do
+--   rval <- unsafeWrite arr
+--   sync
+--   return rval
+
+-- unsafeForce :: (Array arr, MemoryOps a, Write p,
+--           ToPush arr (HLevel p)) =>
+--          arr Word32 a -> p (Pull Word32 a)      
+-- unsafeForce arr = do
+--   rval <- unsafeWrite arr
+--   when (len arr > 32) sync
+--   return rval
+
+
+
+
+
+class Force p where
+  type HLevel p 
+  force_ :: (MemoryOps a)
+            => Push (HLevel p) Word32 a -> p (Pull Word32 a)
+
+            
+instance Force (Prog Warp) where 
+  type HLevel (Prog Warp) = Warp
+  force_ arr =
     do
       let p = toPush arr
       let n = len p
       names <- moNames "arr"
       moAllocateArray names n
-      p <: (moWarpAssignArray names warpID n) 
-      return $ moWarpPullFrom names warpID n
+      p <: (moWarpAssignArray names n) 
+      moWarpPullFrom names n
 
-instance Write (Program Block) where
-  type HLevel (Program Block) = Block 
-  unsafeWrite arr =
+
+instance Force (Prog Block) where
+  type HLevel (Prog Block) = Block
+  force_ arr =
     do
       let p = toPush arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
-      return $ M.pullFrom mut
-
-instance (ToPush arr Thread) => Write (Program Thread) where
-  type HLevel (Program Thread) = Thread
-  unsafeWrite arr =
-    do
-      let p = toPush arr
-      (snames :: Names a)  <- moNames "arr" 
-
-      -- Here I know that this pattern match will succeed
-      let n = len p
-    
-      moAllocateArray snames  n
-      p <: moAssignArray snames
-      
-      return $ moPullFrom snames n
-
-force :: (MemoryOps a, Write p,
-          ToPush arr (HLevel p)) =>
-         arr Word32 a -> p (Pull Word32 a)      
-force arr = do
-  rval <- unsafeWrite arr
-  sync
-  return rval
-
-unsafeForce :: (Array arr, MemoryOps a, Write p,
-          ToPush arr (HLevel p)) =>
-         arr Word32 a -> p (Pull Word32 a)      
-unsafeForce arr = do
-  rval <- unsafeWrite arr
-  when (len arr > 32) sync
-  return rval
+      sync 
+      M.pullFrom mut
 
 
 
+force
+  :: (ToPush arr (HLevel p), MemoryOps a,
+      Force p) =>
+     arr Word32 a -> p (Pull Word32 a)
+force = force_ . toPush
 
+
+unsafeForce = force_ . toPush 
 
 -- class Write p where
 --   type HLevel p 

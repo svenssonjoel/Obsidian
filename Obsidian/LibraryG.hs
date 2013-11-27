@@ -44,14 +44,14 @@ pSplitMap n f = pConcat . fmap f . splitUp n
 type family ElementType a
 type instance ElementType (Pull l a) = a
 type instance ElementType (Push t l a) = a
-type instance ElementType (Program t (Push t l a)) = a
-type instance ElementType (Program t (Pull l a)) = a 
+type instance ElementType (Prog t (Push t l a)) = a
+type instance ElementType (Prog t (Pull l a)) = a 
 
 
 class Concat p t where
   pConcat :: ASize l => Pull l p -> Push t l (ElementType p)
 
-instance Concat (Program Thread (SPush Thread a)) Block where
+instance Concat (Prog Thread (SPush Thread a)) Block where
   pConcat arr =
     mkPush (n * fromIntegral rn) $ \wf ->
     forAll (sizeConv n) $ \tix ->
@@ -62,19 +62,19 @@ instance Concat (Program Thread (SPush Thread a)) Block where
           p <: wf'
    where
     n  = len arr
-    rn = len $ fst $ runPrg 0 $ arr ! 0
+    rn = len $ fst $ runPrg 0 $ (arr ! 0 `p_app` 0)
  
 
 instance Concat (SPush Thread a) Block where
   pConcat = pConcat .
-            fmap (return :: SPush Thread a -> TProgram (SPush Thread a))
+            fmap (return :: SPush Thread a -> Prog Thread (SPush Thread a))
 
 
 instance Concat (SPull a) Block where
   pConcat = pConcat .
-            fmap (return . push :: SPull a -> TProgram (SPush Thread a))
+            fmap (return . push :: SPull a -> Prog Thread (SPush Thread a))
 
-instance Concat (Program Block (SPush Block a)) Grid where
+instance Concat (Prog Block (SPush Block a)) Grid where
   pConcat arr = 
     mkPush (n * fromIntegral rn) $ \wf ->
     forAllG (sizeConv n) $ \bix ->
@@ -85,7 +85,7 @@ instance Concat (Program Block (SPush Block a)) Grid where
           p <: wf'
    where
     n  = len arr
-    rn = len $ fst $ runPrg 0 $ arr ! 0
+    rn = len $ fst $ runPrg 0 $ (arr ! 0 `p_app` 0) 
 
 instance Concat (SPush Block a) Grid where
   pConcat = pConcat .
@@ -154,17 +154,17 @@ pConcatP arr =
 --    n  = len arr
 --    rn = len $ arr ! 0
 
---                warpID
-wConcat :: SPull (EWord32 -> SPush Warp a) -> SPush Block a
+--
+wConcat :: SPull (SPush Warp a) -> SPush Block a
 wConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
-     NWarps (fromIntegral n) $ \warpID -> 
+     nWarps (fromIntegral n) $ \warpID -> 
         let p = arr ! warpID
             wf' a ix = wf a (warpID * sizeConv rn + ix)
-        in (p warpID)  <: wf'
+        in  p  <: wf'
   where
     n  = len arr
-    rn = len $ (arr ! 0) 0 
+    rn = len $ (arr ! 0)  
     
          
 
@@ -177,7 +177,7 @@ sConcat arr =
     seqFor (sizeConv n) $ \bix ->
       let p = arr ! bix -- (Push _ p) = arr ! bix
           wf' a ix = wf a (bix * sizeConv rn + ix)              
-      in p <: wf'
+      in  p <: wf'
   where 
     n  = len arr
     rn = len $ arr ! 0
@@ -220,20 +220,20 @@ store = load
 -- Join (adapted from Niklas branch
 ---------------------------------------------------------------------------
 
-pJoin ::  Program t (Push t s a) -> Push t s a
+pJoin ::  Prog t (Push t s a) -> Push t s a
 pJoin prg = mkPush n $ \wf -> do
   parr <- prg
   parr <: wf
-  where n = len $ fst $ runPrg 0 prg 
+  where n = len $ fst $ runPrg 0 (prg `p_app` 0)
 
-pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
+pJoinPush :: (Pushable t, ASize s) => Prog t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push
 
 
 -- wJoin for now.
-wJoin ::  WProgram (Push Warp s a) -> EWord32 -> Push Warp s a
-wJoin (WProgram prg) warpID = mkPush n $ \wf -> do
-  parr <- (prg warpID) 
-  parr <: wf
-  where n = len $ fst $ runPrg 0 (prg warpID)
+--wJoin ::  WProgram (Push Warp s a) -> EWord32 -> Push Warp s a
+--wJoin (Prog prg) warpID = mkPush n $ \wf -> do
+--  parr <- (prg warpID) 
+--  parr <: wf
+--  where n = len $ fst $ runPrg 0 (prg warpID)
 
