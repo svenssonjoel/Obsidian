@@ -71,7 +71,46 @@ data Grid   = Grid
 
 
 type Identifier = Int
-                  
+
+
+---------------------------------------------------------------------------
+-- Hacking 
+---------------------------------------------------------------------------
+-- data PLoop = PForAll EWord32 (EWord32 -> Program Thread ())
+
+-- -- A push array with no level parameter. 
+-- data NewPush a = NewPush ((EWord32 -> a -> Program Thread ()) -> PLoop)
+
+
+-- -- forcePLoop :: NewPush a -> Program Block (Pull a)  -- uses shared memory  
+
+-- class ForceP t where
+--   forceP :: NewPush a -> Program t (Pull a)
+
+-- instance ForceP Block where -- uses shared memory  
+--   forceP = undefined 
+
+-- instance ForceP Thread where -- uses thread local memory (if there is any such thing)
+--   forceP = undefined
+
+-- instance ForceP Warp where -- uses warp local memory..
+--   forceP = undefined
+
+-- class MKBlock t where
+--   mkBlock :: (Pull (Program t (NewPush a))) -> Program Block (NewPush a)
+
+-- instance MKBlock Thread where
+--   mkBlock = undefined
+
+-- instance MKBlock Warp where
+--   mkBlock = undefined
+
+-- class MKWarp t where
+--   mkWarp :: (Pull (Program t (NewPush a))) -> Program Warp (NewPush a)
+
+-- instance MKWarp Thread where
+--   mkWarp = undefined 
+
 ---------------------------------------------------------------------------
 -- Program datatype
 ---------------------------------------------------------------------------
