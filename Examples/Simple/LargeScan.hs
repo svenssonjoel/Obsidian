@@ -22,26 +22,25 @@ perform =
   withCUDA $
   do
   
-    scanI <- capture (\a b -> sklanskyInc 8 (+) a (splitUp 256 b)) (variable "x" :- input :- ())
-    reduce <- capture (reduce (+) . splitUp 256) (input :- ()) 
-    scanCin <- capture kernel (input :- input :- ())
+    scanI <- capture 256 (\a b -> sklanskyInc 8 (+) a (splitUp 256 b))
+    reduce <- capture 256 (reduce (+) . splitUp 256) 
+    scanCin <- capture 256 kernel 
 
     useVector (V.fromList (P.replicate 65536 (1::Word32))) $ \i -> 
       allocaVector 256 $ \ (reds :: CUDAVector Word32) ->
         allocaVector 65536 $ \ (o :: CUDAVector Word32) ->
         do
-          execute reduce 256 i reds
+          reds <== (256,reduce) <> i
           
-          execute scanI 1 ((0::Word32) :- reds) reds 
-  
-          execute scanCin 256 (reds :- i) o
+          reds <== (256,scanI) <> (0 :: Word32) <> reds 
+
+          o <== (256,scanCin) <> reds <> i
+          
           r <- peekCUDAVector o
           lift $ putStrLn $ show (P.take 256 r)
           lift $ putStrLn "..."
           lift $ putStrLn $ show (P.drop 65280 r) 
   where
-    input :: DPull EWord32
-    input = undefinedGlobal (variable "X")
     kernel cins arr = sklanskyCin 8 (+) cins (splitUp 256 arr)
 
                       

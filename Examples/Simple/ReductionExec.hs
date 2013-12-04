@@ -33,19 +33,19 @@ performSmall =
 
 
 
--- performLarge =
---   withCUDA $
---   do
---     kern <- capture (reduce (+) . splitUp 256) 
+performLarge =
+  withCUDA $
+  do
+    kern <- capture 128 (reduce (+) . splitUp 256) 
 
---     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
---       allocaVector 256  $ \(o :: CUDAVector Int32) ->
---         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
---         do
+    useVector (V.fromList [0..65535 :: Int32]) $ \i ->
+      allocaVector 256  $ \(o :: CUDAVector Int32) ->
+        allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
+        do
           
---           o <== (256,kern) <> i
---           o2 <== (1,kern) <> o 
+          o <== (256,kern) <> i
+          o2 <== (1,kern) <> o 
 
---           r <- peekCUDAVector o2
---           lift $ putStrLn $ show r 
+          r <- peekCUDAVector o2
+          lift $ putStrLn $ show r 
 

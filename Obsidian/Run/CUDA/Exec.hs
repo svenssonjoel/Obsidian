@@ -119,7 +119,17 @@ class KernelM a where
   
 class KernelO a where
   type KOutput a 
-  addOutParam :: KernelT (KOutput a) -> a -> KernelT () 
+  addOutParam :: KernelT (KOutput a) -> a -> KernelT ()
+
+instance KernelI Int32 where
+  type KInput Int32 = Exp Int32
+  addInParam (KernelT f t s i o) a =
+    KernelT f t s (i ++ [CUDA.IArg $ fromIntegral a]) o 
+
+instance KernelI Word32 where
+  type KInput Word32 = Exp Word32
+  addInParam (KernelT f t s i o) a =
+    KernelT f t s (i ++ [CUDA.IArg $ fromIntegral a]) o 
 
 instance Scalar a => KernelI (CUDAVector a) where
   type KInput (CUDAVector a) = DPull (Exp a) 
