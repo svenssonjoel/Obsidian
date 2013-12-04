@@ -32,7 +32,7 @@ perform =
         do
           reds <== (256,reduce) <> i
           
-          reds <== (256,scanI) <> (0 :: Word32) <> reds 
+          reds <== (1,scanI) <> (0 :: Word32) <> reds 
 
           o <== (256,scanCin) <> reds <> i
           
