@@ -1,5 +1,5 @@
 
-module Reconstruct (reconstruct, getReconstruct)  where
+module Reconstruct (reconstruct)  where
 
 import Obsidian
 
@@ -23,7 +23,7 @@ reconstruct blocks threads arr
 
               
 
-getReconstruct = putStrLn $ genKernel "recon" (reconstruct 256 256) (input :- ())
-  where
-    input :: DPull EWord32
-    input = undefinedGlobal (variable "X")
+--getReconstruct = putStrLn $ genKernel "recon" (reconstruct 256 256) (input :- ())
+--  where
+--    input :: DPull EWord32
+--    input = undefinedGlobal (variable "X")

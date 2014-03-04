@@ -20,7 +20,7 @@ import Data.Word
 perform =
   withCUDA $
   do
-    kern <- capture (reconstruct 255 255)
+    kern <- capture 256 (reconstruct 256 256)
 
 
     -- input needs to be "one longer" (hence 256) 
@@ -33,5 +33,6 @@ perform =
   where
     input :: DPull EWord32
     input = undefinedGlobal (variable "X")
+
 
 
