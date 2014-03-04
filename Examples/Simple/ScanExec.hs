@@ -20,7 +20,7 @@ import Data.Word
 perform =
   withCUDA $
   do
-    kern <- capture (256, 0) (sklansky 10 (+) . splitUp 1024) 
+    kern <- capture 256  (sklansky 10 (+) . splitUp 1024) 
 
     useVector (V.fromList [0..1023 :: Word32]) $ \i -> 
       allocaVector 1024 $ \ (o :: CUDAVector Word32) ->
@@ -31,11 +31,11 @@ perform =
         lift $ putStrLn $ show r 
 
 
-
+-- Does not perform a "large" scan, but many small ones. 
 performLarge =
   withCUDA $
   do
-    kern <- capture (256,0) (sklansky 8 (+) . splitUp 256) 
+    kern <- capture 256 (sklansky 8 (+) . splitUp 256) 
 
     useVector (V.fromList [0..65535 :: Word32]) $ \i ->
       allocaVector 65536 $ \ (o :: CUDAVector Word32) ->
