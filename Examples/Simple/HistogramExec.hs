@@ -20,7 +20,7 @@ import Data.Word
 performSmall =
   withCUDA $
   do
-    kern <- capture (histogram 256 256) 
+    kern <- capture 256 (histogram 256 256) 
 
     useVector (V.fromList [0..255 :: Word32]) $ \i ->
       allocaVector 255 $ \ (m :: CUDAVector Word32) ->
@@ -33,16 +33,16 @@ performSmall =
 
 
 
-performLarge =
-  withCUDA $
-  do
-    kern <- capture (histogram 256 256) 
+-- performLarge =
+--   withCUDA $
+--   do
+--     kern <- capture (histogram 256 256) 
 
-    useVector (V.fromList [0..65535 :: Word32]) $ \i ->
-      allocaVector 65536 $ \ (m :: CUDAVector Word32) ->
-        do
-          fill m 0 
-          exec $ (256,kern) <:> m  <> i
-          r <- peekCUDAVector m
-          lift $ putStrLn $ show r 
+--     useVector (V.fromList [0..65535 :: Word32]) $ \i ->
+--       allocaVector 65536 $ \ (m :: CUDAVector Word32) ->
+--         do
+--           fill m 0 
+--           exec $ (256,kern) <:> m  <> i
+--           r <- peekCUDAVector m
+--           lift $ putStrLn $ show r 
 

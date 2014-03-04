@@ -79,12 +79,13 @@ data Program t a where
             -> (Exp a)
             -> Program Thread ()
            
-            
+  -- 4 March 2014, Changed so that AtOp does not return a result. 
+  -- Change this back later if an application requires. 
   AtomicOp :: Scalar a
-              => Name 
-              -> Exp Word32
-              -> Atomic a
-              -> Program Thread (Exp a)
+              => Name        -- Array name 
+              -> Exp Word32  -- Index to operate on 
+              -> Atomic a    -- Atomic operation to perform 
+              -> Program Thread ()
 
   Cond :: Exp Bool
           -> Program Thread ()
@@ -253,7 +254,7 @@ runPrg i (Cond b p) = ((),i)
 runPrg i (Declare _ _) = ((),i)
 runPrg i (Allocate _ _ _ ) = ((),i)
 runPrg i (Assign _ _ a) = ((),i) -- Probaby wrong.. 
-runPrg i (AtomicOp _ _ _) = (variable ("new"++show i),i+1)
+runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 
 {- What do I want from runPrg ?
 
@@ -273,9 +274,11 @@ printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 
 printPrg' i (AtomicOp n ix e) =
   let newname = "r" ++ show i
-  in (variable newname,
-      newname ++ " = " ++ printAtomic e ++
-      "( " ++ n ++ "[" ++ show ix ++ "])\n",i+1)
+  --in (variable newname,
+  --    newname ++ " = " ++ printAtomic e ++
+  --    "( " ++ n ++ "[" ++ show ix ++ "])\n",i+1)
+  in ((), printAtomic e ++
+          "( " ++ n ++ "[" ++ show ix ++ "])\n",i+1)
 printPrg' i (Allocate id n t) =
   let newname = id -- "arr" ++ show id
   in ((),newname ++ " = malloc(" ++ show n ++ ");\n",i+1)

@@ -155,7 +155,7 @@ atomicExch :: forall a s. AtomicExch a
               => EWord32
               -> Exp a
               -> Mutable s (Exp a)
-              -> TProgram (Exp a)
+              -> TProgram ()
 atomicExch ix v  (Mutable n (Single nom)) = f nom
   where
     f nom = AtomicOp nom ix (AtomicExch v) 

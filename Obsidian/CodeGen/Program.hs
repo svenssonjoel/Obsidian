@@ -1,6 +1,6 @@
 {-# LANGUAGE GADTs,
              ExistentialQuantification,
-             FlexibleInstances #-}
+             FlexibleInstances  #-}
 
 {- CodeGen.Program.
 
@@ -40,8 +40,15 @@ type IM = IMList ()
 -- out :: 
 out a = [(a,())]
 
+-- Atomic operations
+data AtOp = AtInc
+          | AtAdd  IExp 
+          | AtSub  IExp 
+          | AtExch IExp 
+     
+-- Statements 
 data Statement t = SAssign IExp [IExp] IExp
-         --         | SAtomicOp Name Name (IExp) (Atomic a)
+                 | SAtomicOp IExp IExp IExp AtOp
                  | SCond IExp (IMList t) 
                  | SSeqFor String IExp (IMList t)
                  | SBreak
@@ -148,11 +155,24 @@ instance Compile (Step (Step (Zero))) where
 ---------------------------------------------------------------------------
 -- General compilation
 ---------------------------------------------------------------------------
-cs :: Compile t => Supply Int -> P.Program t a -> (a,IM) 
+cs :: forall t a . Compile t => Supply Int -> P.Program t a -> (a,IM) 
 cs i P.Identifier = (supplyValue i, [])
 cs i (P.Assign name ix e) =
   ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
- 
+
+cs i (P.AtomicOp name ix atom) =
+  case atom of
+    AtomicInc -> undefined 
+    AtomicAdd e -> undefined
+    AtomicSub e -> undefined
+    AtomicExch e -> undefined 
+  -- (vres, out im)
+  -- where
+  --   res = "a" ++ show (supplyValue i)
+  --   vres = IVar res (typeOf (undefined :: a))
+  --   vname = IVar name (typeOf (undefined :: a))
+  --   im = SAtomicOp vres vname ix atom
+
 --cs i (P.AtomicOp name ix at) = (v,out im)
 --  where 
 --    nom = "a" ++ show (supplyValue i)
@@ -189,8 +209,9 @@ cs i (P.Bind p f) = (b,im1 ++ im2)
 
 cs i (P.Return a) = (a,[])
 
--- The nested ForAll case. 
-cs i p = error $ P.printPrg p -- compile i p 
+
+-- Unhandled cases 
+cs i p = error $ "#Program.hs# unhandled in cs: " ++ P.printPrg p -- compile i p 
 
 ---------------------------------------------------------------------------
 -- Turning IM to strings
