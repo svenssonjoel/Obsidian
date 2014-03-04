@@ -37,7 +37,7 @@ performLarge =
   do
     kern <- capture 256 (sklansky 8 (+) . splitUp 256) 
 
-    useVector (V.fromList [0..65535 :: Word32]) $ \i ->
+    useVector (V.fromList (P.replicate 65536 1)) $ \i -> 
       allocaVector 65536 $ \ (o :: CUDAVector Word32) ->
         do
           fill o 0 
