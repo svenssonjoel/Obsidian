@@ -164,6 +164,9 @@ renameIM mm im = zip (map (go . fst) im) (repeat ())
     go (SAssign name ix e) = SAssign (renameIVar mm name)
                                      (map (renameIExp mm) ix)
                                      (renameIExp mm e)
+    go (SAtomicOp name ix atop) = SAtomicOp (renameIVar mm name)
+                                            (renameIExp mm ix)
+                                            (renameAtOp mm atop) 
     go (SCond be im) = SCond (renameIExp mm be)
                              (renameIM mm im)
     go (SSeqFor str n im) = SSeqFor str (renameIExp mm n)
@@ -214,6 +217,11 @@ renameIVar mm (IVar name t) =
       sbaseIExp addr = IBinOp IAdd (IVar "sbase" (Pointer Word8)) 
                                    (IWord32 addr) 
                                    (Pointer Word8) 
+
+renameAtOp mm AtInc = AtInc
+renameAtOp mm (AtAdd e) = AtAdd (renameIExp mm e)
+renameAtOp mm (AtSub e) = AtSub (renameIExp mm e)
+renameAtOp mm (AtExch e) = AtExch (renameIExp mm e) 
 
 
 -- reference

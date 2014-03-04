@@ -10,6 +10,9 @@ import Data.Word
 import Data.Int
 
 
+-- Anyone can extend these with new instances.
+-- Not good. (I need to think about how to separate
+-- low level CUDA concerns, from programmer level concerns) 
 class Scalar a => AtomicInc a
 instance AtomicInc Word32
 

@@ -174,6 +174,13 @@ compileStm p c (SAssign name [] e) =
    [[cstm| $(compileExp name) = $(compileExp e);|]]
 compileStm p c (SAssign name [ix] e) = 
    [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
+compileStm p c (SAtomicOp name ix atop) = 
+  case atop of
+    AtInc -> [[cstm| atomicInc(&$(compileExp name)[$(compileExp ix)],0xFFFFFFFF); |]]
+    AtAdd e -> [[cstm| atomicAdd(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
+    AtSub e -> [[cstm| atomicSub(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
+    AtExch e -> [[cstm| atomicExch(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
+
 compileStm p c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
   where 
     body = compileIM p c im  -- (compileIM p c im)

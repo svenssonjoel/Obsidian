@@ -48,7 +48,7 @@ data AtOp = AtInc
      
 -- Statements 
 data Statement t = SAssign IExp [IExp] IExp
-                 | SAtomicOp IExp IExp IExp AtOp
+                 | SAtomicOp IExp IExp AtOp
                  | SCond IExp (IMList t) 
                  | SSeqFor String IExp (IMList t)
                  | SBreak
@@ -162,7 +162,7 @@ cs i (P.Assign name ix e) =
 
 cs i (P.AtomicOp name ix atom) =
   case atom of
-    AtomicInc -> undefined 
+    AtomicInc -> ((),out (SAtomicOp (IVar name Word32) (expToIExp ix) AtInc))
     AtomicAdd e -> undefined
     AtomicSub e -> undefined
     AtomicExch e -> undefined 

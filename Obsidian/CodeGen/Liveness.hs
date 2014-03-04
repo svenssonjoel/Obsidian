@@ -68,6 +68,19 @@ cl im = mapM process im
         
         put living  -- update state   
         return (SAssign nom ixs e,living)
+    process (SAtomicOp nom ix atop,_) =
+      do
+        s <- get
+        let arrays =
+              case atop of
+                AtInc -> []
+                AtAdd e -> collectArraysI "arr" e
+                AtSub e -> collectArraysI "arr" e
+                AtExch e -> collectArraysI "arr" e
+            arrays1 = collectArraysI "arr" nom
+            living = Set.fromList (arrays1++arrays) `Set.union` s
+        put living
+        return (SAtomicOp nom ix atop, living) 
     
 --    process (SAtomicOp n1 n2 ixs op,_) =
 --      do
