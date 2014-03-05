@@ -216,14 +216,11 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
--- TODO: remove loopvar from forAll, these will be tid always!
 compileForAll :: Platform -> Config -> Statement t -> [Stm]
-compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = qcode ++ rcode 
+compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = goQ ++ goR 
   where
     cim = compileIM PlatformCUDA c im
-    qcode = goQ cim -- REMOVE CIM 
-    rcode = goR cim
-    
+   
     nt = configThreadsPerBlock c 
 
     q  = n `quot` nt
@@ -231,7 +228,7 @@ compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = qcode ++ rcode
 
     -- q is the number full "passes" needed to cover the iteration
     -- space given we have nt threads. 
-    goQ cim =
+    goQ =
       case q of
         0 -> []
         1 -> cim -- [cstm|$id:loopVar = threadIdx.x; |]:cim
@@ -244,9 +241,9 @@ compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = qcode ++ rcode
                body = [cstm|$id:("tid") =  i*$int:nt + threadIdx.x; |] : cim
    
     -- r is the number of elements left. 
-    -- This generates code for example when fewer threads are 
+    -- This generates code for when fewer threads are 
     -- needed than available. (some threads shut down due to the conditional). 
-    goR cim = 
+    goR = 
       case (r,q) of 
         (0,_) -> [] 
         (n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
@@ -269,17 +266,32 @@ compileWarp :: Platform -> Config -> IExp -> IMList t -> [Stm]
 compileWarp PlatformCUDA c (IWord32 warps) im = 
     concatMap (go . fst)  im
   where
-    go (SAllocate nom n t) = []
-    go (SWarpForAll (IWord32 n) im) = 
+    go (SAllocate nom n t) = []  -- Skip allocations at this point. Been handled earlier. 
+    go (SWarpForAll (IWord32 n) im) =
+        {-
+           warps : number of warps that should execute this code
+           n     : number of threads per each of these warps
+
+           warps may be a larger number than there are actual warps
+           n map be a larger number than 32 (the actual number of threads per warp)
+
+           c : is the configuration. It knows the actual number of threads
+               we are generating code for. 
+        -} 
         if (wholeRealWarps <= 0)
         then error "compileWarp: Atleast one full warp of real threads needed!"
         else 
           case (wholeRealWarps `compare` warps) of
-            GT -> -- we have more warps then needed
-              [[cstm| if (threadIdx.x < $int:(warps*32)) {
-                           $stms:(goQ ++ goR) } |]]   
-            EQ -> goQR -- goQ ++ goR  
-            LT -> wQ ++ wR -- virtual warps needed
+            {-
+               3 potential outcomes.
+               #1 we have more real warps than we need
+               #2 we have exactly the amount of warps that we need
+               #3 we have fewer real warps than requested.
+            -} 
+            GT -> [[cstm| if (threadIdx.x < $int:(warps*32)) {
+                           $stms:(goQ 0 ++ goR 0) } |]]   
+            EQ -> goQR 0
+            LT -> wQ ++ wR 
              
        where
         cim = compileIM PlatformCUDA c im
@@ -287,16 +299,23 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
         nt = configThreadsPerBlock c
         wholeRealWarps = nt `quot` 32
         threadsPartialWarp = nt `rem` 32 -- Do not use partial warps! 
-       --  nVirtualWarps = warps - wholeRealWarps
-
-        goQR = goQ ++ goR
+       
+        -- Maybe something else than s for goR
+        -- It will depend on how 
+        goQR s = goQ s ++ goR s
   
         threadQ = n `quot` 32   -- Set up virtual threads within warp
         threadR = n `rem`  32   -- 
 
+
+-- ###################################################################### 
+-- CLEAN THIS MESS UP ! !!! ! ! ! !! ! !!!! ! !! ! ! ! ! !  ! !!! ! ! ! !
+-- ######################################################################
+
+
         -- Compile for warps, potentially with virtual threads  
-        goQ :: [Stm]
-        goQ = case threadQ of 
+        goQ :: Word32 -> [Stm]
+        goQ 0 = case threadQ of 
                 0 -> [] 
                 1 -> cim 
                 n -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
@@ -304,32 +323,53 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                                  [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
                     where 
                       body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
-        goR :: [Stm] 
-        goR = case threadR of 
+        goQ n = case threadQ of 
                 0 -> [] 
-                n -> [[cstm| if ( threadIdx.x % 32 < $int:n) { 
-                               $id:("warpIx") = $int:(threadQ*32) + threadIdx.x % 32;
+                1 -> cim 
+                _ -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
+                                        $stms:body } |],
+                                 [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
+                    where 
+                      body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
+        goR :: Word32 -> [Stm] 
+        goR 0 = case threadR of 
+                0 -> [] 
+                _ -> [[cstm| if ( threadIdx.x % 32 < $int:threadR) { 
+                               $id:("warpIx") = $int:(threadQ*32) + (threadIdx.x % 32);
                                $stms:cim } |],
-                        [cstm| $id:("warpIx") = threadIdx.x %32;|]]
+                        [cstm| $id:("warpIx") = threadIdx.x % 32;|]]
+        goR n = case threadR of 
+                0 -> [] 
+                _ -> [[cstm| if ( threadIdx.x % 32 < $int:threadR) { 
+                               $id:("warpIx") = $int:(threadQ*32) + (threadIdx.x % 32);
+                               $stms:cim } |],
+                        [cstm| $id:("warpIx") = threadIdx.x % 32;|]]
 
 
         -- Compile for virtual warps 
         warpQ = warps `quot` wholeRealWarps -- wholeRealWarps may be zero! 
         warpR = warps `rem`  wholeRealWarps
-
+        -- each warp will pretend to be warpQ number of warps.        
+         
+        -- warp jump size 
+        s = n * warpQ
+        
         wQ = case warpQ of 
                0 -> [] 
-               1 -> goQR 
+               1 -> goQR 0 
                n -> [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
                      [cstm| $id:("warpID") = threadIdx.x / 32; |]]
                    where 
-                     body = [cstm| $id:("warpID") = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : goQR -- cim 
+                     --- vw * wholeRealWarps is incorrect. 
+                     --- 
+                     --- Also the body (goQ) must be informed of what the warpID is! 
+                     body = [cstm| $id:("warpID") = vw*$int:wholeRealWarps + threadIdx.x / 32; |] : goQR s -- cim 
 
         wR = case warpR of 
                0 -> [] 
                n -> [[cstm| if (threadIdx.x / 32 < $int:n) {
                               $id:("warpID") = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
-                              $stms:goQR } |], -- cim
+                              $stms:(goQR s) } |], -- cim
                             [cstm| $id:("warpID") = threadIdx.x / 32;|]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 

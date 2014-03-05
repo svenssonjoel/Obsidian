@@ -159,7 +159,7 @@ instance Pushable Thread where
 
 instance Pushable Block where
   push (Pull n ixf) =
-    Push n $ \wf -> ForAll (sizeConv n) $ \i -> wf (ixf i) i
+    Push n $ \wf -> forAll (sizeConv n) $ \i -> wf (ixf i) i
 
 instance Pushable Warp where
   push (Pull n ixf) =
@@ -179,7 +179,7 @@ instance Pushable Warp where
     --                          prgF ( warpID * 256 + i * 32 + warpIx ))  
     --  
     -- Will need special case for WarpForAll loop that is not multiple of 32 
-    WarpForAll (sizeConv n) $ \i -> wf (ixf i) i
+    warpForAll (sizeConv n) $ \i -> wf (ixf i) i
     -- Special constructor to signal its special significance to the compiler. 
 
 class PushableN t where

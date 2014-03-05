@@ -17,7 +17,8 @@
 module Obsidian.Program  (
   -- Hierarchy 
   Thread, Block, Grid, Step, Zero, Warp, 
-  -- Program type 
+  -- Program type
+  CoreProgram(..),
   Program(..), -- all exported.. for now
   TProgram, BProgram, GProgram, WProgram(..), 
 
@@ -27,11 +28,13 @@ module Obsidian.Program  (
   -- helpers
   printPrg,
   runPrg,
-  uniqueNamed,
-  readWP,
+  uniqueNamed, uniqueNamed_, core, 
 
+  assign, allocate, declare,
+  atomicOp, 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync  --, 
+  seqFor, forAll, forAll2, seqWhile, sync, 
+  warpForAll,
   -- module Control.Applicative                          
   ) where 
  
@@ -70,15 +73,15 @@ type Identifier = Int
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
-data Program t a where
+data CoreProgram t a where
   
-  Identifier :: Program t Identifier 
+  Identifier :: CoreProgram t Identifier 
   
   Assign :: Scalar a
             => Name
             -> [Exp Word32]
             -> (Exp a)
-            -> Program Thread ()
+            -> CoreProgram Thread ()
            
   -- 4 March 2014, Changed so that AtOp does not return a result. 
   -- Change this back later if an application requires. 
@@ -86,42 +89,42 @@ data Program t a where
               => Name        -- Array name 
               -> Exp Word32  -- Index to operate on 
               -> Atomic a    -- Atomic operation to perform 
-              -> Program Thread ()
+              -> CoreProgram Thread ()
 
   Cond :: Exp Bool
-          -> Program Thread ()
-          -> Program Thread ()
+          -> CoreProgram Thread ()
+          -> CoreProgram Thread ()
   
   -- DONE: Code generation for this.
   -- TODO: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: EWord32 -> (EWord32 -> Program t ())
-            -> Program t ()
+  SeqFor :: EWord32 -> (EWord32 -> CoreProgram t ())
+            -> CoreProgram t ()
             
   SeqWhile :: Exp Bool ->
-              Program Thread () ->
-              Program Thread () 
+              CoreProgram Thread () ->
+              CoreProgram Thread () 
               
-  Break  :: Program Thread () 
+  Break  :: CoreProgram Thread () 
  
   ForAll :: EWord32 
-            -> (EWord32 -> Program t ())
-            -> Program (Step t) ()
+            -> (EWord32 -> CoreProgram t ())
+            -> CoreProgram (Step t) ()
 
   --        #w          warpId     
-  NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
+  NWarps :: EWord32 -> (EWord32 -> CoreProgram Warp ()) -> CoreProgram Block () 
 
   WarpForAll :: EWord32 
-                -> (EWord32 -> Program Thread ()) 
-                -> Program Warp ()
+                -> (EWord32 -> CoreProgram Thread ()) 
+                -> CoreProgram Warp ()
   -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> Program t () 
+  Allocate :: Name -> Word32 -> Type -> CoreProgram t () 
 
   -- Automatic Variables
-  Declare :: Name -> Type -> Program t () 
+  Declare :: Name -> Type -> CoreProgram t () 
                 
-  Sync     :: Program Block ()
+  Sync     :: CoreProgram Block ()
 
   -- Parallel composition of Programs
   -- TODO: Will I use this ? 
@@ -130,33 +133,33 @@ data Program t a where
   --       Program p () 
 
   -- Monad
-  Return :: a -> Program t a
-  Bind   :: Program t a -> (a -> Program t b) -> Program t b
+  Return :: a -> CoreProgram t a
+  Bind   :: CoreProgram t a -> (a -> CoreProgram t b) -> CoreProgram t b
 
 ---------------------------------------------------------------------------
 -- Aliases 
 ---------------------------------------------------------------------------
 type TProgram = Program Thread
+type WProgram = Program Warp 
 type BProgram = Program Block
 type GProgram = Program Grid 
 
--- WPrograms are a reader monad 
-newtype WProgram a = WProgram (EWord32 -> Program Warp a)
+-- Programs are a reader monad 
+newtype Program t a = Program (EWord32 -> CoreProgram t a)
 
-instance Monad WProgram where
-    return x = WProgram $ \ _ -> return x
+instance Monad (Program t )where
+    return x = Program $ \ _ -> return x
     -- :: WProgram a -> (a -> WProgram b) -> WProgram b
-    (WProgram h) >>= f = WProgram
+    (Program h) >>= f = Program
                          $ \w ->
                          do
                            a <- h w
-                           let (WProgram g) = f a
+                           let (Program g) = f a
                            g w
 
-readWP :: WProgram EWord32
-readWP = WProgram $ \wid -> return wid
 
-
+core :: Program t a -> EWord32 ->  CoreProgram t a
+core (Program f) id = f id 
 ---------------------------------------------------------------------------
 -- Helpers 
 --------------------------------------------------------------------------- 
@@ -168,11 +171,36 @@ uniqueNamed pre = do
   id <- Identifier
   return $ pre ++ show id 
 
+uniqueNamed_ pre = Program $ \_ -> do id <- Identifier
+                                      return $ pre ++ show id 
+---------------------------------------------------------------------------
+-- Memory 
+---------------------------------------------------------------------------
+assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
+assign nom ix e = Program $ \_ -> Assign nom ix e 
+
+allocate :: Name -> Word32 -> Type -> Program t () 
+allocate nom l t = Program $ \_ -> Allocate nom l t 
+
+declare :: Name -> Type -> Program t ()
+declare nom t = Program $ \_ -> Declare nom t 
+
+---------------------------------------------------------------------------
+-- atomicOp 
+---------------------------------------------------------------------------
+atomicOp :: Scalar a
+            => Name        -- Array name 
+            -> Exp Word32  -- Index to operate on 
+            -> Atomic a    -- Atomic operation to perform 
+            -> Program Thread ()
+atomicOp nom ix atop = Program $ \_ -> AtomicOp nom ix atop 
+
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
 forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
-forAll n f = ForAll n f
+forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
+  
 
 forAll2
   :: EWord32
@@ -182,35 +210,41 @@ forAll2
 forAll2 b n f =  forAll b $ \bs -> forAll n (f bs) 
 
 ---------------------------------------------------------------------------
+-- warpForAll 
+---------------------------------------------------------------------------
+warpForAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Warp ()
+warpForAll n f = Program $ \id -> WarpForAll n $ \ix -> core (f ix) id 
+ 
+---------------------------------------------------------------------------
 -- seqFor
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
 seqFor (Literal 1) f = f 0
-seqFor n f = SeqFor n f
+seqFor n f = Program $ \id -> SeqFor n $ \ix -> core (f ix) id -- return $ SeqFor n f
 
 ---------------------------------------------------------------------------
 -- seqWhile
 ---------------------------------------------------------------------------
 seqWhile :: Exp Bool -> Program Thread () -> Program Thread ()
-seqWhile = SeqWhile 
+seqWhile b prg = Program $ \id -> SeqWhile b (core prg id)
 
 ---------------------------------------------------------------------------
 -- Monad
 --------------------------------------------------------------------------
-instance Monad (Program t) where
+instance Monad (CoreProgram t) where
   return = Return
   (>>=) = Bind
 
 ---------------------------------------------------------------------------
 -- Functor
 ---------------------------------------------------------------------------
-instance Functor (Program t) where
+instance Functor (CoreProgram t) where
   fmap g fa = do {a <- fa; return $ g a}
 
 ---------------------------------------------------------------------------
 -- Applicative 
 ---------------------------------------------------------------------------
-instance Applicative (Program t) where
+instance Applicative (CoreProgram t) where
   pure = return
   ff <*> fa = 
     do
@@ -230,7 +264,7 @@ instance Sync (Program Thread) where
   sync = return ()
 
 instance Sync (Program Block) where
-  sync = Sync
+  sync = Program $ \_ ->  Sync
 
 instance Sync (Program Grid) where
   sync = error "sync: not implemented" 
@@ -239,7 +273,7 @@ instance Sync (Program Grid) where
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
 ---------------------------------------------------------------------------
-runPrg :: Int -> Program t a -> (a,Int)
+runPrg :: Int -> CoreProgram t a -> (a,Int)
 runPrg i Identifier = (i,i+1)
 
 -- Maybe these two are the most interesting cases!
@@ -271,9 +305,10 @@ runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 ---------------------------------------------------------------------------
 -- printPrg (REIMPLEMENT) xs
 ---------------------------------------------------------------------------
+printPrg :: CoreProgram t a -> String
 printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 
-printPrg' :: Int -> Program t a -> (a,String,Int)
+printPrg' :: Int -> CoreProgram t a -> (a,String,Int)
 printPrg' i Identifier = (i,"getId;\n",i+1) 
 printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 

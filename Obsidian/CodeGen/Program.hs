@@ -92,14 +92,14 @@ usesTid = any (go . fst)
 -- COmpilation of Program to IM
 --------------------------------------------------------------------------- 
 
-compileStep1 :: Compile t => P.Program t a -> IM
+compileStep1 :: Compile t => P.CoreProgram t a -> IM
 compileStep1 p = snd $ compile ns p
   where
     ns = unsafePerformIO$ newEnumSupply
 
 
 class Compile t where
-  compile :: Supply Int -> P.Program t a -> (a,IM)
+  compile :: Supply Int -> P.CoreProgram t a -> (a,IM)
 
 -- Compile Thread program 
 instance Compile Zero  where 
@@ -121,12 +121,12 @@ instance Compile (Step Zero) where
 
 
 -- Compile a Warp program
-compileW :: Supply Int -> EWord32 -> P.Program P.Warp a -> (a,IM)
+compileW :: Supply Int -> EWord32 -> P.CoreProgram P.Warp a -> (a,IM)
 compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `div` 32)
   where
     warpIDNom = "warpID"
     warpIxNom = "warpIx"
-    go :: P.Program P.Warp a -> (a,IM)
+    go :: P.CoreProgram P.Warp a -> (a,IM)
     go (P.WarpForAll iters prgf)
       = (a,out $ SNWarps (expToIExp nWarps) [(SWarpForAll (expToIExp iters) im,())])
       where
@@ -155,7 +155,7 @@ instance Compile (Step (Step (Zero))) where
 ---------------------------------------------------------------------------
 -- General compilation
 ---------------------------------------------------------------------------
-cs :: forall t a . Compile t => Supply Int -> P.Program t a -> (a,IM) 
+cs :: forall t a . Compile t => Supply Int -> P.CoreProgram t a -> (a,IM) 
 cs i P.Identifier = (supplyValue i, [])
 cs i (P.Assign name ix e) =
   ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
@@ -253,7 +253,12 @@ printStm (SForAllBlocks n im,m) =
   "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printSTM (SWarpForAll _ _) = "OK" 
+printStm (SWarpForAll n im ,m) =
+  "forAll(InWarp) tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+  concatMap printStm im ++ "\ndone;\n"
+
+printStm (SNWarps n im,m) = "Run " ++ show n++ " Warps {\n" ++
+                            printIM im ++ "\n }"
 --printStm (SForAllThreads n im,m) =
 --  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
 --  concatMap printStm im ++ "\ndone;\n"

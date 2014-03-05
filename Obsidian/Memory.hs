@@ -27,12 +27,12 @@ import Data.Word
 -- Local Memory
 ---------------------------------------------------------------------------
 class MemoryOps a where
-  moNames          :: String -> Program t (Names a) 
-  moAllocateArray  :: Names a -> Word32 -> Program t ()
-  moAllocateScalar :: Names a -> Program t () 
-  moAssignArray    :: Names a -> a -> Exp Word32 -> TProgram ()
-  moWarpAssignArray ::  Names a -> EWord32 -> Word32 -> a -> EWord32 -> TProgram () 
-  moAssignScalar   :: Names a -> a -> TProgram () 
+  moNames          :: String -> CoreProgram t (Names a) 
+  moAllocateArray  :: Names a -> Word32 -> CoreProgram t ()
+  moAllocateScalar :: Names a -> CoreProgram t () 
+  moAssignArray    :: Names a -> a -> Exp Word32 -> CoreProgram Thread ()
+  moWarpAssignArray ::  Names a -> EWord32 -> Word32 -> a -> EWord32 -> CoreProgram Thread () 
+  moAssignScalar   :: Names a -> a -> CoreProgram Thread () 
   moPullFrom       :: Names a -> Word32 -> Pull Word32 a
   moWarpPullFrom   :: Names a -> EWord32 -> Word32 -> Pull Word32 a
   moReadFrom       :: Names a -> a

@@ -46,21 +46,23 @@ class Sync p => Write p where
   type HLevel p 
   unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
 
-instance Write WProgram where
-  type HLevel WProgram = Warp 
+instance Write (Program Warp) where
+  type HLevel (Program Warp) = Warp 
   unsafeWrite arr  =
-    WProgram $ \warpID -> 
+    Program $ \warpID -> 
     do
       let p = toPush arr
       let n = len p
       names <- moNames "arr"
       moAllocateArray names n
-      p <: (moWarpAssignArray names warpID n) 
+      -- These monads need to be sorted out. What operation goes in what Monad ?
+      -- Here the Program \_ is a Thread program, So It should really have a nothing argument
+      core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names warpID n a ix)) 0 -- DUMMY  
       return $ moWarpPullFrom names warpID n
 
 instance Write (Program Block) where
   type HLevel (Program Block) = Block 
-  unsafeWrite arr =
+  unsafeWrite arr = Program $ \_ -> --
     do
       let p = toPush arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
@@ -68,7 +70,7 @@ instance Write (Program Block) where
 
 instance (ToPush arr Thread) => Write (Program Thread) where
   type HLevel (Program Thread) = Thread
-  unsafeWrite arr =
+  unsafeWrite arr = Program $ \_ -> -- 
     do
       let p = toPush arr
       (snames :: Names a)  <- moNames "arr" 
@@ -77,7 +79,7 @@ instance (ToPush arr Thread) => Write (Program Thread) where
       let n = len p
     
       moAllocateArray snames  n
-      p <: moAssignArray snames
+      core (p <: (\a ix -> Program $ \_ -> moAssignArray snames a ix)) 0 -- DUMMY 
       
       return $ moPullFrom snames n
 

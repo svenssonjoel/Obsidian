@@ -42,7 +42,7 @@ input1 :: DPull EInt32
 input1 = namedGlobal "apa" (variable "X")
 
 mapKern :: DPull EInt32 -> DPush Grid EInt32 
-mapKern arr = pConcat $ (fmap (pJoin . mapFusion) . splitUp 256)  arr
+mapKern arr = pConcat $ (fmap mapFusion . splitUp 256)  arr
 
 
 
@@ -69,19 +69,20 @@ warpLocal2 :: SPull EInt32 -> WProgram (SPush Warp EInt32)
 warpLocal2 arr =
   do
    arr1 <- force $ warpLocal arr
-   arr2 <- force $ warpLocal arr1
-   arr3 <- force  $ fmap (+100)  arr2
-   return $ push $ fmap (\x -> x-99) arr3
+   return $ push arr1
+   --arr2 <- force $ warpLocal arr1
+   --arr3 <- force  $ fmap (+100)  arr2
+   --return $ push $ fmap (\x -> x-100) arr3
              
 
 block :: SPull EInt32 -> SPush Block EInt32
-block arr = wConcat $ fmap (\a _ -> warpLocal a)  (splitUp 32 arr)
+block arr = wConcat $ fmap (\a -> warpLocal a)  (splitUp 32 arr)
 
 block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
 block2 arr =
   do
-    arr1 <- force $ wConcat $ fmap (\a _ -> warpLocal a) (splitUp 32 arr)
-    return $ wConcat $ fmap  (\a _ -> warpLocal a)  (splitUp 32 arr1) 
+    arr1 <- force $ wConcat $ fmap (\a -> warpLocal a) (splitUp 32 arr)
+    return $ wConcat $ fmap  (\a -> warpLocal a)  (splitUp 128 arr1) 
 
 
 block3 :: SPull EInt32 -> SPush Block EInt32
@@ -116,7 +117,7 @@ genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 --       (m,mm) = mmIM iml sharedMem (M.empty)
 --       rim = renameIM mm iml
 
-genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+genGrid3 = ppr $ compile PlatformCUDA (Config 32 1) "apa" (a,rim) 
    where
       (a,im) = toProgram_ 0 grid3
       iml = computeLiveness im
@@ -128,9 +129,9 @@ genGrid3 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 performGrid =
   withCUDA $
   do
-    kern <- capture 96  grid3
+    kern <- capture 32  grid3
 
-    useVector (V.fromList [0..499::Int32]) $ \i ->
+    useVector (V.fromList [0..500::Int32]) $ \i ->
       allocaVector 500 $ \(o :: CUDAVector Int32)  ->
       do
         fill o 0 

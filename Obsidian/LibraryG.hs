@@ -84,7 +84,7 @@ pConcatP arr =
             p <: wf'
   where
     n  = len arr
-    rn = len $ fst $ runPrg 0 $ arr ! 0
+    rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
 
                  
 -- parallel concat of a pull of push 
@@ -100,16 +100,19 @@ pConcatP arr =
 --    rn = len $ arr ! 0
 
 --                warpID
-wConcat :: SPull (EWord32 -> SPush Warp a) -> SPush Block a
+wConcat :: SPull (SPush Warp a) -> SPush Block a
 wConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
-     NWarps (fromIntegral n) $ \warpID -> 
-        let p = arr ! warpID
-            wf' a ix = wf a (warpID * sizeConv rn + ix)
-        in (p warpID)  <: wf'
+     Program $ \ warpid -> -- Here really awkward.
+                 -- I get a warpid from Program, and one from NWarps...
+                 -- And all because Force needs to know this id on the "outside"
+      NWarps (fromIntegral n) $ \_ -> ---warpID -> 
+        let p = arr ! (variable "warpID")
+            wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)
+        in core (p  <: wf') (variable "warpID")  -- warpid -- DUMMY HACK 
   where
     n  = len arr
-    rn = len $ (arr ! 0) 0  -- bit awkward. 
+    rn = len $ (arr ! 0)  -- bit awkward. 
     
          
 
@@ -165,22 +168,23 @@ store = load
 ---------------------------------------------------------------------------
 
 pJoin ::  Program t (Push t s a) -> Push t s a
-pJoin prg = mkPush n $ \wf -> do
-  parr <- prg
-  parr <: wf
-  where n = len $ fst $ runPrg 0 prg 
+pJoin prg = mkPush n $ \wf -> Program $ \_ -> do
+  parr <- core prg 0
+  core (parr <: wf) 0 
+  where n = len $ fst $ runPrg 0 (core prg 0) -- core hack  
 
 pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push
 
 
 -- wJoin for now.
-wJoin ::  WProgram (Push Warp s a) -> EWord32 -> Push Warp s a
-wJoin (WProgram prg) warpID = mkPush n $ \wf -> do
-  parr <- (prg warpID) 
-  parr <: wf
-  where n = len $ fst $ runPrg 0 (prg warpID)
+wJoin ::  Program Warp (Push Warp s a) -> Push Warp s a
+wJoin prg = mkPush n $ \wf -> Program $ \warpID -> do
+  
+  parr <- core prg warpID -- (prg warpID) 
+  core (parr <: wf) warpID -- DUMMY 
 
+  where n = len $ fst $ runPrg 0 (core prg 0) -- DUMMY HACK 
 
 -- class PrgJoin prg t where
 --   prgJoin :: prg (Push t s a) -> Push t s a
