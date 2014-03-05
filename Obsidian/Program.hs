@@ -28,6 +28,7 @@ module Obsidian.Program  (
   printPrg,
   runPrg,
   uniqueNamed,
+  readWP,
 
   -- Programming interface
   seqFor, forAll, forAll2, seqWhile, sync  --, 
@@ -150,7 +151,11 @@ instance Monad WProgram where
                          do
                            a <- h w
                            let (WProgram g) = f a
-                           g w 
+                           g w
+
+readWP :: WProgram EWord32
+readWP = WProgram $ \wid -> return wid
+
 
 ---------------------------------------------------------------------------
 -- Helpers 

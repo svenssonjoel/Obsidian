@@ -158,8 +158,10 @@ load n arr =
 store :: ASize l => Word32 -> Pull l a -> Push Block l a 
 store = load 
 
+
+
 ---------------------------------------------------------------------------
--- Join (adapted from Niklas branch
+-- Join 
 ---------------------------------------------------------------------------
 
 pJoin ::  Program t (Push t s a) -> Push t s a
@@ -179,3 +181,16 @@ wJoin (WProgram prg) warpID = mkPush n $ \wf -> do
   parr <: wf
   where n = len $ fst $ runPrg 0 (prg warpID)
 
+
+-- class PrgJoin prg t where
+--   prgJoin :: prg (Push t s a) -> Push t s a
+
+
+-- instance PrgJoin (Program t) t where
+--   prgJoin = pJoin
+
+-- instance PrgJoin WProgram Warp where
+--   prgJoin (WProgram prg) = mkPush undefined $ \wf -> do -- WProgram do ? 
+--     wid <- readWP
+--     undefined
+ 
