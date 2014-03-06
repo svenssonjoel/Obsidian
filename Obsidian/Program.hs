@@ -10,8 +10,10 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE EmptyDataDecls #-}
-{-# LANGUAGE FlexibleInstances #-} 
-             
+{-# LANGUAGE FlexibleInstances #-}
+
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE MultiParamTypeClasses #-}             
 
 
 module Obsidian.Program  (
@@ -52,7 +54,11 @@ import Data.Supply
 import System.IO.Unsafe
 
 import Control.Monad
-import Control.Applicative 
+import Control.Applicative
+
+import qualified Data.TypeLevel.Num.Reps as T
+import qualified Data.TypeLevel.Num.Ops as T
+
 
 ---------------------------------------------------------------------------
 -- Thread/Block/Grid 
@@ -67,6 +73,43 @@ type Block  = Step Thread
 type Grid   = Step Block
 
 data Warp   = Warp -- outside the hierarchy 
+
+data TZero
+data TSucc a
+
+
+type T = T.D0
+type W = T.D1
+type B = T.D2
+type G = T.D3
+
+data FancyInt a = FancyInt Int
+
+myZero :: FancyInt T
+myZero = FancyInt 0
+
+class  Something b where   
+  someFunction ::( (b T.:>: a) ~ T.GT) =>  (FancyInt a -> FancyInt b) -> FancyInt a -> FancyInt b
+
+instance Something (T.D1) where  
+  someFunction f a = f a
+
+safeInc :: FancyInt a -> FancyInt (T.Succ a)
+safeInc (FancyInt i) = FancyInt (i+1) --doesnt really mayyer what I do here!         
+  
+{-
+
+            Grid
+             |
+           Block
+            |   \
+            \   Warp 
+             \  /  
+            Thread
+-} 
+
+
+---------------------------------------------------------------------------
 
 type Identifier = Int
                   

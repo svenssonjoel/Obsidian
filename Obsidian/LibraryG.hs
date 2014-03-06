@@ -72,7 +72,16 @@ instance Concat (Program t (Push t Word32 a)) t where
 instance Pushable t => Concat (Program t (Pull Word32 a)) t where
   pConcat prg = pConcatP (fmap (liftM push) prg) 
 
-
+-- ######################################################################
+-- Experiment zone
+-- ######################################################################
+-- desired function
+-- pConcat :: Pull l (Pull l1 a) -> Push ANYLEVEL l eltType
+-- pConcat :: Pull l (Push t l1 a) -> Push (ANYLEVEL > level(t)) eltType
+-- pConcat :: Pull l (Program t (Push t l1 a)) -> Push (ANYLEVEL > level(t)) eltType
+-- pConcat :: Pull l (Program t (Pull l1 a)) -> Push (ANYLEVEL > level(t)) eltType
+  
+-- ######################################################################  
 pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
 pConcatP arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -86,20 +95,7 @@ pConcatP arr =
     n  = len arr
     rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
 
-                 
--- parallel concat of a pull of push 
---pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
---pConcat arr =
---  mkPush (n * fromIntegral rn) $ \wf ->
---    forAll (sizeConv n) $ \bix ->
---      let p = arr ! bix -- (Push _ p) = arr ! bix
---          wf' a ix = wf a (bix * sizeConv rn + ix)
---      in p <: wf'
---  where
---    n  = len arr
---    rn = len $ arr ! 0
-
---                warpID
+  
 wConcat :: SPull (SPush Warp a) -> SPush Block a
 wConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -109,7 +105,7 @@ wConcat arr =
       NWarps (fromIntegral n) $ \_ -> ---warpID -> 
         let p = arr ! (variable "warpID")
             wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)
-        in core (p  <: wf') (variable "warpID")  -- warpid -- DUMMY HACK 
+        in core (p  <: wf') (variable "warpID")  
   where
     n  = len arr
     rn = len $ (arr ! 0)  -- bit awkward. 
