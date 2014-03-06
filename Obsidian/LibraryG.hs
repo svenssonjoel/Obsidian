@@ -102,6 +102,7 @@ wConcat arr =
      Program $ \ warpid -> -- Here really awkward.
                  -- I get a warpid from Program, and one from NWarps...
                  -- And all because Force needs to know this id on the "outside"
+                 -- Nwarps is not really a loop! it should not proive a warpID.
       NWarps (fromIntegral n) $ \_ -> ---warpID -> 
         let p = arr ! (variable "warpID")
             wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)

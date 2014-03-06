@@ -323,14 +323,6 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                                  [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
                     where 
                       body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
-        -- goQ n = case threadQ of 
-        --         0 -> [] 
-        --         1 -> cim 
-        --         _ -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
-        --                                 $stms:body } |],
-        --                          [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
-        --             where 
-        --               body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
         goR :: [Stm] 
         goR = case threadR of 
                 0 -> [] 
@@ -338,13 +330,6 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                                $id:("warpIx") = $int:(threadQ*32) + (threadIdx.x % 32);
                                $stms:cim } |],
                         [cstm| $id:("warpIx") = threadIdx.x % 32;|]]
-        -- goR n = case threadR of 
-        --         0 -> [] 
-        --         _ -> [[cstm| if ( threadIdx.x % 32 < $int:threadR) { 
-        --                        $id:("warpIx") = $int:(threadQ*32) + (threadIdx.x % 32);
-        --                        $stms:cim } |],
-        --                 [cstm| $id:("warpIx") = threadIdx.x % 32;|]]
-
 
         -- Compile for virtual warps 
         warpQ = warps `quot` wholeRealWarps -- wholeRealWarps may be zero! 
@@ -366,7 +351,7 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
                    where 
                      --- vw * wholeRealWarps is incorrect. 
                      --- 
-                     body = [cstm| $id:("warpID") = vw + ((threadIdx.x / 32)*$int:warpQ); |] : goQR -- cim 
+                     body = [cstm| $id:("warpID") = vw + ((threadIdx.x / 32)*$int:warpQ); |] : goQR
 
         wR = case warpR of 
                0 -> [] 
