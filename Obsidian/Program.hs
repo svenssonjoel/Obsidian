@@ -69,9 +69,6 @@ type Grid   = Step Block
 
 data Warp   = Warp -- outside the hierarchy 
 
-data TZero
-data TSucc a
-
   
 {-
 

@@ -22,8 +22,8 @@ reduceLocal f arr
 reduce :: MemoryOps a
           => (a -> a -> a)
           -> DPull (SPull a) -> DPush Grid a
-reduce f = pConcatMap $ pJoin . liftM push . reduceLocal f 
-
+--reduce f = pConcatMap $ pJoin . liftM push . reduceLocal f 
+reduce f arr = pConcat (fmap (liftM push . reduceLocal f) arr)
 
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
