@@ -11,6 +11,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 
 
@@ -63,23 +65,13 @@ import Control.Applicative
 data Step a -- A step in the hierarchy
 data Zero
   
-type Thread = Zero 
-type Block  = Step Thread 
+type Thread = Zero
+type Warp   = Step Thread
+type Block  = Step Warp
 type Grid   = Step Block
 
-data Warp   = Warp -- outside the hierarchy 
 
-  
-{-
 
-            Grid
-             |
-           Block
-            |   \
-            \   Warp 
-             \  /  
-            Thread
--} 
 
 
 ---------------------------------------------------------------------------
@@ -122,7 +114,7 @@ data CoreProgram t a where
               
   Break  :: CoreProgram Thread () 
  
-  ForAll :: EWord32 
+  ForAll ::  EWord32 
             -> (EWord32 -> CoreProgram t ())
             -> CoreProgram (Step t) ()
 
@@ -218,12 +210,11 @@ forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
   
 
-forAll2
-  :: EWord32
-     -> EWord32
-     -> (EWord32 -> EWord32 -> Program t ())
-     -> Program (Step (Step t)) ()
-forAll2 b n f =  forAll b $ \bs -> forAll n (f bs) 
+forAll2 :: EWord32
+           -> EWord32
+           -> (EWord32 -> EWord32 -> Program t ())
+           -> Program (Step (Step t)) ()
+forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
 
 ---------------------------------------------------------------------------
 -- warpForAll 

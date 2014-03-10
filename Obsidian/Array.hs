@@ -20,7 +20,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        mkPull,
                        mkPush,
                        push,
-                       pushN,
+                       {- pushN, -} 
                        setSize,
                        toDynamic, 
                        (!),
@@ -137,9 +137,9 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-convertToPush :: Pull Word32 e -> Push Block Word32 e 
-convertToPush (Pull n ixf) =
-    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
+--convertToPush :: Pull Word32 e -> Push Block Word32 e 
+--convertToPush (Pull n ixf) =
+--    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
 
 class ToPush arr t where
   toPush :: ASize s => arr s e -> Push t s e
@@ -159,7 +159,9 @@ instance Pushable Thread where
 
 instance Pushable Block where
   push (Pull n ixf) =
-    Push n $ \wf -> forAll (sizeConv n) $ \i -> wf (ixf i) i
+    Push n $ \wf ->
+      forAll (sizeConv n) $ \i ->
+        warpForAll 1 $ \_ -> wf (ixf i) i
 
 instance Pushable Warp where
   push (Pull n ixf) =
@@ -182,20 +184,21 @@ instance Pushable Warp where
     warpForAll (sizeConv n) $ \i -> wf (ixf i) i
     -- Special constructor to signal its special significance to the compiler. 
 
-class PushableN t where
-  pushN :: ASize s => Word32 -> Pull s e -> Push t s e
+-- class PushableN t where
+--   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
 
-instance PushableN Block where
-  pushN n (Pull m ixf) =
-    Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \tix ->
-    seqFor (fromIntegral n) $ \ix -> wf (ixf (tix * fromIntegral n + ix))
-                                             (tix * fromIntegral n + ix) 
+-- instance PushableN Block where
+--   pushN n (Pull m ixf) =
+--     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \tix ->
+--     warpForAll 1 $ \_ -> 
+--     seqFor (fromIntegral n) $ \ix -> wf (ixf (tix * fromIntegral n + ix))
+--                                              (tix * fromIntegral n + ix) 
  
-instance PushableN Grid where
-  pushN n (Pull m ixf) =
-    Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
-    forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
-                                              (bix * fromIntegral n + tix) 
+-- instance PushableN Grid where
+--   pushN n (Pull m ixf) =
+--     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
+--     forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
+--                                               (bix * fromIntegral n + tix) 
 
 --------------------------------------------------------------------------
 -- Indexing, array creation.

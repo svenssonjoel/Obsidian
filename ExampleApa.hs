@@ -40,7 +40,7 @@ mapFusion arr =
 
 local = pJoin 
 
-mapFusion' :: (Write t, Pushable t)
+mapFusion' :: (Pushable t, Write Pull EInt32 t)
               => SPull EInt32 -> (SPush t EInt32)
 mapFusion' arr =
   local $ do

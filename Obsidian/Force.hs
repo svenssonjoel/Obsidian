@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 
 
@@ -41,11 +42,11 @@ import Control.Monad
 -- Force local (requires static lengths!)
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
--- Rewrite with functional dependency
-class Sync t => Write t where
+
+class (ToPush arr t, MemoryOps a, Sync t ) => Write arr a t where
   unsafeWrite :: (ToPush arr t, MemoryOps a) => arr Word32 a -> Program t  (Pull Word32 a)
 
-instance Write Warp where
+instance (ToPush arr Warp, MemoryOps a) => Write arr a Warp where
   unsafeWrite arr  =
     Program $ \warpID -> 
     do
@@ -58,14 +59,14 @@ instance Write Warp where
       core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names warpID n a ix)) 0 -- DUMMY  
       return $ moWarpPullFrom names warpID n
 
-instance Write Block where
+instance (ToPush arr Block, MemoryOps a) => Write arr a Block where
   unsafeWrite arr = Program $ \_ -> --
     do
       let p = toPush arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
       return $ M.pullFrom mut
 
-instance (ToPush arr Thread) => Write Thread where
+instance (ToPush arr Thread, MemoryOps a) => Write arr a Thread where
   unsafeWrite arr = Program $ \_ -> -- 
     do
       let p = toPush arr
@@ -79,7 +80,8 @@ instance (ToPush arr Thread) => Write Thread where
       
       return $ moPullFrom snames n
 
-force :: (MemoryOps a, Write t,
+
+force :: (MemoryOps a, Write arr a t,
           ToPush arr t) =>
          arr Word32 a -> Program t (Pull Word32 a)      
 force arr = do
@@ -87,7 +89,7 @@ force arr = do
   sync
   return rval
 
-unsafeForce :: (Array arr, MemoryOps a, Write t,
+unsafeForce :: (Array arr, MemoryOps a, Write arr a t,
           ToPush arr t) =>
          arr Word32 a -> Program t (Pull Word32 a)      
 unsafeForce arr = do
