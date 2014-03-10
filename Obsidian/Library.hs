@@ -267,13 +267,13 @@ concP p1 p2  =
 
 
 -- More general versions of this can be imagined 
-mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
-mergeL _ arr1 arr2 | len arr1 /= len arr2 = error "incorrect lengths" 
-mergeL f arr1 arr2 =
-  mkPush (len arr1) $ \wf ->
-  do
-    forAll (sizeConv (len arr1)) $
-      \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
+-- mergeL :: (EWord32 -> a -> a -> a) -> Pull Word32 a -> Pull Word32 a -> Push Block Word32 a
+-- mergeL _ arr1 arr2 | len arr1 /= len arr2 = error "incorrect lengths" 
+-- mergeL f arr1 arr2 =
+--   mkPush (len arr1) $ \wf ->
+--   do
+--     forAll (sizeConv (len arr1)) $
+--       \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
 
 -- Implement unpair on pusharrays,
 -- Impement for more tuples than pairs. 

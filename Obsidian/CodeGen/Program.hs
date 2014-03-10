@@ -105,8 +105,16 @@ class Compile t where
 instance Compile Zero  where 
   compile s p = cs s p 
 
--- Compile Block program 
+-- Compile Warp program
+-- ######################################################################
+-- ZONE OF CHEATS
+-- ######################################################################
 instance Compile (Step Zero) where
+  -- compile s (P.ForAll n f) = undefined
+  --compile s p = cs s p 
+  compile s p = compileW s 0 p
+-- Compile Block program 
+instance Compile (Step (Step Zero)) where
   compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
     where
       --(i1,i2) = split2 s
@@ -144,7 +152,7 @@ compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `di
 
 
 -- Compile a Grid Program 
-instance Compile (Step (Step (Zero))) where
+instance Compile (Step (Step (Step (Zero)))) where
   compile s (P.ForAll n f) = (a, out (SForAllBlocks (expToIExp n) im))
     where 
       p = f (BlockIdx X)
