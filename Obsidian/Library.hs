@@ -275,6 +275,16 @@ mergeL f arr1 arr2 =
     forAll (sizeConv (len arr1)) $
       \ tid -> wf (f tid (arr1 ! tid) (arr2 ! tid)) tid 
 
+-- Implement unpair on pusharrays,
+-- Impement for more tuples than pairs. 
+--unpair :: ASize l => Choice a => Pull l (a,a) -> Pull l a
+--unpair arr = 
+--    let n = len arr
+--    in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
+--                                  (fst (arr ! (ix `shiftR` 1)))
+--                                  (snd (arr ! (ix `shiftR` 1)))) 
+
+
 
 ---------------------------------------------------------------------------
 -- Singleton push arrays 

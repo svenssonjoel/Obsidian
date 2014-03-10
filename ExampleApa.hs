@@ -1,6 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables,
-             FlexibleContexts #-} 
-
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-} 
+{-# LANGUAGE GADTs #-}
 module Examples where
 
 
@@ -31,9 +31,19 @@ import qualified Prelude as P
 
 import Obsidian.Run.CUDA.Exec
 
-mapFusion :: SPull EInt32 -> BProgram (SPush Block EInt32)
+mapFusion :: SPull EInt32 -> Program Block (SPush Block EInt32)
 mapFusion arr =
   do
+    imm <- force $ (fmap (+1) . fmap (*2)) arr
+    imm1 <- force $ (fmap (+3) . fmap (*4)) imm
+    return $ push imm1
+
+local = pJoin 
+
+mapFusion' :: (Write t, Pushable t)
+              => SPull EInt32 -> (SPush t EInt32)
+mapFusion' arr =
+  local $ do
     imm <- force $ (fmap (+1) . fmap (*2)) arr
     imm1 <- force $ (fmap (+3) . fmap (*4)) imm
     return $ push imm1
@@ -42,7 +52,7 @@ input1 :: DPull EInt32
 input1 = namedGlobal "apa" (variable "X")
 
 mapKern :: DPull EInt32 -> DPush Grid EInt32 
-mapKern arr = pConcat $ (fmap mapFusion . splitUp 256)  arr
+mapKern arr = pConcat $ (fmap mapFusion' . splitUp 256)  arr
 
 
 
@@ -65,7 +75,7 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
 warpLocal :: SPull EInt32 -> SPush Warp EInt32
 warpLocal arr = push . reverse $ arr
 
-warpLocal2 :: SPull EInt32 -> WProgram (SPush Warp EInt32) 
+warpLocal2 :: SPull EInt32 -> Program Warp (SPush Warp EInt32) 
 warpLocal2 arr =
   do
    arr1 <- force $ warpLocal arr

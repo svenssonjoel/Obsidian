@@ -20,7 +20,7 @@
 
 -}
 
-module Obsidian.Force (force, unsafeForce, unsafeWrite) where 
+module Obsidian.Force (Write, force, unsafeForce, unsafeWrite) where 
 
 
 import Obsidian.Program
@@ -42,12 +42,10 @@ import Control.Monad
 -- A higher level interface over (forceTo, writeTo) 
 ---------------------------------------------------------------------------
 -- Rewrite with functional dependency
-class Sync p => Write p where
-  type HLevel p 
-  unsafeWrite :: (ToPush arr (HLevel p), MemoryOps a) => arr Word32 a -> p (Pull Word32 a)
+class Sync t => Write t where
+  unsafeWrite :: (ToPush arr t, MemoryOps a) => arr Word32 a -> Program t  (Pull Word32 a)
 
-instance Write (Program Warp) where
-  type HLevel (Program Warp) = Warp 
+instance Write Warp where
   unsafeWrite arr  =
     Program $ \warpID -> 
     do
@@ -60,16 +58,14 @@ instance Write (Program Warp) where
       core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names warpID n a ix)) 0 -- DUMMY  
       return $ moWarpPullFrom names warpID n
 
-instance Write (Program Block) where
-  type HLevel (Program Block) = Block 
+instance Write Block where
   unsafeWrite arr = Program $ \_ -> --
     do
       let p = toPush arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
       return $ M.pullFrom mut
 
-instance (ToPush arr Thread) => Write (Program Thread) where
-  type HLevel (Program Thread) = Thread
+instance (ToPush arr Thread) => Write Thread where
   unsafeWrite arr = Program $ \_ -> -- 
     do
       let p = toPush arr
@@ -83,17 +79,17 @@ instance (ToPush arr Thread) => Write (Program Thread) where
       
       return $ moPullFrom snames n
 
-force :: (MemoryOps a, Write p,
-          ToPush arr (HLevel p)) =>
-         arr Word32 a -> p (Pull Word32 a)      
+force :: (MemoryOps a, Write t,
+          ToPush arr t) =>
+         arr Word32 a -> Program t (Pull Word32 a)      
 force arr = do
   rval <- unsafeWrite arr
   sync
   return rval
 
-unsafeForce :: (Array arr, MemoryOps a, Write p,
-          ToPush arr (HLevel p)) =>
-         arr Word32 a -> p (Pull Word32 a)      
+unsafeForce :: (Array arr, MemoryOps a, Write t,
+          ToPush arr t) =>
+         arr Word32 a -> Program t (Pull Word32 a)      
 unsafeForce arr = do
   rval <- unsafeWrite arr
   when (len arr > 32) sync

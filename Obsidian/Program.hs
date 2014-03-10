@@ -270,20 +270,20 @@ instance Applicative (CoreProgram t) where
 ---------------------------------------------------------------------------
 -- Class Sync
 ---------------------------------------------------------------------------
-class Monad p => Sync p where
-  sync :: p () 
+class Sync t where
+  sync :: Program t () 
 
-instance Sync WProgram where
+instance Sync Warp where
   sync = return ()
 
-instance Sync (Program Thread) where
+instance Sync Thread where
   sync = return ()
 
-instance Sync (Program Block) where
+instance Sync Block where
   sync = Program $ \_ ->  Sync
 
-instance Sync (Program Grid) where
-  sync = error "sync: not implemented" 
+instance Sync Grid where
+  sync = error "sync: not implemented on grid computations" 
   -- (implement this using counters and locks)
 
 ---------------------------------------------------------------------------
