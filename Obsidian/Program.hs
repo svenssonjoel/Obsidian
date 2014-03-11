@@ -36,7 +36,7 @@ module Obsidian.Program  (
   atomicOp, 
   -- Programming interface
   seqFor, forAll, forAll2, seqWhile, sync, 
-  warpForAll,
+--   warpForAll,
   -- module Control.Applicative                          
   ) where 
  
@@ -102,12 +102,7 @@ data CoreProgram t a where
   Cond :: Exp Bool
           -> CoreProgram Thread ()
           -> CoreProgram Thread ()
-  
-  -- DONE: Code generation for this.
-  -- TODO: Generalize this loop! (Replace Thread with t) 
-  SeqFor :: EWord32 -> (EWord32 -> CoreProgram t ())
-            -> CoreProgram t ()
-            
+                
   SeqWhile :: Exp Bool ->
               CoreProgram Thread () ->
               CoreProgram Thread () 
@@ -115,15 +110,24 @@ data CoreProgram t a where
   Break  :: CoreProgram Thread () 
  
   ForAll ::  EWord32 
-            -> (EWord32 -> CoreProgram t ())
-            -> CoreProgram (Step t) ()
+            -> (EWord32 -> CoreProgram Thread ())
+            -> CoreProgram t ()
 
+  DistrPar :: EWord32
+           -> (EWord32 -> CoreProgram (Step t) ())
+           -> CoreProgram (Step (Step t)) ()
+                           
+  SeqFor :: EWord32 -> (EWord32 -> CoreProgram t ())
+            -> CoreProgram t ()
+
+                           
+ 
   --        #w          warpId     
-  NWarps :: EWord32 -> (EWord32 -> CoreProgram Warp ()) -> CoreProgram Block () 
+  --NWarps :: EWord32 -> (EWord32 -> CoreProgram Warp ()) -> CoreProgram Block () 
 
-  WarpForAll :: EWord32 
-                -> (EWord32 -> CoreProgram Thread ()) 
-                -> CoreProgram Warp ()
+  --WarpForAll :: EWord32 
+  --              -> (EWord32 -> CoreProgram Thread ()) 
+  --              -> CoreProgram Warp ()
   -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
@@ -206,21 +210,29 @@ atomicOp nom ix atop = Program $ \_ -> AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
+forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program t ()
 forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
   
+-- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
+-- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
 
 forAll2 :: EWord32
            -> EWord32
-           -> (EWord32 -> EWord32 -> Program t ())
+           -> (EWord32 -> EWord32 -> Program Thread ())
            -> Program (Step (Step t)) ()
-forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
+forAll2 b n f =  Program $ \id -> DistrPar b $ \bs -> ForAll n $ \ix -> core (f bs ix) id 
+
+-- forAll2 :: EWord32
+--            -> EWord32
+--            -> (EWord32 -> EWord32 -> Program t ())
+--            -> Program (Step (Step t)) ()
+-- forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
 
 ---------------------------------------------------------------------------
 -- warpForAll 
 ---------------------------------------------------------------------------
-warpForAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Warp ()
-warpForAll n f = Program $ \id -> WarpForAll n $ \ix -> core (f ix) id 
+--warpForAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Warp ()
+-- warpForAll n f = Program $ \id -> WarpForAll n $ \ix -> core (f ix) id 
  
 ---------------------------------------------------------------------------
 -- seqFor
