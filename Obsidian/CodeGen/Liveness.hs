@@ -136,39 +136,39 @@ cl im = mapM process im
         return (SBreak,s)
 
 
-    process (SForAll n im,_) =  
+    process (SForAll lvl n im,_) =  
       do 
         s <- get 
         let iml = computeLiveness1 s im 
             l   = safeHead iml 
             ns  = s `Set.union` l
         put ns
-        return (SForAll n iml,ns) 
+        return (SForAll lvl n iml,ns) 
     
-    process (SForAllBlocks n im,_) = 
-      do 
-        s <- get 
-        let iml = computeLiveness1 s im 
-            l   = safeHead iml 
-            ns  = s `Set.union` l
-        put ns
-        return (SForAllBlocks n iml,ns)
-    process (SNWarps n im,_) = 
-      do 
-        s <- get
-        let iml = computeLiveness1 s im 
-            l   = safeHead iml 
-            ns  = s `Set.union` l
-        put ns
-        return (SNWarps n iml,ns)
-    process (SWarpForAll n im,_) =  
-      do 
-        s <- get 
-        let iml = computeLiveness1 s im 
-            l   = safeHead iml 
-            ns  = s `Set.union` l
-        put ns
-        return (SWarpForAll n iml,ns) 
+    -- process (SForAllBlocks n im,_) = 
+    --   do 
+    --     s <- get 
+    --     let iml = computeLiveness1 s im 
+    --         l   = safeHead iml 
+    --         ns  = s `Set.union` l
+    --     put ns
+    --     return (SForAllBlocks n iml,ns)
+    -- process (SNWarps n im,_) = 
+    --   do 
+    --     s <- get
+    --     let iml = computeLiveness1 s im 
+    --         l   = safeHead iml 
+    --         ns  = s `Set.union` l
+    --     put ns
+    --     return (SNWarps n iml,ns)
+    -- process (SWarpForAll n im,_) =  
+    --   do 
+    --     s <- get 
+    --     let iml = computeLiveness1 s im 
+    --         l   = safeHead iml 
+    --         ns  = s `Set.union` l
+    --     put ns
+    --     return (SWarpForAll n iml,ns) 
 
 
     -- process (SForAllThreads n im,_) = 

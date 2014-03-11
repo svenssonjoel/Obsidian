@@ -72,83 +72,83 @@ genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim)
                              
      --  let WProgram g = f (h w) in g w  
 
-warpLocal :: SPull EInt32 -> SPush Warp EInt32
-warpLocal arr = push . reverse $ arr
+-- warpLocal :: SPull EInt32 -> SPush Warp EInt32
+-- warpLocal arr = push . reverse $ arr
 
-warpLocal2 :: SPull EInt32 -> Program Warp (SPush Warp EInt32) 
-warpLocal2 arr =
-  do
-   arr1 <- force $ warpLocal arr
-   return $ push arr1
-   --arr2 <- force $ warpLocal arr1
-   --arr3 <- force  $ fmap (+100)  arr2
-   --return $ push $ fmap (\x -> x-100) arr3
+-- warpLocal2 :: SPull EInt32 -> Program Warp (SPush Warp EInt32) 
+-- warpLocal2 arr =
+--   do
+--    arr1 <- force $ warpLocal arr
+--    return $ push arr1
+--    --arr2 <- force $ warpLocal arr1
+--    --arr3 <- force  $ fmap (+100)  arr2
+--    --return $ push $ fmap (\x -> x-100) arr3
              
 
-block :: SPull EInt32 -> SPush Block EInt32
-block arr = wConcat $ fmap (\a -> warpLocal a)  (splitUp 32 arr)
+-- block :: SPull EInt32 -> SPush Block EInt32
+-- block arr = wConcat $ fmap (\a -> warpLocal a)  (splitUp 32 arr)
 
-block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
-block2 arr =
-  do
-    arr1 <- force $ wConcat $ fmap (\a -> warpLocal a) (splitUp 32 arr)
-    return $ wConcat $ fmap  (\a -> warpLocal a)  (splitUp 128 arr1) 
-
-
-block3 :: SPull EInt32 -> SPush Block EInt32
-block3 arr = wConcat $ fmap (\a -> wJoin $ warpLocal2 a) (splitUp 100 arr)
+-- block2 :: SPull EInt32 -> BProgram (SPush Block EInt32)
+-- block2 arr =
+--   do
+--     arr1 <- force $ wConcat $ fmap (\a -> warpLocal a) (splitUp 32 arr)
+--     return $ wConcat $ fmap  (\a -> warpLocal a)  (splitUp 128 arr1) 
 
 
-
-
-grid :: DPull EInt32 -> DPush Grid EInt32
-grid arr = pConcat $ fmap block (splitUp 256 arr)
-
-grid2 :: DPull EInt32 -> DPush Grid EInt32
-grid2 arr = pConcat $ fmap block2 (splitUp 256 arr)
-
-
-grid3 :: DPull EInt32 -> DPush Grid EInt32
-grid3 arr = pConcat $ fmap  block3 (splitUp 500 arr)
+-- block3 :: SPull EInt32 -> SPush Block EInt32
+-- block3 arr = wConcat $ fmap (\a -> wJoin $ warpLocal2 a) (splitUp 100 arr)
 
 
 
-genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
-   where
-      (a,im) = toProgram_ 0 grid
-      iml = computeLiveness im
-      (m,mm) = mmIM iml sharedMem (M.empty)
-      rim = renameIM mm iml
 
--- genGrid2 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+-- grid :: DPull EInt32 -> DPush Grid EInt32
+-- grid arr = pConcat $ fmap block (splitUp 256 arr)
+
+-- grid2 :: DPull EInt32 -> DPush Grid EInt32
+-- grid2 arr = pConcat $ fmap block2 (splitUp 256 arr)
+
+
+-- grid3 :: DPull EInt32 -> DPush Grid EInt32
+-- grid3 arr = pConcat $ fmap  block3 (splitUp 500 arr)
+
+
+
+-- genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
 --    where
---       (a,im) = toProgram_ 0 grid2
+--       (a,im) = toProgram_ 0 grid
 --       iml = computeLiveness im
 --       (m,mm) = mmIM iml sharedMem (M.empty)
 --       rim = renameIM mm iml
 
-genGrid3 = ppr $ compile PlatformCUDA (Config 32 1) "apa" (a,rim) 
-   where
-      (a,im) = toProgram_ 0 grid3
-      iml = computeLiveness im
-      (m,mm) = mmIM iml sharedMem (M.empty)
-      rim = renameIM mm iml
+-- -- genGrid2 = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
+-- --    where
+-- --       (a,im) = toProgram_ 0 grid2
+-- --       iml = computeLiveness im
+-- --       (m,mm) = mmIM iml sharedMem (M.empty)
+-- --       rim = renameIM mm iml
+
+-- genGrid3 = ppr $ compile PlatformCUDA (Config 32 1) "apa" (a,rim) 
+--    where
+--       (a,im) = toProgram_ 0 grid3
+--       iml = computeLiveness im
+--       (m,mm) = mmIM iml sharedMem (M.empty)
+--       rim = renameIM mm iml
 
 
 
-performGrid =
-  withCUDA $
-  do
-    kern <- capture 96  grid3
+-- performGrid =
+--   withCUDA $
+--   do
+--     kern <- capture 96  grid3
 
-    useVector (V.fromList [0..500::Int32]) $ \i ->
-      allocaVector 500 $ \(o :: CUDAVector Int32)  ->
-      do
-        fill o 0 
-        o <== (1,kern) <> i
+--     useVector (V.fromList [0..500::Int32]) $ \i ->
+--       allocaVector 500 $ \(o :: CUDAVector Int32)  ->
+--       do
+--         fill o 0 
+--         o <== (1,kern) <> i
 
-        r <- peekCUDAVector o
-        lift $ putStrLn $ show r 
+--         r <- peekCUDAVector o
+--         lift $ putStrLn $ show r 
 
 
 

@@ -189,13 +189,13 @@ compileStm p c (SSeqFor loopVar n im) =
               { $stms:body } |]]
   where
     body = compileIM p c im -- (compileIM p c im)
-compileStm p c a@(SForAll n im) = compileForAll p c a
+compileStm p c a@(SForAll lvl n im) = compileForAll p c a
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
-compileStm p c (SForAllBlocks n im) =
-    [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
-  where 
-    body = compileIM p c im 
-compileStm p c (SNWarps n im) = compileWarp p c n im 
+--compileStm p c (SForAllBlocks n im) =
+--    [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
+--  where 
+--    body = compileIM p c im 
+-- compileStm p c (SNWarps n im) = compileWarp p c n im 
 
 compileStm p c (SSeqWhile b im) =
   [[cstm| while ($(compileExp b)) { $stms:body}|]]
@@ -206,7 +206,7 @@ compileStm p c SSynchronize
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
-compileStm _ _ (SWarpForAll n im) = error "WarpForAll"
+--compileStm _ _ (SWarpForAll n im) = error "WarpForAll"
 
 compileStm _ _ (SAllocate _ _ _) = []
 compileStm _ _ (SDeclare name t) = []
@@ -217,7 +217,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
 compileForAll :: Platform -> Config -> Statement t -> [Stm]
-compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = goQ ++ goR 
+compileForAll PlatformCUDA c (SForAll lvl (IWord32 n) im) = goQ ++ goR 
   where
     cim = compileIM PlatformCUDA c im
    
@@ -253,7 +253,7 @@ compileForAll PlatformCUDA c (SForAll (IWord32 n) im) = goQ ++ goR
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
  -- 
-compileForAll PlatformC c (SForAll (IWord32 n) im) = go
+compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
   where
     body = compileIM PlatformC c im 
     go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
@@ -267,7 +267,7 @@ compileWarp PlatformCUDA c (IWord32 warps) im =
     concatMap (go . fst)  im
   where
     go (SAllocate nom n t) = []  -- Skip allocations at this point. Been handled earlier. 
-    go (SWarpForAll (IWord32 n) im) =
+    go (SForAll Warp (IWord32 n) im) =
         {-
            warps : number of warps that should execute this code
            n     : number of threads per each of these warps
@@ -412,10 +412,10 @@ compile pform config kname (params,im)
 declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
 declares (SCond _ im,_) = concatMap declares im 
 declares (SSeqWhile _ im,_) = concatMap declares im
-declares (SForAll _ im,_) = concatMap declares im
-declares (SForAllBlocks _ im,_) = concatMap declares im
-declares (SNWarps _ im,_) = concatMap declares im
-declares (SWarpForAll _ im,_) = concatMap declares im 
+declares (SForAll _ _ im,_) = concatMap declares im
+-- declares (SForAllBlocks _ im,_) = concatMap declares im
+-- declares (SNWarps _ im,_) = concatMap declares im
+-- declares (SWarpForAll _ im,_) = concatMap declares im 
 declares _ = []
 
 

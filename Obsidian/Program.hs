@@ -35,7 +35,7 @@ module Obsidian.Program  (
   assign, allocate, declare,
   atomicOp, 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync, 
+  seqFor, forAll, forAll2, seqWhile, sync, distrPar,
 --   warpForAll,
   -- module Control.Applicative                          
   ) where 
@@ -108,14 +108,21 @@ data CoreProgram t a where
               CoreProgram Thread () 
               
   Break  :: CoreProgram Thread () 
- 
+
+
+  -- use threads along one level
+  -- Warp, Block, Grid. 
   ForAll ::  EWord32 
             -> (EWord32 -> CoreProgram Thread ())
-            -> CoreProgram t ()
+            -> CoreProgram t () -- (really atleast Step t) ! 
 
+  
+  -- Distribute over Warps yielding a Block
+  -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
-           -> (EWord32 -> CoreProgram (Step t) ())
-           -> CoreProgram (Step (Step t)) ()
+           -> (EWord32 -> CoreProgram t ())
+           -> CoreProgram (Step t) ()
+           -- (really Step t -> Step (Step t) ) 
                            
   SeqFor :: EWord32 -> (EWord32 -> CoreProgram t ())
             -> CoreProgram t ()
@@ -227,6 +234,11 @@ forAll2 b n f =  Program $ \id -> DistrPar b $ \bs -> ForAll n $ \ix -> core (f 
 --            -> (EWord32 -> EWord32 -> Program t ())
 --            -> Program (Step (Step t)) ()
 -- forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
+
+distrPar :: EWord32
+           -> (EWord32 -> Program t ())
+           -> Program (Step t) ()
+distrPar b f = Program $ \id -> DistrPar b $ \bs -> core (f bs) id   
 
 ---------------------------------------------------------------------------
 -- warpForAll 

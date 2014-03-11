@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs,
              ExistentialQuantification,
              FlexibleInstances  #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {- CodeGen.Program.
 
@@ -27,6 +29,7 @@ import Data.List
 
 import System.IO.Unsafe
 
+import Control.Monad.State
 
 
 ---------------------------------------------------------------------------
@@ -45,7 +48,14 @@ data AtOp = AtInc
           | AtAdd  IExp 
           | AtSub  IExp 
           | AtExch IExp 
-     
+
+
+data HLevel = Thread
+            | Warp
+            | Block
+            | Grid
+            
+
 -- Statements 
 data Statement t = SAssign IExp [IExp] IExp
                  | SAtomicOp IExp IExp AtOp
@@ -54,13 +64,13 @@ data Statement t = SAssign IExp [IExp] IExp
                  | SBreak
                  | SSeqWhile IExp (IMList t)
 
-                 --        Iters   Body
-                 | SForAll IExp    (IMList t) 
-                 | SForAllBlocks IExp (IMList t)
- 
-                 | SNWarps IExp (IMList t)
-                 --                  (ThreadIM)
-                 | SWarpForAll  IExp (IMList t)                    
+                 --               Iters   Body
+                 | SForAll HLevel IExp    (IMList t)
+                 | SDistrPar HLevel IExp  (IMList t)
+                   
+--                 | SForAllBlocks IExp (IMList t)
+--                 | SNWarps IExp (IMList t)
+--                 | SWarpForAll  IExp (IMList t)                    
 --                 | SWarpForAll String   String IExp (IMList t) 
 
     -- Memory Allocation..
@@ -70,21 +80,54 @@ data Statement t = SAssign IExp [IExp] IExp
     -- Synchronisation
                  | SSynchronize
 
+
+--------------------------------------------------------------------------- 
+-- Collect and pass around data during first step compilation
+data Context = Context { ctxNWarps :: Maybe Word32,
+                         ctxGLBUsesTid :: Bool,
+                         ctxGLBUsesWid :: Bool}
+
+newtype CM a = CM (State Context a)
+   deriving (Monad, MonadState Context)
+
+runCM :: CM a -> Context -> a 
+runCM (CM cm) ctx = evalState cm ctx
+
+setUsesTid :: CM ()
+setUsesTid = modify $ \ctx -> ctx { ctxGLBUsesTid = True } 
+
+setUsesWid :: CM ()
+setUsesWid = modify $ \ctx -> ctx { ctxGLBUsesWid = True } 
+
+enterWarp :: Word32 -> CM ()
+enterWarp  n = modify $ \ctx -> ctx { ctxNWarps = Just n }
+
+clearWarp :: CM ()
+clearWarp = modify $ \ctx -> ctx {ctxNWarps = Nothing}
+
+getNWarps :: CM (Maybe Word32)
+getNWarps = do
+  ctx <- get
+  return $ ctxNWarps ctx 
+
+emptyCtx = Context Nothing False False
+---------------------------------------------------------------------------
+
 usesWarps :: IMList t -> Bool
 usesWarps = any (go . fst)
   where
 --    go (SWarpForAll _ _ _ _) = True
-    go (SWarpForAll _ _) = True
-    go (SNWarps _ _) = True
-    go (SForAllBlocks _ im) = usesWarps im 
+   -- go (SWarpForAll _ _) = True
+   -- go (SNWarps _ _) = True
+  --go (SForAllBlocks _ im) = usesWarps im 
     go _ = False
 
 usesTid :: IMList t -> Bool
 usesTid = any (go . fst)
   where
   --  go (SForAll _ _ _) = True
-    go (SForAll _ _) = True
-    go (SForAllBlocks _ im) = usesTid im
+    go (SForAll _ _ _) = True
+    -- go (SForAllBlocks _ im) = usesTid im
     go _ = False 
 
 
@@ -93,84 +136,88 @@ usesTid = any (go . fst)
 --------------------------------------------------------------------------- 
 
 compileStep1 :: Compile t => P.CoreProgram t a -> IM
-compileStep1 p = snd $ compile ns p
+compileStep1 p = snd $ runCM (compile ns p) emptyCtx
   where
     ns = unsafePerformIO$ newEnumSupply
 
 
 class Compile t where
-  compile :: Supply Int -> P.CoreProgram t a -> (a,IM)
+  compile :: Supply Int -> P.CoreProgram t a -> CM (a,IM)
 
 -- Compile Thread program 
-instance Compile Zero  where 
+instance Compile P.Thread  where
+  -- Can add cases for P.ForAll here.
+  -- Turn into sequential loop. Could be important to make push
+  -- operate uniformly across entire hierarchy.
   compile s p = cs s p 
 
 -- Compile Warp program
--- ######################################################################
--- ZONE OF CHEATS
--- ######################################################################
-instance Compile (Step Zero) where
-  -- compile s (P.ForAll n f) = undefined
-  --compile s p = cs s p 
-  compile s p = compileW s 0 p
+instance Compile P.Warp where
+  compile s (P.DistrPar n f) =
+    error "Currently not supported to distribute over the threads, use ForAll instead!"
+  compile s (P.ForAll n f) = do
+    let p = f (variable "warpIx") 
+    (a,im) <- compile s p 
+    return (a, out $ SForAll Warp (expToIExp n) im)
+    --undefined -- compile a warp program that iterates over a space n large
+  compile s (P.Allocate nom n t) = do
+    (Just nw) <- getNWarps -- Must be a Just here, or something is wrong! 
+    return ((),out $ SAllocate nom (nw*n) t)
+  compile s (P.Bind p f) = do
+    let (s1,s2) = split2 s
+    (a,im1) <- compile s1 p
+    (b,im2) <- compile s2 (f a)
+    return (b,(im1 ++ im2))
+  compile s (P.Return a) = return (a,[])
+  compile s (P.Identifier) = return (supplyValue s, [])
+
 -- Compile Block program 
-instance Compile (Step (Step Zero)) where
-  compile s (P.ForAll n f) = (a,out (SForAll (expToIExp n) im))
-    where
-      --(i1,i2) = split2 s
-      nom = "tid" 
-      v = variable nom
-      p = f v  -- (ThreadIdx X)
-      (a,im) = compile s p
-  compile s (P.NWarps n f) = ((),im) -- out (SNWarps (expToIExp n) im))
-      where
-        ((),im) = compileW s n (f (variable "warpID"))
+instance Compile P.Block where
+  compile s (P.ForAll n f) = do
+    let nom = "tid"
+        v   = variable nom
+        p   = f v 
+    (a,im) <-  compile s p
+    return (a,out (SForAll Block (expToIExp n) im))
+    
+  compile s (P.DistrPar (Literal n) f) = do
+    error $ "distr " ++ show n
+    {- Distribute work over warps! -} 
+    enterWarp n
+    -- Need to generate some IM here that the backend can read the
+    -- Number of desired warps from. 
+    compile s (f (variable "warpID"))
+    
   compile s p = cs s p
-
-
--- Compile a Warp program
-compileW :: Supply Int -> EWord32 -> P.CoreProgram P.Warp a -> (a,IM)
-compileW i nWarps@(Literal nw) prg = go $ prg --(variable warpIDNom) -- (tid `div` 32)
-  where
-    warpIDNom = "warpID"
-    warpIxNom = "warpIx"
-    go :: P.CoreProgram P.Warp a -> (a,IM)
-    go (P.WarpForAll iters prgf)
-      = (a,out $ SNWarps (expToIExp nWarps) [(SWarpForAll (expToIExp iters) im,())])
-      where
-        p = prgf (variable warpIxNom) -- correct
-        (a,im) = compile i p    -- Compile the inner threadProgram
-    go (P.Allocate nom n t)
-      = ((),out (SAllocate nom (nw*n) t))
-    go (P.Bind p f) = (b,(im1 ++ im2))
-      where
-        (s1,s2) = split2 i
-        (a,im1) = compileW s1 nWarps p 
-        (b,im2) = compileW s2 nWarps (f a)
-    go (P.Return a) = (a,[])
-    go (P.Identifier) = (supplyValue i, [])
-
 
 -- Compile a Grid Program 
-instance Compile (Step (Step (Step (Zero)))) where
-  compile s (P.ForAll n f) = (a, out (SForAllBlocks (expToIExp n) im))
-    where 
-      p = f (BlockIdx X)
-      (a,im) = compile s p
+instance Compile P.Grid where
+  compile s (P.ForAll n f) = do
+    error $ show n
+    -- Incorrect, need to compute global thread ids and apply 
+    let p = f (BlockIdx X)
+    (a,im) <- compile s p 
+    return (a, out (SForAll Grid (expToIExp n) im))
+  compile s (P.DistrPar n f) = do
+    -- Need to generate IM here that the backend can read desired number of blocks from 
+    compile s (f (BlockIdx X)) 
+    {- Distribute over blocks -} -- error "compile Grid: DistrPar not implemented"  
   compile s p = cs s p
+
+
 
 
 ---------------------------------------------------------------------------
 -- General compilation
 ---------------------------------------------------------------------------
-cs :: forall t a . Compile t => Supply Int -> P.CoreProgram t a -> (a,IM) 
-cs i P.Identifier = (supplyValue i, [])
+cs :: forall t a . Compile t => Supply Int -> P.CoreProgram t a -> CM (a,IM) 
+cs i P.Identifier = return $ (supplyValue i, [])
 cs i (P.Assign name ix e) =
-  ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
+  return $ ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))
 
 cs i (P.AtomicOp name ix atom) =
   case atom of
-    AtomicInc -> ((),out (SAtomicOp (IVar name Word32) (expToIExp ix) AtInc))
+    AtomicInc -> return $ ((),out (SAtomicOp (IVar name Word32) (expToIExp ix) AtInc))
     AtomicAdd e -> undefined
     AtomicSub e -> undefined
     AtomicExch e -> undefined 
@@ -187,35 +234,44 @@ cs i (P.AtomicOp name ix atom) =
 --    v = variable nom
 --    im = SAtomicOp nom name ix at
       
-cs i (P.Cond bexp p) = ((),out (SCond (expToIExp bexp) im)) 
-  where ((),im) = compile i p
+cs i (P.Cond bexp p) = do
+  ((),im) <-  compile i p
+  return ((),out (SCond (expToIExp bexp) im)) 
+ 
 
-cs i (P.SeqFor n f) = (a,out (SSeqFor nom (expToIExp n) im))
-  where
-    (i1,i2) = split2 i
-    nom = "i" ++ show (supplyValue i1)
-    v = variable nom
-    p = f v
-    (a,im) = compile i2 p
-cs i (P.SeqWhile b p) = (a, out (SSeqWhile (expToIExp b) im))
-  where
-    (a,im) = compile i p
+cs i (P.SeqFor n f) = do
+  let (i1,i2) = split2 i
+      nom = "i" ++ show (supplyValue i1)
+      v = variable nom
+      p = f v
+  (a,im) <-  compile i2 p
+  
+  return (a,out (SSeqFor nom (expToIExp n) im))
 
-cs i (P.Break) = ((), out SBreak)
+    
+cs i (P.SeqWhile b p) = do
+  (a,im) <-  compile i p
+  return (a, out (SSeqWhile (expToIExp b) im))
 
-cs i (P.Allocate id n t) = ((),out (SAllocate id n t))
-cs i (P.Declare  id t)   = ((),out (SDeclare id t))
+    
 
-cs i (P.Sync)            = ((),out (SSynchronize))
+cs i (P.Break) = return ((), out SBreak)
+
+cs i (P.Allocate id n t) = return ((),out (SAllocate id n t))
+cs i (P.Declare  id t)   = return ((),out (SDeclare id t))
+
+cs i (P.Sync)            = return ((),out (SSynchronize))
 
 
-cs i (P.Bind p f) = (b,im1 ++ im2) 
-  where
-    (s1,s2) = split2 i
-    (a,im1) = compile s1 p
-    (b,im2) = compile s2 (f a)
+cs i (P.Bind p f) = do 
+  let (s1,s2) = split2 i
+  (a,im1) <- compile s1 p
+  (b,im2) <- compile s2 (f a)
 
-cs i (P.Return a) = (a,[])
+  return (b,im1 ++ im2) 
+ 
+ 
+cs i (P.Return a) = return (a,[])
 
 
 -- Unhandled cases 
@@ -253,20 +309,29 @@ printStm (SSeqFor name n im,m) =
   "for " ++ name  ++ " in [0.." ++ show n ++"] do" ++ meta m ++ 
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SForAll n im,m) =
+
+printStm (SForAll Warp n im,m) =
+  "forAll wid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+  concatMap printStm im ++ "\ndone;\n"
+
+printStm (SForAll Block n im,m) =
   "forAll tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SForAllBlocks n im,m) =
-  "forAllBlocks i in [0.." ++ show n ++"] do" ++ meta m ++
+printStm (SForAll Grid n im,m) =
+  "forAll gid in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SWarpForAll n im ,m) =
-  "forAll(InWarp) tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+printStm (SDistrPar lvl n im,m) = 
+  "forAll gid in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
 
-printStm (SNWarps n im,m) = "Run " ++ show n++ " Warps {\n" ++
-                            printIM im ++ "\n }"
+-- printStm (SWarpForAll n im ,m) =
+--   "forAll(InWarp) tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
+--   concatMap printStm im ++ "\ndone;\n"
+
+-- printStm (SNWarps n im,m) = "Run " ++ show n++ " Warps {\n" ++
+--                             printIM im ++ "\n }"
 --printStm (SForAllThreads n im,m) =
 --  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
 --  concatMap printStm im ++ "\ndone;\n"

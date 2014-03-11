@@ -157,32 +157,21 @@ instance Pushable Thread where
   push (Pull n ixf) =
     Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
 
-instance Pushable Block where
-  push (Pull n ixf) =
-    Push n $ \wf ->
-      forAll (sizeConv (n `div` 32)) $ \i -> wf (ixf i) i
-
 instance Pushable Warp where
   push (Pull n ixf) =
     Push n $ \wf ->
+      forAll (sizeConv n) $ \i -> wf (ixf i) i
 
-    -- WarpForAll should be compiled to a ForAll of length n
-    -- but it should use information from the enclosing NWarps "annotation"
-    -- NWarps 4 
-    -- WarpForAll 256 prgF 
-    --  ==> 
-    -- ForAll (4*32)            -- (now have threadBudget 128) 
-    --   (\ix -> let warpID = ix `div` 32  -- Actual warpID
-    --               warpIx = ix `mod` 32  -- Index within a warp 
-    --
-    --           in SeqFor (256 `div` 32)
-    --                   (\i ->                -- i = Virtual warp id
-    --                          prgF ( warpID * 256 + i * 32 + warpIx ))  
-    --  
-    -- Will need special case for WarpForAll loop that is not multiple of 32 
-    forAll (sizeConv n) $ \i -> wf (ixf i) i
-    -- Special constructor to signal its special significance to the compiler. 
+instance Pushable Block where
+  push (Pull n ixf) =
+    Push n $ \wf ->
+      forAll (sizeConv n) $ \i -> wf (ixf i) i
 
+instance Pushable Grid where
+  push (Pull n ixf) =
+    Push n $ \wf ->
+      forAll (sizeConv n) $ \i -> wf (ixf i) i 
+  
 -- class PushableN t where
 --   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
 

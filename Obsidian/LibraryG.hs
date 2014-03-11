@@ -57,7 +57,7 @@ type instance ElementType (Push t l a) = a
 type instance ElementType (Program t (Push t l a)) = a
 type instance ElementType (Program t (Pull l a)) = a 
 
-class Concat p t | p -> t where
+class  Concat p t | p -> t where
   pConcat :: ASize l => Pull l p -> Push (Step t) l (ElementType p)
 
 instance Concat (Push t Word32 a) t where
@@ -85,7 +85,7 @@ instance Pushable t => Concat (Program t (Pull Word32 a)) t where
 pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
 pConcatP arr =
   mkPush (n * fromIntegral rn) $ \wf ->
-    forAll (sizeConv n) $ \bix ->
+    distrPar (sizeConv n) $ \bix ->
       let bp = arr ! bix -- (Push _ p) = arr ! bix
           wf' a ix = wf a (bix * sizeConv rn + ix)
           
@@ -96,20 +96,20 @@ pConcatP arr =
     rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
 
   
-wConcat :: SPull (SPush Warp a) -> SPush Block a
-wConcat arr =
-  mkPush (n * fromIntegral rn) $ \wf ->
-     Program $ \ warpid -> -- Here really awkward.
-                 -- I get a warpid from Program, and one from NWarps...
-                 -- And all because Force needs to know this id on the "outside"
-                 -- Nwarps is not really a loop! it should not proive a warpID.
-      NWarps (fromIntegral n) $ \_ -> ---warpID -> 
-        let p = arr ! (variable "warpID")
-            wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)
-        in core (p  <: wf') (variable "warpID")  
-  where
-    n  = len arr
-    rn = len $ (arr ! 0)  -- bit awkward. 
+-- wConcat :: SPull (SPush Warp a) -> SPush Block a
+-- wConcat arr =
+--   mkPush (n * fromIntegral rn) $ \wf ->
+--      Program $ \ warpid -> -- Here really awkward.
+--                  -- I get a warpid from Program, and one from NWarps...
+--                  -- And all because Force needs to know this id on the "outside"
+--                  -- Nwarps is not really a loop! it should not proive a warpID.
+--       NWarps (fromIntegral n) $ \_ -> ---warpID -> 
+--         let p = arr ! (variable "warpID")
+--             wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)
+--         in core (p  <: wf') (variable "warpID")  
+--   where
+--     n  = len arr
+--     rn = len $ (arr ! 0)  -- bit awkward. 
     
          
 
@@ -130,7 +130,7 @@ sConcat arr =
 pUnCoalesce :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pUnCoalesce arr =
   mkPush (n * fromIntegral rn) $ \wf ->
-  forAll (sizeConv n) $ \bix ->
+  distrPar (sizeConv n) $ \bix ->
     let p = arr ! bix
         wf' a ix = wf a (bix * sizeConv rn + ix)
     in p <: (g wf')
