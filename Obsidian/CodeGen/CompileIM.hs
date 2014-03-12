@@ -12,7 +12,7 @@
 
 module Obsidian.CodeGen.CompileIM where 
 
-import Language.C.Quote
+import Language.C.Quote hiding (Block)
 import Language.C.Quote.CUDA as CU
 
 import qualified Language.C.Quote.OpenCL as CL 
@@ -223,11 +223,14 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar lvl n im) = error "IMPLEMENT THIS!" 
+-- compileDistr PlatformCUDA c (SDistrPar Warp n im) = error "IMPLEMENT THIS!" 
  -- Implementation of this probably need some of the goQ, goR magic.
  -- More so than ForAll will in this setting I assume!
  -- Todo: Figure out what to do here.
-
+compileDistr PlatformCUDA c (SDistrPar Block n im) =
+  error "BLOCK: IMPLEMENT THIS!" 
+compileDistr PlatformCUDA c (SDistrPar Warp n im) =
+  error "WARP: IMPLEMENT THIS!" 
 
 
 ---------------------------------------------------------------------------
