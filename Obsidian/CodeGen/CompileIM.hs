@@ -51,8 +51,7 @@ data Platform = PlatformCUDA
               | PlatformC
 
 data Config = Config { configThreadsPerBlock :: Word32,
-                       configSharedMem :: Word32,
-                       configBlocksPerGrid :: Maybe Word32}
+                       configSharedMem :: Word32}
 
 
 
@@ -218,51 +217,28 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =
-  case (configBlocksPerGrid c) of
-
-    -- ############################################################
-    -- Compile for VARYING number of blocks
-    -- ############################################################ 
-    Nothing -> codeQ ++ codeR 
-      where
-        cim = compileIM PlatformCUDA c im
-
-        numBlocks = [cexp| $id:("gridDim.x") |]
-
-        blocksQ = [cexp| $exp:(compileExp n) / $exp:numBlocks|]
-        blocksR = [cexp| $exp:(compileExp n) % $exp:numBlocks|] 
+compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
+  -- New here is BLOCK virtualisation
+  where
+    cim = compileIM PlatformCUDA c im
     
-        codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ  __syncthreads(); }|]]
+    numBlocks = [cexp| $id:("gridDim.x") |]
+    
+    blocksQ = [cexp| $exp:(compileExp n) / $exp:numBlocks|]
+    blocksR = [cexp| $exp:(compileExp n) % $exp:numBlocks|] 
+    
+    codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ  __syncthreads(); }|]]
                 
-        bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
-                [[cstm| __syncthreads();|]]
+    bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
+            [[cstm| __syncthreads();|]]
          
-        codeR = [[cstm| bid = $exp:numBlocks * $exp:blocksQ + blockIdx.x;|], 
-                 [cstm| if (blockIdx.x < $exp:blocksR) { $stms:cim }|],
-                 [cstm| bid = blockIdx.x;|]]
-  
-    -- ############################################################
-    -- Compile for KNOWN number of blocks
-    -- ############################################################ 
-    Just n -> error " DONT IMPLEMENT THIS " -- codeQ ++ codeR
-      where 
-        cim = compileIM PlatformCUDA c im 
-         
-        numBlocks = configBlocksPerGrid c 
-        
-        
-
+    codeR = [[cstm| bid = $exp:numBlocks * $exp:blocksQ + blockIdx.x;|], 
+             [cstm| if (blockIdx.x < $exp:blocksR) { $stms:cim }|],
+             [cstm| bid = blockIdx.x;|]]
                     
-                           
-  -- The im here should be distributet across 'n' blocks.
-  -- Im uses a bid variable to identify what block it is.
-  -- 'n' may be higher than the actual number of blocks we have!
-  -- So GPU block virtualisation is needed. 
-  
 compileDistr PlatformCUDA c (SDistrPar Warp n im) =
-  -- Here the im should be distributed over 'n'warps.
-  -- Im uses a warpID variable to identify what warp it is.
+  -- Here the 'im' should be distributed over 'n'warps.
+  -- 'im' uses a warpID variable to identify what warp it is.
   -- 'n' may be higher than the actual number of warps we have!
   -- So GPU warp virtualisation is needed. 
   error "WARP: IMPLEMENT THIS!" 
