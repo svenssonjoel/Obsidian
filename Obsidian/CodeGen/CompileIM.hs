@@ -51,7 +51,8 @@ data Platform = PlatformCUDA
               | PlatformC
 
 data Config = Config { configThreadsPerBlock :: Word32,
-                       configSharedMem :: Word32 }
+                       configSharedMem :: Word32,
+                       configBlocksPerGrid :: Maybe Word32}
 
 
 
@@ -62,7 +63,9 @@ data Config = Config { configThreadsPerBlock :: Word32,
 compileExp :: IExp -> Exp 
 compileExp (IVar name t) = [cexp| $id:name |]
 
-compileExp (IBlockIdx X) = [cexp| $id:("blockIdx.x") |]
+
+-- TODO: Fix all this! 
+compileExp (IBlockIdx X) = [cexp| $id:("bid")|] -- [cexp| $id:("blockIdx.x") |]
 compileExp (IBlockIdx Y) = [cexp| $id:("blockIdx.y") |]
 compileExp (IBlockIdx Z) = [cexp| $id:("blockIdx.z") |]
 
@@ -191,17 +194,10 @@ compileStm p c (SSeqFor loopVar n im) =
     body = compileIM p c im -- (compileIM p c im)
 
 
--- Needs to be updated to take the lvl parameter in consideration! 
+-- Just relay to specific compileFunction
 compileStm p c a@(SForAll lvl n im) = compileForAll p c a
 
 compileStm p c a@(SDistrPar lvl n im) = compileDistr p c a 
-
---   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
---compileStm p c (SForAllBlocks n im) =
---    [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
---  where 
---    body = compileIM p c im 
--- compileStm p c (SNWarps n im) = compileWarp p c n im 
 
 compileStm p c (SSeqWhile b im) =
   [[cstm| while ($(compileExp b)) { $stms:body}|]]
@@ -212,7 +208,6 @@ compileStm p c SSynchronize
   = case p of
       PlatformCUDA -> [[cstm| __syncthreads(); |]]
       PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
---compileStm _ _ (SWarpForAll n im) = error "WarpForAll"
 
 compileStm _ _ (SAllocate _ _ _) = []
 compileStm _ _ (SDeclare name t) = []
@@ -223,13 +218,53 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
--- compileDistr PlatformCUDA c (SDistrPar Warp n im) = error "IMPLEMENT THIS!" 
- -- Implementation of this probably need some of the goQ, goR magic.
- -- More so than ForAll will in this setting I assume!
- -- Todo: Figure out what to do here.
 compileDistr PlatformCUDA c (SDistrPar Block n im) =
-  error "BLOCK: IMPLEMENT THIS!" 
+  case (configBlocksPerGrid c) of
+
+    -- ############################################################
+    -- Compile for VARYING number of blocks
+    -- ############################################################ 
+    Nothing -> codeQ ++ codeR 
+      where
+        cim = compileIM PlatformCUDA c im
+
+        numBlocks = [cexp| $id:("gridDim.x") |]
+
+        blocksQ = [cexp| $exp:(compileExp n) / $exp:numBlocks|]
+        blocksR = [cexp| $exp:(compileExp n) % $exp:numBlocks|] 
+    
+        codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ  __syncthreads(); }|]]
+                
+        bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
+                [[cstm| __syncthreads();|]]
+         
+        codeR = [[cstm| bid = $exp:numBlocks * $exp:blocksQ + blockIdx.x;|], 
+                 [cstm| if (blockIdx.x < $exp:blocksR) { $stms:cim }|],
+                 [cstm| bid = blockIdx.x;|]]
+  
+    -- ############################################################
+    -- Compile for KNOWN number of blocks
+    -- ############################################################ 
+    Just n -> error " DONT IMPLEMENT THIS " -- codeQ ++ codeR
+      where 
+        cim = compileIM PlatformCUDA c im 
+         
+        numBlocks = configBlocksPerGrid c 
+        
+        
+
+                    
+                           
+  -- The im here should be distributet across 'n' blocks.
+  -- Im uses a bid variable to identify what block it is.
+  -- 'n' may be higher than the actual number of blocks we have!
+  -- So GPU block virtualisation is needed. 
+  
 compileDistr PlatformCUDA c (SDistrPar Warp n im) =
+  -- Here the im should be distributed over 'n'warps.
+  -- Im uses a warpID variable to identify what warp it is.
+  -- 'n' may be higher than the actual number of warps we have!
+  -- So GPU warp virtualisation is needed. 
   error "WARP: IMPLEMENT THIS!" 
 
 
@@ -410,6 +445,10 @@ compile pform config kname (params,im)
     cudabody = (if (configSharedMem config > 0)
                 then [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |]] 
                 else []) ++
+                [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
+                [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
+                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
                (if (usesTid im) 
                 then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
                 else []) ++

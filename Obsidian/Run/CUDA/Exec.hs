@@ -135,13 +135,13 @@ instance Scalar a => KernelI (CUDAVector a) where
   type KInput (CUDAVector a) = DPull (Exp a) 
   addInParam (KernelT f t s i o) b =
     KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
-                         CUDA.VArg (cvLen b)]) o
+                         CUDA.IArg $ fromIntegral (cvLen b)]) o
 
 instance Scalar a => KernelM (CUDAVector a) where
   type KMutable (CUDAVector a) = Mutable Global (Exp a) 
   addMutable (KernelT f t s i o) b =
     KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
-                         CUDA.VArg (cvLen b)]) o
+                         CUDA.IArg $ fromIntegral (cvLen b)]) o
 
 instance Scalar a => KernelO (CUDAVector a) where
   type KOutput (CUDAVector a) = DPush Grid (Exp a) 
@@ -267,7 +267,7 @@ useVector v f =
     let hptr = unsafeForeignPtrToPtr hfptr
     lift $ CUDA.pokeArray n hptr dptr
     let cvector = CUDAVector dptr (fromIntegral (V.length v)) 
-    b <- f cvector -- dptr     
+    b <- f cvector -- dptr
     lift $ CUDA.free dptr
     return b
 
