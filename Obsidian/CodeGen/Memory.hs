@@ -141,7 +141,8 @@ mmIM im memory memmap = r im (memory,memmap)
     process (SSeqFor _ n im,_) m mm = mmIM im m mm
     process (SSeqWhile b im,_) m mm = mmIM im m mm 
     -- Yet another tricky case.
-    process (SForAll _ n im,_) m mm = mmIM im m mm 
+    process (SForAll _ n im,_) m mm = mmIM im m mm
+    process (SDistrPar _ n im,_) m mm = mmIM im m mm 
     -- The worst of them all.
 --    process (SForAllThreads n im,_) m mm = mmIM im m mm
 --    process (SNWarps _ im,_) m mm = mmIM im m mm
@@ -175,7 +176,9 @@ renameIM mm im = zip (map (go . fst) im) (repeat ())
     go (SSeqWhile n im) = SSeqWhile (renameIExp mm n)
                                     (renameIM mm im)
     go (SForAll lvl n im)   = SForAll lvl (renameIExp mm n)
-                                          (renameIM mm im) 
+                                          (renameIM mm im)
+    go (SDistrPar lvl n im) = SDistrPar lvl (renameIExp mm n)
+                                            (renameIM mm im) 
 
 --    go (SForAllBlocks n im) = SForAllBlocks (renameIExp mm n)
 --                                            (renameIM mm im)

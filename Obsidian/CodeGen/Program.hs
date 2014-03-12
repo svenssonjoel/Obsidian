@@ -176,32 +176,39 @@ instance Compile P.Block where
   compile s (P.ForAll n f) = do
     let nom = "tid"
         v   = variable nom
-        p   = f v 
+        p   = f v
+    setUsesTid 
     (a,im) <-  compile s p
+    -- in this case a could be () (since it is guaranteed to be anyway). a
     return (a,out (SForAll Block (expToIExp n) im))
     
-  compile s (P.DistrPar (Literal n) f) = do
-    error $ "distr " ++ show n
+  compile s (P.DistrPar n'@(Literal n) f) = do
+    
     {- Distribute work over warps! -} 
     enterWarp n
     -- Need to generate some IM here that the backend can read the
     -- Number of desired warps from. 
-    compile s (f (variable "warpID"))
-    
+    (a,im) <- compile s (f (variable "warpID"))
+    return (a, out (SDistrPar Warp (expToIExp n') im))
   compile s p = cs s p
 
 -- Compile a Grid Program 
 instance Compile P.Grid where
   compile s (P.ForAll n f) = do
-    error $ show n
+    
     -- Incorrect, need to compute global thread ids and apply 
-    let p = f (BlockIdx X)
+    let p = f gid -- (BlockIdx X)
+        gid = variable "gid" 
     (a,im) <- compile s p 
     return (a, out (SForAll Grid (expToIExp n) im))
+
+  {- Distribute over blocks -}
   compile s (P.DistrPar n f) = do
-    -- Need to generate IM here that the backend can read desired number of blocks from 
-    compile s (f (BlockIdx X)) 
-    {- Distribute over blocks -} -- error "compile Grid: DistrPar not implemented"  
+    -- Need to generate IM here that the backend can read desired number of blocks from
+    let p = f (BlockIdx X) 
+    
+    (a, im) <- compile s p -- (f (BlockIdx X)) 
+    return (a, out (SDistrPar Block (expToIExp n) im))
   compile s p = cs s p
 
 

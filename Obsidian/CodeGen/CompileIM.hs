@@ -189,7 +189,13 @@ compileStm p c (SSeqFor loopVar n im) =
               { $stms:body } |]]
   where
     body = compileIM p c im -- (compileIM p c im)
+
+
+-- Needs to be updated to take the lvl parameter in consideration! 
 compileStm p c a@(SForAll lvl n im) = compileForAll p c a
+
+compileStm p c a@(SDistrPar lvl n im) = compileDistr p c a 
+
 --   = [[cstm| if (threadIdx.x < $(compileExp n)) { $stms:(compileIM p c im) } |]]
 --compileStm p c (SForAllBlocks n im) =
 --    [[cstm| if (blockIdx.x < $(compileExp n)) { $stms:body } |]]
@@ -212,6 +218,17 @@ compileStm _ _ (SAllocate _ _ _) = []
 compileStm _ _ (SDeclare name t) = []
 
 compileStm _ _ a = error  $ "compileStm: missing case "
+
+---------------------------------------------------------------------------
+-- DistrPar 
+---------------------------------------------------------------------------
+compileDistr :: Platform -> Config -> Statement t -> [Stm] 
+compileDistr PlatformCUDA c (SDistrPar lvl n im) = error "IMPLEMENT THIS!" 
+ -- Implementation of this probably need some of the goQ, goR magic.
+ -- More so than ForAll will in this setting I assume!
+ -- Todo: Figure out what to do here.
+
+
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
