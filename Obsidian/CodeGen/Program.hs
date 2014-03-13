@@ -161,7 +161,7 @@ instance Compile P.Warp where
     return (a, out $ SForAll Warp (expToIExp n) im)
     --undefined -- compile a warp program that iterates over a space n large
   compile s (P.Allocate nom n t) = do
-    (Just nw) <- getNWarps -- Must be a Just here, or something is wrong! 
+    (Just nw) <- getNWarps -- Must be a Just here, or something is wrong!
     return ((),out $ SAllocate nom (nw*n) t)
   compile s (P.Bind p f) = do
     let (s1,s2) = split2 s

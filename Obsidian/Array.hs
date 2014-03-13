@@ -27,7 +27,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        (<:), 
                        Array(..),
                        ASize(..),
-                       ToPush(..),
+                      --  ToPush(..),
                        namedGlobal,
                        undefinedGlobal) where
 
@@ -141,14 +141,14 @@ instance Array arr => Functor (arr w) where
 --convertToPush (Pull n ixf) =
 --    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
 
-class ToPush arr t where
-  toPush :: ASize s => arr s e -> Push t s e
+-- class ToPush arr t where
+--   toPush :: ASize s => arr s e -> Push t s e
 
-instance Pushable t => ToPush Pull t where
-  toPush = push
+-- instance Pushable t => ToPush Pull t where
+--   toPush = push
 
-instance Pushable t => ToPush (Push t) t where
-  toPush = id 
+-- instance Pushable t => ToPush (Push t) t where
+--   toPush = id 
 
 class Pushable t where
   push :: ASize s => Pull s e -> Push t s e 

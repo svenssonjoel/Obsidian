@@ -56,9 +56,10 @@ type instance ElementType (Pull l a) = a
 type instance ElementType (Push t l a) = a
 type instance ElementType (Program t (Push t l a)) = a
 type instance ElementType (Program t (Pull l a)) = a 
+      
 
 class  Concat p t | p -> t where
-  pConcat :: ASize l => Pull l p -> Push (Step t) l (ElementType p)
+  pConcat ::  ASize l => Pull l p -> Push (Step t) l (ElementType p)
 
 instance Concat (Push t Word32 a) t where
   pConcat = pConcatP . fmap return
@@ -175,13 +176,13 @@ pJoinPush = pJoin . liftM push
 
 
 -- wJoin for now.
-wJoin ::  Program Warp (Push Warp s a) -> Push Warp s a
-wJoin prg = mkPush n $ \wf -> Program $ \warpID -> do
+-- wJoin ::  Program Warp (Push Warp s a) -> Push Warp s a
+-- wJoin prg = mkPush n $ \wf -> Program $ \warpID -> do
   
-  parr <- core prg warpID -- (prg warpID) 
-  core (parr <: wf) warpID -- DUMMY 
+--   parr <- core prg warpID -- (prg warpID) 
+--   core (parr <: wf) warpID -- DUMMY 
 
-  where n = len $ fst $ runPrg 0 (core prg 0) -- DUMMY HACK 
+--   where n = len $ fst $ runPrg 0 (core prg 0) -- DUMMY HACK 
 
 -- class PrgJoin prg t where
 --   prgJoin :: prg (Push t s a) -> Push t s a

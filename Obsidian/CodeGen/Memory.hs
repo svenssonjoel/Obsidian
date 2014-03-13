@@ -148,6 +148,7 @@ mmIM im memory memmap = r im (memory,memmap)
 --    process (SNWarps _ im,_) m mm = mmIM im m mm
 --    process (SWarpForAll _ im,_) m mm = mmIM im m mm 
 
+  --  process im m mm = error $ printStm im -- "process: WHat!"
     process (_,_) m mm = (m,mm) 
 
 -- Friday (2013 Mars 29, discovered bug) 
@@ -227,30 +228,3 @@ renameAtOp mm (AtSub e) = AtSub (renameIExp mm e)
 renameAtOp mm (AtExch e) = AtExch (renameIExp mm e) 
 
 
--- reference
-{-
----------------------------------------------------------------------------
--- Memory map the arrays in an SPMDC
----------------------------------------------------------------------------
-mmSPMDC :: MemMap -> [SPMDC] -> [SPMDC] 
-mmSPMDC mm [] = [] 
-mmSPMDC mm (x:xs) = mmSPMDC' mm x : mmSPMDC mm xs
-
-mmSPMDC' :: MemMap -> SPMDC -> SPMDC
-mmSPMDC' mm (CAssign e1 es e2) = 
-  cAssign (mmCExpr mm e1) 
-          (map (mmCExpr mm) es)    
-          (mmCExpr mm e2)
-mmSPMDC' mm (CAtomic op e1 e2 e3) = cAtomic op (mmCExpr mm e1)
-                                               (mmCExpr mm e2)
-                                               (mmCExpr mm e3) 
-mmSPMDC' mm (CFunc name es) = cFunc name (map (mmCExpr mm) es) 
-mmSPMDC' mm CSync           = CSync
-mmSPMDC' mm (CIf   e s1 s2) = cIf (mmCExpr mm e) (mmSPMDC mm s1) (mmSPMDC mm s2)
-mmSPMDC' mm (CFor name e s) = cFor name (mmCExpr mm e) (mmSPMDC mm s)
-mmSPMDC' mm (CWhile b s)    = cWhile (mmCExpr mm b) (mmSPMDC mm s) 
-mmSPMDC' mm CBreak = cBreak 
-mmSPMDC' mm (CDeclAssign t nom e) = cDeclAssign t nom (mmCExpr mm e)
-mmSPMDC' mm a@(CDecl t nom) = a
-mmSPMDC' mm a = error $ "mmSPMDC': " ++ show a
--} 

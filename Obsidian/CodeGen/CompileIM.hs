@@ -217,7 +217,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
+compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ -- ++ codeR
   -- New here is BLOCK virtualisation
   where
     cim = compileIM PlatformCUDA c im
@@ -230,11 +230,13 @@ compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
     codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ }|]]
                 
     bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
-            [[cstm| __syncthreads();|]]
+            [[cstm| bid = blockIdx.x;|],
+             [cstm| __syncthreads();|]] -- yes no ? 
          
-    codeR = [[cstm| bid = $exp:numBlocks * $exp:blocksQ + blockIdx.x;|], 
+    codeR = [[cstm| bid = ($exp:numBlocks * $exp:blocksQ) + blockIdx.x;|], 
              [cstm| if (blockIdx.x < $exp:blocksR) { $stms:cim }|],
-             [cstm| bid = blockIdx.x;|]]
+             [cstm| bid = blockIdx.x;|], 
+             [cstm| __syncthreads();|]] -- yes no ? 
                     
 -- Can I be absolutely sure that 'n' here is statically known ? 
 -- I must look over the functions that can potentially create this IM. 
@@ -256,11 +258,16 @@ compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR
     
     codeQ = [[cstm| for (int w = 0; w < $exp:warpsQ; ++w) { $stms:bodyQ } |]]
     
-    bodyQ = [cstm| warpID = (threadIdx.x / 32) * $exp:warpsQ + w;|] : cim 
+    bodyQ = [cstm| warpID = (threadIdx.x / 32) * $exp:warpsQ + w;|] : cim ++
+            --[cstm| warpID = w * $exp:warpsQ + (threadIdx.x / 32);|] : cim ++ 
+            [[cstm| warpID = threadIdx.x / 32;|]] 
 
-    codeR = [[cstm| warpID = $exp:numWarps * $exp:warpsQ + (threadIdx.x / 32);|],
-             [cstm| if (threadIdx.x / 32 < $exp:warpsR) { $stms:cim } |], 
-             [cstm| warpID = threadIdx.x / 32; |]]
+    codeR = case (n `mod` nWarps)  of 
+             0 -> [] 
+             n -> [[cstm| warpID = ($exp:numWarps * $exp:warpsQ)+ (threadIdx.x / 32);|],
+                   [cstm| if (threadIdx.x / 32 < $exp:warpsR) { $stms:cim } |], 
+                   [cstm| warpID = threadIdx.x / 32; |], 
+                   [cstm| __syncthreads();|]]
 
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
@@ -282,13 +289,14 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
         n -> [[cstm| for ( int vw = 0; vw < $int:q; ++vw) { $stms:body } |], 
               [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
              where 
-               body = [cstm|$id:("warpIx") =  vw*$int:nt + (threadIdx.x % 32); |] : cim
+               body = [cstm|$id:("warpIx") = vw*$int:nt + (threadIdx.x % 32); |] : cim
+               --body = [cstm|$id:("warpIx") = (threadIdx.x % 32) * q + vw; |] : cim
 
     codeR = 
       case r of 
         0 -> [] 
-        n -> [[cstm| if ((threadIdx.x % 32) < $int:n) { 
-                            $id:("warpIx") = $int:(q*nt) + (threadIdx.x % 32);  
+        n -> [[cstm| if ((threadIdx.x % 32) < $int:r) { 
+                            $id:("warpIx") = $int:(q*32) + (threadIdx.x % 32);  
                             $stms:cim } |], 
                   [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
 
@@ -321,13 +329,16 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
     goR = 
       case (r,q) of 
         (0,_) -> [] 
-        (n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
-                            $stms:cim } |]] 
+        --(n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
+        --                    $stms:cim } |]] 
         (n,m) -> [[cstm| if (threadIdx.x < $int:n) { 
                             $id:("tid") = $int:(q*nt) + threadIdx.x;  
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
- -- 
+
+compileForAll PlatformCUDA c (SForAll Grid n im) =
+  error "compileForAll: Grid"
+
 compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
   where
     body = compileIM PlatformC c im 
