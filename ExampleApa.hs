@@ -110,7 +110,7 @@ block2 arr =
 
 
 block3 :: SPull EInt32 -> SPush Block EInt32
-block3 arr = pConcat $ fmap (\a -> wJoin $ warpLocal2 a) (splitUp 100 arr)
+block3 arr = pConcat $ fmap (\a -> warpLocal2 a) (splitUp 100 arr)
 
 
 
@@ -129,7 +129,7 @@ grid3 arr = pConcat $ fmap  block3 (splitUp 500 arr)
 
 genGrid = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
    where
-      (a,im) = toProgram_ 0 grid
+      (a,im) = toProgram_ 0 grid3
       iml = computeLiveness im
       (m,mm) = mmIM iml sharedMem (M.empty)
       rim = renameIM mm iml

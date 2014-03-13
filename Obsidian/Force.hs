@@ -48,7 +48,7 @@ class (ToPush arr t, MemoryOps a, Sync t ) => Write arr a t where
 
 instance (ToPush arr Warp, MemoryOps a) => Write arr a Warp where
   unsafeWrite arr  =
-    Program $ \warpID -> 
+    Program $ \_ -> 
     do
       let p = toPush arr
       let n = len p
@@ -56,8 +56,8 @@ instance (ToPush arr Warp, MemoryOps a) => Write arr a Warp where
       moAllocateArray names n
       -- These monads need to be sorted out. What operation goes in what Monad ?
       -- Here the Program \_ is a Thread program, So It should really have a nothing argument
-      core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names warpID n a ix)) 0 -- DUMMY  
-      return $ moWarpPullFrom names warpID n
+      core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names (variable "warpID") n a ix)) 0  -- DUMMY  
+      return $ moWarpPullFrom names (variable "warpID") n
 
 instance (ToPush arr Block, MemoryOps a) => Write arr a Block where
   unsafeWrite arr = Program $ \_ -> --

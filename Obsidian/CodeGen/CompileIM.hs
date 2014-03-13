@@ -227,7 +227,7 @@ compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
     blocksQ = [cexp| $exp:(compileExp n) / $exp:numBlocks|]
     blocksR = [cexp| $exp:(compileExp n) % $exp:numBlocks|] 
     
-    codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ  __syncthreads(); }|]]
+    codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ }|]]
                 
     bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
             [[cstm| __syncthreads();|]]
@@ -240,7 +240,7 @@ compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
 -- I must look over the functions that can potentially create this IM. 
 -- Can make a separate case for unknown 'n' but generate worse code.
 -- (That is true for all levels)  
-compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ ++ codeR 
+compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR 
   -- Here the 'im' should be distributed over 'n'warps.
   -- 'im' uses a warpID variable to identify what warp it is.
   -- 'n' may be higher than the actual number of warps we have!
@@ -266,7 +266,33 @@ compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ ++ codeR
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
 compileForAll :: Platform -> Config -> Statement t -> [Stm]
-compileForAll PlatformCUDA c (SForAll lvl (IWord32 n) im) = goQ ++ goR 
+compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
+  where
+    nt = 32
+
+    q = n `div` nt
+    r = n `mod` nt
+
+    cim = compileIM PlatformCUDA c im 
+    
+    codeQ =
+      case q of
+        0 -> []
+        1 -> cim
+        n -> [[cstm| for ( int vw = 0; vw < $int:q; ++vw) { $stms:body } |], 
+              [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
+             where 
+               body = [cstm|$id:("warpIx") =  vw*$int:nt + (threadIdx.x % 32); |] : cim
+
+    codeR = 
+      case r of 
+        0 -> [] 
+        n -> [[cstm| if ((threadIdx.x % 32) < $int:n) { 
+                            $id:("warpIx") = $int:(q*nt) + (threadIdx.x % 32);  
+                            $stms:cim } |], 
+                  [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
+
+compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR 
   where
     cim = compileIM PlatformCUDA c im
    
