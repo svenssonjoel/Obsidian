@@ -217,7 +217,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ -- ++ codeR
+compileDistr PlatformCUDA c (SDistrPar Block n im) =  cim -- codeQ -- ++ codeR
   -- New here is BLOCK virtualisation
   where
     cim = compileIM PlatformCUDA c im
@@ -288,6 +288,7 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
         1 -> cim
         n -> [[cstm| for ( int vw = 0; vw < $int:q; ++vw) { $stms:body } |], 
               [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
+              -- [cstm| __syncthreads();|]]
              where 
                body = [cstm|$id:("warpIx") = vw*$int:nt + (threadIdx.x % 32); |] : cim
                --body = [cstm|$id:("warpIx") = (threadIdx.x % 32) * q + vw; |] : cim
@@ -297,7 +298,8 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
         0 -> [] 
         n -> [[cstm| if ((threadIdx.x % 32) < $int:r) { 
                             $id:("warpIx") = $int:(q*32) + (threadIdx.x % 32);  
-                            $stms:cim } |], 
+                            $stms:cim } |],
+                  -- [cstm| __syncthreads();|],
                   [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
 
 compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR 

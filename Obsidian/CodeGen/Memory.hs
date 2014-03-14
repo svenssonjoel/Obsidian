@@ -128,28 +128,47 @@ mmIM im memory memmap = r im (memory,memmap)
               (Just as) -> freeAll m' (map fst as)
               Nothing   -> m'
       in r xs (mNew,mm')
-         
-    process (SAllocate name size t,_) m mm = (m',mm') 
-      where (m',addr) = allocate m size
-            mm' = case Map.lookup name mm of
-                      Nothing -> Map.insert name (addr,t) mm
-                      (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
+mmIM' :: IML -> Memory -> MemMap -> (Memory, MemMap)
+mmIM' im memory memmap = r im (memory,memmap)
+  where
+    r [] m = m
+    r (x:xs) (m,mm) =
+      let
+          (m',mm') = process x m mm
+           
+          freeable = getFreeableSet x xs
+          freeableAddrs = mapM (flip Map.lookup mm') (filter dontMap (Set.toList freeable))
+          dontMap name = not ((List.isPrefixOf "input" name) || 
+                              (List.isPrefixOf "output" name))
+          mNew =
+            case freeableAddrs of
+              (Just as) -> m' -- freeAll m' (map fst as)
+              Nothing   -> m'
+      in r xs (mNew,mm')
+
+    
+process (SAllocate name size t,_) m mm = (m',mm') 
+  where (m',addr) = allocate m size
+        mm' = case Map.lookup name mm of
+          Nothing -> Map.insert name (addr,t) mm
+          (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
 
     -- A tricky case.                      
 --    process (SForAllBlocks n im,_) m mm = mmIM im m mm
     -- Another tricky case. 
-    process (SSeqFor _ n im,_) m mm = mmIM im m mm
-    process (SSeqWhile b im,_) m mm = mmIM im m mm 
+process (SSeqFor _ n im,_) m mm = mmIM im m mm
+process (SSeqWhile b im,_) m mm = mmIM im m mm 
     -- Yet another tricky case.
-    process (SForAll _ n im,_) m mm = mmIM im m mm
-    process (SDistrPar _ n im,_) m mm = mmIM im m mm 
+process (SForAll _ n im,_) m mm = mmIM im m mm
+process (SDistrPar Warp n im,_) m mm = mmIM' im m mm -- mmIM im m mm
+process (SDistrPar Block n im,_) m mm = mmIM im m mm 
     -- The worst of them all.
 --    process (SForAllThreads n im,_) m mm = mmIM im m mm
 --    process (SNWarps _ im,_) m mm = mmIM im m mm
 --    process (SWarpForAll _ im,_) m mm = mmIM im m mm 
 
   --  process im m mm = error $ printStm im -- "process: WHat!"
-    process (_,_) m mm = (m,mm) 
+process (_,_) m mm = (m,mm) 
 
 -- Friday (2013 Mars 29, discovered bug) 
 getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 

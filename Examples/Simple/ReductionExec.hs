@@ -36,16 +36,16 @@ performSmall =
 performLarge =
   withCUDA $
   do
-    kern <- capture 128 (reduce (+)) --  . splitUp 256) 
+    kern <- capture 256 (reduce (+)) --  . splitUp 256) 
 
-    useVector (V.fromList (P.replicate 65536 1)) $ \i -> -- [0..65535 :: Int32]) $ \i ->
-      allocaVector 256  $ \(o :: CUDAVector Int32) ->
+    useVector (V.fromList [0..65535 :: Int32]) $ \i ->
+      allocaVector (256)  $ \(o :: CUDAVector Int32) ->
         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
         do
           fill o 0 
           o <== (256,kern) <> i
-          -- o2 <== (1,kern) <> o 
+          o2 <== (1,kern) <> o 
 
-          r <- peekCUDAVector o
+          r <- peekCUDAVector o2
           lift $ putStrLn $ show r 
 
