@@ -6,7 +6,7 @@ import Obsidian
 import Prelude
 
 -- This example illustrates a problem with Mutable global arrays.
--- They currently have static size. (problem, not a porblem... i dont know)
+-- They currently have static size. (problem, not a problem... i dont know)
 -- Also there is a special mutLen function. Not nice, should be len as for any other array.
 
 histogram :: EWord32    -- blocks

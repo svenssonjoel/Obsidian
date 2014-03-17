@@ -16,7 +16,7 @@ sklanskyLocal 0 op arr = return $ push arr
 sklanskyLocal n op arr =
   do 
     let arr1 = binSplit (n-1) (fan op) arr
-    arr2 <- force arr1
+    arr2 <- force $ push arr1
     sklanskyLocal (n-1) op arr2
 
 sklansky n op = pConcatMap $ pJoin . (sklanskyLocal n op)
@@ -50,7 +50,7 @@ sklanskyLocalCin
      -> BProgram (SPush Block a)
 sklanskyLocalCin n op cin arr =
   do
-    arr' <- force $ applyToHead op cin arr 
+    arr' <- force $ push $ applyToHead op cin arr 
 
     sklanskyLocal n op arr'
   where

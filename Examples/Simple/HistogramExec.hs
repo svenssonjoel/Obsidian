@@ -37,9 +37,9 @@ performSmall =
 performLarge =
   withCUDA $
   do
-    kern <- capture 32 (histogram 256 256) 
+    kern <- capture 256 (histogram 256 256) 
 
-    useVector (V.fromList (P.replicate 65536 65533)) $ \i -> -- [0..65535 :: Word32]) $ \i ->
+    useVector (V.fromList [0..65535 :: Word32]) $ \i ->
       allocaVector 65536 $ \ (m :: CUDAVector Word32) ->
         do
           fill m 0 

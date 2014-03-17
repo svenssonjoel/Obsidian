@@ -217,7 +217,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =  cim -- codeQ -- ++ codeR
+compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
   -- New here is BLOCK virtualisation
   where
     cim = compileIM PlatformCUDA c im
