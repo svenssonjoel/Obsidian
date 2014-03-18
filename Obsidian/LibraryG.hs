@@ -53,32 +53,42 @@ generate n f = pConcat $ fmap f $ iterations n
 -- at a specific level in the Hierarchy. 
 ---------------------------------------------------------------------------
 
--- Maybe needs a typeclass 
-threads :: ASize l
-           => l
-           -> (EWord32 -> SPush Thread b)
+
+-- threads :: ASize l
+--            => l
+--            -> (EWord32 -> SPush Thread b)
+--            -> Push t l b  
+-- threads n f =
+--   mkPush (n * fromIntegral s) $ \wf -> do
+--     forAll (sizeConv n) $ \tid -> 
+--        let wf' a ix = wf a (tid * sizeConv s + ix)
+--            p = f tid 
+--        in p <: wf'
+--   where
+--     s  = len (f (variable "tid")) -- arr
+
+-- | A way to enter into the hierarchy
+-- A bunch of Thread computations, spread across the threads of either
+-- a Warp, block or grid. (or performed sequentially in a single thread (not implemneted)) 
+tConcat :: ASize l
+           => Pull l (SPush Thread b)
            -> Push t l b  
-threads n f =
+tConcat arr =
   mkPush (n * fromIntegral s) $ \wf -> do
     forAll (sizeConv n) $ \tid -> 
        let wf' a ix = wf a (tid * sizeConv s + ix)
-           p = f tid 
+           p = arr ! tid -- f tid 
        in p <: wf'
   where
-    s  = len (f (variable "tid")) -- arr
+    n = len arr
+    s  = len (arr ! 0) --(f (variable "tid")) -- arr
 
+tDistribute :: ASize l
+               => l
+               -> (EWord32 -> SPush Thread b)
+               -> Push t l b
+tDistribute n f = tConcat (mkPull n f) 
 
-
----------------------------------------------------------------------------
--- Various concatenation
----------------------------------------------------------------------------
--- Simplify the interface here by only allowing concat of (Pull (Push a)) 
-
--- type family ElementType a
--- type instance ElementType (Pull l a) = a
--- type instance ElementType (Push t l a) = a
--- type instance ElementType (Program t (Push t l a)) = a
--- type instance ElementType (Program t (Pull l a)) = a 
       
 -- | Distribute work across the parallel resources at a given level of the GPU hiearchy
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
@@ -96,50 +106,6 @@ pConcat arr =
 -- | Distribute work across the parallel resources at a given level of the GPU hierarchy
 pDistribute :: ASize l => l -> (EWord32 -> SPush t a) -> Push (Step t) l a
 pDistribute n f = pConcat (mkPull n f) 
-
-
--- class  Concat p t | p -> t where
---   pConcat ::  ASize l => Pull l (SPush t a) -> Push (Step t) l a -- (ElementType p)
-
--- instance Concat (Push t Word32 a) t where
---   pConcat = pConcatP . fmap return
- 
--- instance Concat (Program t (Push t Word32 a)) t where
---   pConcat prg = pConcatP prg
-
--- instance Pushable t => Concat (Program t (Pull Word32 a)) t where
---   pConcat prg = pConcatP (fmap (liftM push) prg) 
-
--- pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
--- pConcatP arr =
---   mkPush (n * fromIntegral rn) $ \wf ->
---     distrPar (sizeConv n) $ \bix ->
---       let bp = arr ! bix -- (Push _ p) = arr ! bix
---           wf' a ix = wf a (bix * sizeConv rn + ix)
-          
---       in do p <- bp 
---             p <: wf'
---   where
---     n  = len arr
---     rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
-
-  
--- wConcat :: SPull (SPush Warp a) -> SPush Block a
--- wConcat arr =
---   mkPush (n * fromIntegral rn) $ \wf ->
---      Program $ \ warpid -> -- Here really awkward.
---                  -- I get a warpid from Program, and one from NWarps...
---                  -- And all because Force needs to know this id on the "outside"
---                  -- Nwarps is not really a loop! it should not proive a warpID.
---       NWarps (fromIntegral n) $ \_ -> ---warpID -> 
---         let p = arr ! (variable "warpID")
---             wf' a ix = wf a (variable "warpID" * sizeConv rn + ix)
---         in core (p  <: wf') (variable "warpID")  
---   where
---     n  = len arr
---     rn = len $ (arr ! 0)  -- bit awkward. 
-    
-         
 
 -- sequential concatenation of a pull of push 
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
@@ -200,15 +166,26 @@ pUnCoalesce arr =
 local :: Program t (Push t s a) -> Push t s a 
 local = pJoin
 
-localComp :: (a -> Program t (Push t s b)) -> a -> Push t s b 
-localComp f a = local (f a) 
+-- | local lifted to functions
+local_ :: (a -> Program t (Push t s b)) -> a -> Push t s b 
+local_ f a = local (f a) 
+
+-- | local computation resulting in a pull array, converted to a push array
+localPull :: (ASize s, Pushable t) => Program t (Pull s a) -> Push t s a
+localPull = local . liftM push
+
+-- | localPull lifted to functions
+localPull_ :: (ASize s, Pushable t)
+              => (a -> Program t (Pull s b)) -> a -> Push t s b
+localPull_ f a = localPull (f a)
 
 -- | Hides the intermediate results of computing a Push array.
 pJoin ::  Program t (Push t s a) -> Push t s a
-pJoin prg = mkPush n $ \wf -> Program $ \_ -> do
-  parr <- core prg 0
-  core (parr <: wf) 0 
-  where n = len $ fst $ runPrg 0 (core prg 0) -- core hack  
+pJoin prg = mkPush n $ \wf -> do
+  parr <- prg
+  parr <: wf
+  -- It is a bit scary that I need to "evaluate" programs here. 
+  where n = len $ fst $ runPrg 0 prg
 
 pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push

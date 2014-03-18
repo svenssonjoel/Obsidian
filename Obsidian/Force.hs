@@ -49,7 +49,6 @@ class Write t where
   
 instance Write Warp where
   unsafeWritePush arr  =
-    Program $ \_ -> 
     do
       let p = arr
       let n = len p
@@ -57,18 +56,18 @@ instance Write Warp where
       moAllocateArray names n
       -- These monads need to be sorted out. What operation goes in what Monad ?
       -- Here the Program \_ is a Thread program, So It should really have a nothing argument
-      core (p <: (\a ix -> Program $ \_ -> moWarpAssignArray names (variable "warpID") n a ix)) 0  -- DUMMY  
+      p <: moWarpAssignArray names (variable "warpID") n 
       return $ moWarpPullFrom names (variable "warpID") n
 
 instance Write Block where
-  unsafeWritePush arr = Program $ \_ -> --
+  unsafeWritePush arr =
     do
       let p = arr
       (mut :: M.Mutable M.Shared a) <- M.newS p
       return $ M.pullFrom mut
 
 instance Write Thread where
-  unsafeWritePush arr = Program $ \_ -> -- 
+  unsafeWritePush arr =
     do
       let p = arr
       (snames :: Names a)  <- moNames "arr" 
@@ -77,7 +76,7 @@ instance Write Thread where
       let n = len p
     
       moAllocateArray snames  n
-      core (p <: (\a ix -> Program $ \_ -> moAssignArray snames a ix)) 0 -- DUMMY 
+      p <: moAssignArray snames 
       
       return $ moPullFrom snames n
 

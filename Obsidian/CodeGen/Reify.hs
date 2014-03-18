@@ -64,11 +64,11 @@ typeOf_ a = typeOf (Literal a)
 -- This instance is incorrect
 instance ToProgram (GProgram ()) where
   -- toProgram i prg () = toProgram $ pJoin prg
-  toProgram i prg () = ([],CG.compileStep1 (core prg 0)) -- core DUMMY hack 
+  toProgram i prg () = ([],CG.compileStep1 prg) 
   -- Needs to deal with GProgram () and GProgram (Push a), GProgram (Pull a)
   -- in different ways.
 
-  toProgram_ i prg = ([],CG.compileStep1 (core prg 0)) -- core DUMMY hack  
+  toProgram_ i prg = ([],CG.compileStep1 prg) 
   
 -- This instance might fix the problem with empty kernels being generated
 instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) where
@@ -87,7 +87,7 @@ instance Scalar a => ToProgram (Push Grid l (Exp a)) where
     let outT = Pointer $ typeOf_ (undefined :: a)
         outN = "output" ++ show i
         
-        prg = p <: (\a ix -> Program $ \_ -> assignOut outN a ix)
+        prg = p <: assignOut outN
         
         (inputs,im) = toProgram (i+1) prg a
         
@@ -105,7 +105,7 @@ instance (Scalar a, Scalar b) => ToProgram (Push Grid l (Exp a,Exp b)) where
           outN2 = "output" ++ show (i+1)
           
 
-          prg = p <: (\(a,b) ix -> Program $ \_ -> assignOut (outN1,outN2) (a,b) ix)
+          prg = p <: assignOut (outN1,outN2) 
             
           (inputs,im) = toProgram (i+2) prg a
           

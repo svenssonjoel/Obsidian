@@ -74,7 +74,7 @@ undefinedMutable v = Mutable v undefined
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: MemoryOps a => SPush Block a -> CoreProgram Block (Mutable Shared a)
+newS :: MemoryOps a => SPush Block a -> Program Block (Mutable Shared a)
 newS arr = do
   (snames :: Names a) <- moNames "arr"
   moAllocateArray snames n
@@ -91,9 +91,9 @@ newS arr = do
 writeTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
-           -> CoreProgram Block ()
+           -> Program Block ()
 writeTo (Mutable n snames) p 
-  | n <= m =  core (p <:  (\a ix -> Program $ \_ -> moAssignArray snames a ix)) 0 -- DUMMY, 
+  | n <= m =  p <: moAssignArray snames
   | otherwise = error "forceTo: Incompatible sizes" 
   where
     m = len p
@@ -103,7 +103,7 @@ writeTo (Mutable n snames) p
 forceTo :: MemoryOps a
            => Mutable Shared a
            -> Push Block Word32 a
-           -> CoreProgram Block ()
+           -> Program Block ()
 forceTo m arr =
   do
     writeTo m arr

@@ -20,7 +20,7 @@ module Obsidian.Program  (
   -- Hierarchy 
   Thread, Block, Grid, Step, Zero, Warp, 
   -- Program type
-  CoreProgram(..),
+  -- CoreProgram(..),
   Program(..), -- all exported.. for now
   TProgram, BProgram, GProgram, WProgram(..), 
 
@@ -30,7 +30,7 @@ module Obsidian.Program  (
   -- helpers
   printPrg,
   runPrg,
-  uniqueNamed, uniqueNamed_, core, 
+  uniqueNamed, uniqueNamed_,  -- core, 
 
   assign, allocate, declare,
   atomicOp, 
@@ -81,15 +81,15 @@ type Identifier = Int
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
-data CoreProgram t a where
+data Program t a where
   
-  Identifier :: CoreProgram t Identifier 
+  Identifier :: Program t Identifier 
   
   Assign :: Scalar a
             => Name
             -> [Exp Word32]
             -> (Exp a)
-            -> CoreProgram Thread ()
+            -> Program Thread ()
            
   -- 4 March 2014, Changed so that AtOp does not return a result. 
   -- Change this back later if an application requires. 
@@ -97,53 +97,53 @@ data CoreProgram t a where
               => Name        -- Array name 
               -> Exp Word32  -- Index to operate on 
               -> Atomic a    -- Atomic operation to perform 
-              -> CoreProgram Thread ()
+              -> Program Thread ()
 
   Cond :: Exp Bool
-          -> CoreProgram Thread ()
-          -> CoreProgram Thread ()
+          -> Program Thread ()
+          -> Program Thread ()
                 
   SeqWhile :: Exp Bool ->
-              CoreProgram Thread () ->
-              CoreProgram Thread () 
+              Program Thread () ->
+              Program Thread () 
               
-  Break  :: CoreProgram Thread () 
+  Break  :: Program Thread () 
 
 
   -- use threads along one level
   -- Warp, Block, Grid. 
   ForAll ::  EWord32 
-            -> (EWord32 -> CoreProgram Thread ())
-            -> CoreProgram t () -- (really atleast Step t) ! 
+            -> (EWord32 -> Program Thread ())
+            -> Program t () -- (really atleast Step t) ! 
 
   
   -- Distribute over Warps yielding a Block
   -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
-           -> (EWord32 -> CoreProgram t ())
-           -> CoreProgram (Step t) ()
+           -> (EWord32 -> Program t ())
+           -> Program (Step t) ()
            -- (really Step t -> Step (Step t) ) 
                            
-  SeqFor :: EWord32 -> (EWord32 -> CoreProgram t ())
-            -> CoreProgram t ()
+  SeqFor :: EWord32 -> (EWord32 -> Program t ())
+            -> Program t ()
 
                            
  
   --        #w          warpId     
-  --NWarps :: EWord32 -> (EWord32 -> CoreProgram Warp ()) -> CoreProgram Block () 
+  --NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
 
   --WarpForAll :: EWord32 
-  --              -> (EWord32 -> CoreProgram Thread ()) 
-  --              -> CoreProgram Warp ()
+  --              -> (EWord32 -> Program Thread ()) 
+  --              -> Program Warp ()
   -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
-  Allocate :: Name -> Word32 -> Type -> CoreProgram t () 
+  Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
-  Declare :: Name -> Type -> CoreProgram t () 
+  Declare :: Name -> Type -> Program t () 
                 
-  Sync     :: CoreProgram Block ()
+  Sync     :: Program Block ()
 
   -- Parallel composition of Programs
   -- TODO: Will I use this ? 
@@ -152,8 +152,8 @@ data CoreProgram t a where
   --       Program p () 
 
   -- Monad
-  Return :: a -> CoreProgram t a
-  Bind   :: CoreProgram t a -> (a -> CoreProgram t b) -> CoreProgram t b
+  Return :: a -> Program t a
+  Bind   :: Program t a -> (a -> Program t b) -> Program t b
 
 ---------------------------------------------------------------------------
 -- Aliases 
@@ -163,22 +163,22 @@ type WProgram = Program Warp
 type BProgram = Program Block
 type GProgram = Program Grid 
 
--- Programs are a reader monad 
-newtype Program t a = Program (EWord32 -> CoreProgram t a)
+-- -- Programs are a reader monad 
+-- newtype Program t a = Program (EWord32 -> CoreProgram t a)
 
-instance Monad (Program t )where
-    return x = Program $ \ _ -> return x
-    -- :: WProgram a -> (a -> WProgram b) -> WProgram b
-    (Program h) >>= f = Program
-                         $ \w ->
-                         do
-                           a <- h w
-                           let (Program g) = f a
-                           g w
+-- instance Monad (Program t )where
+--     return x = Program $ \ _ -> return x
+--     -- :: WProgram a -> (a -> WProgram b) -> WProgram b
+--     (Program h) >>= f = Program
+--                          $ \w ->
+--                          do
+--                            a <- h w
+--                            let (Program g) = f a
+--                            g w
 
 
-core :: Program t a -> EWord32 ->  CoreProgram t a
-core (Program f) id = f id 
+-- core :: Program t a -> EWord32 ->  CoreProgram t a
+-- core (Program f) id = f id 
 ---------------------------------------------------------------------------
 -- Helpers 
 --------------------------------------------------------------------------- 
@@ -190,19 +190,19 @@ uniqueNamed pre = do
   id <- Identifier
   return $ pre ++ show id 
 
-uniqueNamed_ pre = Program $ \_ -> do id <- Identifier
-                                      return $ pre ++ show id 
+uniqueNamed_ pre = do id <- Identifier
+                      return $ pre ++ show id 
 ---------------------------------------------------------------------------
 -- Memory 
 ---------------------------------------------------------------------------
 assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
-assign nom ix e = Program $ \_ -> Assign nom ix e 
+assign nom ix e = Assign nom ix e 
 
 allocate :: Name -> Word32 -> Type -> Program t () 
-allocate nom l t = Program $ \_ -> Allocate nom l t 
+allocate nom l t = Allocate nom l t 
 
 declare :: Name -> Type -> Program t ()
-declare nom t = Program $ \_ -> Declare nom t 
+declare nom t = Declare nom t 
 
 ---------------------------------------------------------------------------
 -- atomicOp 
@@ -212,13 +212,13 @@ atomicOp :: Scalar a
             -> Exp Word32  -- Index to operate on 
             -> Atomic a    -- Atomic operation to perform 
             -> Program Thread ()
-atomicOp nom ix atop = Program $ \_ -> AtomicOp nom ix atop 
+atomicOp nom ix atop = AtomicOp nom ix atop 
 
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
 forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program t ()
-forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
+forAll n f = ForAll n $ \ix -> f ix
   
 -- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 -- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
@@ -227,7 +227,7 @@ forAll2 :: EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
            -> Program (Step (Step t)) ()
-forAll2 b n f =  Program $ \id -> DistrPar b $ \bs -> ForAll n $ \ix -> core (f bs ix) id 
+forAll2 b n f =  DistrPar b $ \bs -> ForAll n $ \ix -> f bs ix 
 
 -- forAll2 :: EWord32
 --            -> EWord32
@@ -238,7 +238,7 @@ forAll2 b n f =  Program $ \id -> DistrPar b $ \bs -> ForAll n $ \ix -> core (f 
 distrPar :: EWord32
            -> (EWord32 -> Program t ())
            -> Program (Step t) ()
-distrPar b f = Program $ \id -> DistrPar b $ \bs -> core (f bs) id   
+distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------
 -- warpForAll 
@@ -251,31 +251,31 @@ distrPar b f = Program $ \id -> DistrPar b $ \bs -> core (f bs) id
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
 seqFor (Literal 1) f = f 0
-seqFor n f = Program $ \id -> SeqFor n $ \ix -> core (f ix) id -- return $ SeqFor n f
+seqFor n f = SeqFor n $ \ix -> f ix
 
 ---------------------------------------------------------------------------
 -- seqWhile
 ---------------------------------------------------------------------------
 seqWhile :: Exp Bool -> Program Thread () -> Program Thread ()
-seqWhile b prg = Program $ \id -> SeqWhile b (core prg id)
+seqWhile b prg = SeqWhile b prg 
 
 ---------------------------------------------------------------------------
 -- Monad
 --------------------------------------------------------------------------
-instance Monad (CoreProgram t) where
+instance Monad (Program t) where
   return = Return
   (>>=) = Bind
 
 ---------------------------------------------------------------------------
 -- Functor
 ---------------------------------------------------------------------------
-instance Functor (CoreProgram t) where
+instance Functor (Program t) where
   fmap g fa = do {a <- fa; return $ g a}
 
 ---------------------------------------------------------------------------
 -- Applicative 
 ---------------------------------------------------------------------------
-instance Applicative (CoreProgram t) where
+instance Applicative (Program t) where
   pure = return
   ff <*> fa = 
     do
@@ -295,7 +295,7 @@ instance Sync Thread where
   sync = return ()
 
 instance Sync Block where
-  sync = Program $ \_ ->  Sync
+  sync = Sync
 
 instance Sync Grid where
   sync = error "sync: not implemented on grid computations" 
@@ -304,7 +304,7 @@ instance Sync Grid where
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
 ---------------------------------------------------------------------------
-runPrg :: Int -> CoreProgram t a -> (a,Int)
+runPrg :: Int -> Program t a -> (a,Int)
 runPrg i Identifier = (i,i+1)
 
 -- Maybe these two are the most interesting cases!
@@ -318,6 +318,9 @@ runPrg i (Sync) = ((),i)
 runPrg i (ForAll n ixf) =
   let (p,i') = runPrg i (ixf (variable "tid")) 
   in  (p,i')
+runPrg i (DistrPar n f) =
+  let (p,i') = runPrg i (f (variable "DUMMY"))
+  in (p,i')
 -- What can this boolean depend upon ? its quite general!
 --  (we know p returns a ()... ) 
 runPrg i (Cond b p) = ((),i) 
@@ -336,10 +339,10 @@ runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 ---------------------------------------------------------------------------
 -- printPrg (REIMPLEMENT) xs
 ---------------------------------------------------------------------------
-printPrg :: CoreProgram t a -> String
+printPrg :: Program t a -> String
 printPrg prg = (\(_,x,_) -> x) $ printPrg' 0 prg
 
-printPrg' :: Int -> CoreProgram t a -> (a,String,Int)
+printPrg' :: Int -> Program t a -> (a,String,Int)
 printPrg' i Identifier = (i,"getId;\n",i+1) 
 printPrg' i (Assign n ix e) =
   ((),n ++ "[" ++ show ix ++ "] = " ++ show e ++ ";\n", i) 

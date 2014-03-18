@@ -135,14 +135,14 @@ usesTid = any (go . fst)
 -- COmpilation of Program to IM
 --------------------------------------------------------------------------- 
 
-compileStep1 :: Compile t => P.CoreProgram t a -> IM
+compileStep1 :: Compile t => P.Program t a -> IM
 compileStep1 p = snd $ runCM (compile ns p) emptyCtx
   where
     ns = unsafePerformIO$ newEnumSupply
 
 
 class Compile t where
-  compile :: Supply Int -> P.CoreProgram t a -> CM (a,IM)
+  compile :: Supply Int -> P.Program t a -> CM (a,IM)
 
 -- Compile Thread program 
 instance Compile P.Thread  where
@@ -217,7 +217,7 @@ instance Compile P.Grid where
 ---------------------------------------------------------------------------
 -- General compilation
 ---------------------------------------------------------------------------
-cs :: forall t a . Compile t => Supply Int -> P.CoreProgram t a -> CM (a,IM) 
+cs :: forall t a . Compile t => Supply Int -> P.Program t a -> CM (a,IM) 
 cs i P.Identifier = return $ (supplyValue i, [])
 cs i (P.Assign name ix e) =
   return $ ((),out (SAssign (IVar name (typeOf e)) (map expToIExp ix) (expToIExp e)))

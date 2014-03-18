@@ -22,7 +22,8 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        push,
                        {- pushN, -} 
                        setSize,
-                       toDynamic, 
+                       toDynamic,
+                       foldPull1, 
                        (!),
                        (<:), 
                        Array(..),
@@ -133,6 +134,13 @@ instance Indexible Pull where
 ---------------------------------------------------------------------------
 instance Array arr => Functor (arr w) where 
   fmap = aMap
+
+---------------------------------------------------------------------------
+-- Fold a pull array
+---------------------------------------------------------------------------
+foldPull1 :: (a -> a -> a) -> SPull a -> a
+foldPull1 _ (Pull 1 ixf) = ixf 0  
+foldPull1 f (Pull n ixf) = f (ixf (fromIntegral (n-1))) (foldPull1 f (Pull (n-1) ixf))
 
 ---------------------------------------------------------------------------
 -- Pushable
