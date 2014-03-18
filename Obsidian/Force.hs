@@ -21,7 +21,7 @@
 
 -}
 
-module Obsidian.Force (Write, force, unsafeForce, unsafeWritePush) where 
+module Obsidian.Force (Write, force, forcePull, unsafeForce, unsafeWritePush) where 
 
 
 import Obsidian.Program
@@ -45,7 +45,7 @@ import Control.Monad
 
 class Write t where
   unsafeWritePush :: MemoryOps a => Push t Word32 a -> Program t (Pull Word32 a)
-  unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
+  -- unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
   
 instance Write Warp where
   unsafeWritePush arr  =
@@ -89,12 +89,20 @@ force arr = do
   sync
   return rval
 
+forcePull :: (MemoryOps a, Sync t, Write t, Pushable t) 
+             => Pull Word32 a -> Program t (Pull Word32 a)  
+forcePull = unsafeForce . push 
+
 unsafeForce :: (MemoryOps a, Sync t, Write t) =>
          Push t  Word32 a -> Program t (Pull Word32 a)      
 unsafeForce arr = do
   rval <- unsafeWritePush arr
   when (len arr > 32) sync
   return rval
+
+
+
+
 
 
 

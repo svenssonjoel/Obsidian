@@ -48,53 +48,80 @@ generate :: ASize l
 generate n f = pConcat $ fmap f $ iterations n 
 
 ---------------------------------------------------------------------------
--- Various concatenation
+-- Step into the Hierarchy by distributing a
+-- Thread program parameterized on a threadId over the threads
+-- at a specific level in the Hierarchy. 
 ---------------------------------------------------------------------------
 
-type family ElementType a
-type instance ElementType (Pull l a) = a
-type instance ElementType (Push t l a) = a
-type instance ElementType (Program t (Push t l a)) = a
-type instance ElementType (Program t (Pull l a)) = a 
+-- Maybe needs a typeclass 
+threads :: ASize l
+           => l
+           -> (EWord32 -> SPush Thread b)
+           -> Push t l b  
+threads n f =
+  mkPush (n * fromIntegral s) $ \wf -> do
+    forAll (sizeConv n) $ \tid -> 
+       let wf' a ix = wf a (tid * sizeConv s + ix)
+           p = f tid 
+       in p <: wf'
+  where
+    s  = len (f (variable "tid")) -- arr
+
+
+
+---------------------------------------------------------------------------
+-- Various concatenation
+---------------------------------------------------------------------------
+-- Simplify the interface here by only allowing concat of (Pull (Push a)) 
+
+-- type family ElementType a
+-- type instance ElementType (Pull l a) = a
+-- type instance ElementType (Push t l a) = a
+-- type instance ElementType (Program t (Push t l a)) = a
+-- type instance ElementType (Program t (Pull l a)) = a 
       
-
-class  Concat p t | p -> t where
-  pConcat ::  ASize l => Pull l p -> Push (Step t) l (ElementType p)
-
-instance Concat (Push t Word32 a) t where
-  pConcat = pConcatP . fmap return
- 
---instance Pushable t => Concat (Pull Word32 a) t where -- dangerous! 
---  pConcat arr = pConcatP (fmap (return . push) arr)
-
-instance Concat (Program t (Push t Word32 a)) t where
-  pConcat prg = pConcatP prg
-
-instance Pushable t => Concat (Program t (Pull Word32 a)) t where
-  pConcat prg = pConcatP (fmap (liftM push) prg) 
-
--- ######################################################################
--- Experiment zone
--- ######################################################################
--- desired function
--- pConcat :: Pull l (Pull l1 a) -> Push ANYLEVEL l eltType
--- pConcat :: Pull l (Push t l1 a) -> Push (ANYLEVEL > level(t)) eltType
--- pConcat :: Pull l (Program t (Push t l1 a)) -> Push (ANYLEVEL > level(t)) eltType
--- pConcat :: Pull l (Program t (Pull l1 a)) -> Push (ANYLEVEL > level(t)) eltType
-  
--- ######################################################################  
-pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
-pConcatP arr =
+-- | Distribute work across the parallel resources at a given level of the GPU hiearchy
+pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
+pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
     distrPar (sizeConv n) $ \bix ->
-      let bp = arr ! bix -- (Push _ p) = arr ! bix
-          wf' a ix = wf a (bix * sizeConv rn + ix)
+      let p = arr ! bix 
+          wf' a ix = wf a (bix * sizeConv rn + ix) 
           
-      in do p <- bp 
-            p <: wf'
+      in p <: wf'
   where
     n  = len arr
-    rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
+    rn = len (arr ! 0) -- All arrays are same length
+
+-- | Distribute work across the parallel resources at a given level of the GPU hierarchy
+pDistribute :: ASize l => l -> (EWord32 -> SPush t a) -> Push (Step t) l a
+pDistribute n f = pConcat (mkPull n f) 
+
+
+-- class  Concat p t | p -> t where
+--   pConcat ::  ASize l => Pull l (SPush t a) -> Push (Step t) l a -- (ElementType p)
+
+-- instance Concat (Push t Word32 a) t where
+--   pConcat = pConcatP . fmap return
+ 
+-- instance Concat (Program t (Push t Word32 a)) t where
+--   pConcat prg = pConcatP prg
+
+-- instance Pushable t => Concat (Program t (Pull Word32 a)) t where
+--   pConcat prg = pConcatP (fmap (liftM push) prg) 
+
+-- pConcatP :: ASize l => Pull l (Program t (SPush t a)) -> Push (Step t) l a
+-- pConcatP arr =
+--   mkPush (n * fromIntegral rn) $ \wf ->
+--     distrPar (sizeConv n) $ \bix ->
+--       let bp = arr ! bix -- (Push _ p) = arr ! bix
+--           wf' a ix = wf a (bix * sizeConv rn + ix)
+          
+--       in do p <- bp 
+--             p <: wf'
+--   where
+--     n  = len arr
+--     rn = len $ fst $ runPrg 0 $ core (arr ! 0) 0 -- core hack 
 
   
 -- wConcat :: SPull (SPush Warp a) -> SPush Block a
@@ -127,7 +154,9 @@ sConcat arr =
     n  = len arr
     rn = len $ arr ! 0
 
--- pUnCoalesce adapted from Niklas branch. 
+-- pUnCoalesce adapted from Niklas branch.
+-- | Combines work that was distributed in a Coalesced way.
+-- | Applies a permutation on stores.
 pUnCoalesce :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pUnCoalesce arr =
   mkPush (n * fromIntegral rn) $ \wf ->
@@ -165,6 +194,16 @@ pUnCoalesce arr =
 -- Join 
 ---------------------------------------------------------------------------
 
+-- | A scope for a computation that uses local memory within. The input is a program that
+-- uses shared memory to compute some push array. The output is the same push array
+-- but all usage of shared memory is hidden.
+local :: Program t (Push t s a) -> Push t s a 
+local = pJoin
+
+localComp :: (a -> Program t (Push t s b)) -> a -> Push t s b 
+localComp f a = local (f a) 
+
+-- | Hides the intermediate results of computing a Push array.
 pJoin ::  Program t (Push t s a) -> Push t s a
 pJoin prg = mkPush n $ \wf -> Program $ \_ -> do
   parr <- core prg 0
@@ -174,25 +213,3 @@ pJoin prg = mkPush n $ \wf -> Program $ \_ -> do
 pJoinPush :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
 pJoinPush = pJoin . liftM push
 
-
--- wJoin for now.
--- wJoin ::  Program Warp (Push Warp s a) -> Push Warp s a
--- wJoin prg = mkPush n $ \wf -> Program $ \warpID -> do
-  
---   parr <- core prg warpID -- (prg warpID) 
---   core (parr <: wf) warpID -- DUMMY 
-
---   where n = len $ fst $ runPrg 0 (core prg 0) -- DUMMY HACK 
-
--- class PrgJoin prg t where
---   prgJoin :: prg (Push t s a) -> Push t s a
-
-
--- instance PrgJoin (Program t) t where
---   prgJoin = pJoin
-
--- instance PrgJoin WProgram Warp where
---   prgJoin (WProgram prg) = mkPush undefined $ \wf -> do -- WProgram do ? 
---     wid <- readWP
---     undefined
- 
