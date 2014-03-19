@@ -41,20 +41,56 @@ perform512 r =
         lift $ putStrLn $ show r
         lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
-performRed1_1 = perform512 mapRed1
-  
-performRed2_1 = perform512 mapRed2
 
-performRed3_1 = perform512 mapRed3
+perform4096 r = 
+  withCUDA $
+  do
+    kern <- capture 256 (r (+) . splitUp 4096)
 
-performRed4_1 = perform512 mapRed4
+    g <- lift $ newStdGen
 
-performRed5_1 = perform512 mapRed5
+    let (inputs :: [Word32]) = P.take 4096 $ randoms g
+        cpuresult = sum inputs 
+    
+    useVector (V.fromList inputs) $ \i ->
+      allocaVector 1 $ \o -> 
+      do
+        o <== (1,kern) <> i 
+        r <- peekCUDAVector o
+        lift $ putStrLn $ show r
+        lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
-allSmall = [performRed1_1, performRed2_1, performRed3_1, performRed4_1, performRed5_1]
 
-performAll = do
-  sequence_ allSmall
+
+all512 = [perform512 mapRed1,
+          perform512 mapRed2,
+          perform512 mapRed3,
+          perform512 mapRed4,
+          perform512 mapRed5,
+          perform512 mapRed6,
+          perform512 mapRed7]
+
+all4096 = [perform4096 mapRed1,
+           perform4096 mapRed2,
+           perform4096 mapRed3,
+           perform4096 mapRed4,
+           perform4096 mapRed5,
+           perform4096 mapRed6,
+           perform4096 mapRed7]
+
+           
+
+performAll512 = do
+  sequence_ all512
+
+performAll4096 = do
+  sequence_ all4096
+
+-- ######################################################################
+-- 
+-- ######################################################################
+
+
 
 -- performLarge =
 --   withCUDA $

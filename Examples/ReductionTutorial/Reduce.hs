@@ -160,28 +160,6 @@ getRed5 = putStrLn $ fst $
             (mapRed5 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
-{-
-mapRed5 f = pConcatMap $ pJoin . red5 f
-
---getKernel5 = namedPrint "kernel5" (mapKernel5 (+) . splitUp 2048 ) (input :- ())
-getRed5 = putStrLn $ fst $
-          genKernelSpecsNL 256 "kernel1"
-                           (mapRed5 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
-             
-performR5 =
-  withCUDA $
-  do
-    kern <- capture 256 (mapRed5 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
-
-    --useVector (V.fromList (P.replicate 2048 1 :: [Int32])) $ \i ->
-    useVector (V.fromList [0..2047::Int32]) $ \i ->
-      allocaVector 1 $ \(o :: CUDAVector Int32) ->
-      do
-        fill o 0
-        o <== (1,kern) <> i
-
-        r <- peekCUDAVector o
-        lift $ putStrLn $ show r
 
 ---------------------------------------------------------------------------
 -- Kernel6 More sequential work 
@@ -193,34 +171,20 @@ red6 :: MemoryOps a
            -> BProgram (SPush Block a)
 red6 f arr =
   do
-    arr' <- force $  pConcatMap (seqReduce f)
-                                (coalesce 16 arr)
-    red3 f arr' 
-  
+    arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 16 arr))
+    red3 f 2 arr' 
 
-mapRed6 f = pConcatMap $ pJoin . red6 f
+mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed6 f arr = pConcat (fmap (local_ (red6 f)) arr) 
 
---getKernel6 = namedPrint "kernel6" (mapKernel6 (+) . splitUp 2048 ) (input :- ())
 getRed6 = putStrLn $ fst $
-          genKernelSpecsNL 128 "kernel1"
-                           (mapRed6 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
-             
-performR6 =
-  withCUDA $
-  do
-    kern <- capture 128 (mapRed6 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
+          genKernelSpecsNL 256 "red6"
+            (mapRed6 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
-    --useVector (V.fromList (P.replicate 2048 1 :: [Int32])) $ \i ->
-    useVector (V.fromList [0..2047::Int32]) $ \i ->
-      allocaVector 1 $ \(o :: CUDAVector Int32) ->
-      do
-        fill o 0
-        o <== (1,kern) <> i
 
-        r <- peekCUDAVector o
-        lift $ putStrLn $ show r
+
 ---------------------------------------------------------------------------
--- Kernel7 More sequential work 
+-- Kernel7 Even more sequential work 
 ---------------------------------------------------------------------------
 
 red7 :: MemoryOps a
@@ -229,32 +193,20 @@ red7 :: MemoryOps a
            -> BProgram (SPush Block a)
 red7 f arr =
   do
-    arr' <- force $  pConcatMap (seqReduce f)
-                                (coalesce 32 arr)
-    red3 f arr' 
+    arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 32 arr))
+    red3 f 2 arr' 
   
 
-mapRed7 f = pConcatMap $ pJoin . red7 f
+mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed7 f arr = pConcat (fmap (local_ (red7 f)) arr) 
 
---getKernel7 = namedPrint "kernel7" (mapKernel7 (+) . splitUp 2048 ) (input :- ())
 getRed7 = putStrLn $ fst $
-          genKernelSpecsNL 64 "kernel1"
-                           (mapRed7 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
-             
-performR7 =
-  withCUDA $
-  do
-    kern <- capture 64 (mapRed7 (+) . splitUp 2048 :: DPull EInt32 -> DPush Grid EInt32)
+          genKernelSpecsNL 256 "red7"
+            (mapRed7 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
-    --useVector (V.fromList (P.replicate 2048 1 :: [Int32])) $ \i ->
-    useVector (V.fromList [0..2047::Int32]) $ \i ->
-      allocaVector 1 $ \(o :: CUDAVector Int32) ->
-      do
-        fill o 0
-        o <== (1,kern) <> i
 
-        r <- peekCUDAVector o
-        lift $ putStrLn $ show r
+
+{-
 ---------------------------------------------------------------------------
 -- Get all Kernels 
 ---------------------------------------------------------------------------
