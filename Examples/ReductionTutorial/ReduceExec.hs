@@ -19,21 +19,23 @@ import Control.Monad.State
 import Data.Int
 import Data.Word
 
--- I cannot get Data.Vector.Random to install (error!) 
--- import Data.Vector.Random
-import System.Random
+-- I cannot get Data.Vector.Random to install (error!)
+import System.Random.Mersenne.Pure64
+import Data.Vector.Random.Mersenne
+-- import System.Random
 
 perform512 r = 
   withCUDA $
   do
     kern <- capture 256 (r (+) . splitUp 512)
 
-    g <- lift $ newStdGen
 
-    let (inputs :: [Word32]) = P.take 512 $ randoms g
-        cpuresult = sum inputs 
+    mt <- lift $ newPureMT
+
+    let inputs = (randoms mt 512  :: V.Vector Word32) -- P.take 512 $ randoms g
+        cpuresult = V.sum inputs 
     
-    useVector (V.fromList inputs) $ \i ->
+    useVector inputs $ \i ->
       allocaVector 1 $ \o -> 
       do
         o <== (1,kern) <> i 
@@ -47,12 +49,12 @@ perform4096 r =
   do
     kern <- capture 256 (r (+) . splitUp 4096)
 
-    g <- lift $ newStdGen
+    mt <- lift $ newPureMT 
 
-    let (inputs :: [Word32]) = P.take 4096 $ randoms g
-        cpuresult = sum inputs 
+    let inputs = (randoms mt 4096 :: V.Vector Word32) -- P.take 4096 $ randoms g
+        cpuresult = V.sum inputs 
     
-    useVector (V.fromList inputs) $ \i ->
+    useVector inputs $ \i ->
       allocaVector 1 $ \o -> 
       do
         o <== (1,kern) <> i 
@@ -80,11 +82,9 @@ all4096 = [perform4096 mapRed1,
 
            
 
-performAll512 = do
-  sequence_ all512
+performAll512 = sequence_ all512
 
-performAll4096 = do
-  sequence_ all4096
+performAll4096 = sequence_ all4096
 
 -- ######################################################################
 -- Large reductions (Multiblock reductions) 
@@ -95,12 +95,12 @@ performLarge r =
   do
     kern <- capture 256 (r (+) . splitUp 512) 
 
-    g <- lift $ newStdGen
+    mt <- lift $ newPureMT 
 
-    let (inputs :: [Word32]) = P.take 262144 $ randoms g
-        cpuresult = sum inputs 
+    let inputs = (randoms mt 262144 :: V.Vector Word32) --  P.take 262144 $ randoms g
+        cpuresult = V.sum inputs 
     
-    useVector (V.fromList inputs) $ \i ->
+    useVector inputs $ \i ->
       allocaVector 512  $ \(o :: CUDAVector Word32) ->
         allocaVector 1  $ \(o2 :: CUDAVector Word32) -> 
         do
