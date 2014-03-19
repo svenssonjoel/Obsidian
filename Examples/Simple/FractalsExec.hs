@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module FractalsExec where
+module Main where
 
 import Fractals
 

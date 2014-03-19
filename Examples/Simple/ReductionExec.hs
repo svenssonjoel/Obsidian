@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ReductionExec where
+module Main where
 
 import Reduction
 

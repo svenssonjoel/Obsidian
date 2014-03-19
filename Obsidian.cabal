@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.0.1.0
+Version:        0.0.1.2
 
 
 License:                BSD3
@@ -40,7 +40,7 @@ Library
                , cuda == 0.5.0.2
              
   exposed-modules: Obsidian
-                 
+                 ,  Obsidian.Run.CUDA.Exec                    
             
   other-modules:  Obsidian.Array
                ,  Obsidian.Atomic
@@ -61,7 +61,7 @@ Library
                ,  Obsidian.CodeGen.Memory
                ,  Obsidian.CodeGen.Program
                ,  Obsidian.CodeGen.Reify 
-               ,  Obsidian.Run.CUDA.Exec 
+              
 
         
   GHC-Options: 
