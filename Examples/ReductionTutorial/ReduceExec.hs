@@ -1,7 +1,7 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ReductionExec where
+module ReduceExec where
 
 import Reduce
 
@@ -109,7 +109,7 @@ performLarge r =
           o2 <== (1,kern) <> o 
 
           r <- peekCUDAVector o2
-          lift $ putStrLn $ show $ P.take 10 r
+          lift $ putStrLn $ show r
           lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
 allLarge = [performLarge mapRed1,

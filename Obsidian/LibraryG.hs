@@ -120,6 +120,9 @@ sConcat arr =
     n  = len arr
     rn = len $ arr ! 0
 
+sDistribute :: ASize l => l -> (EWord32 -> SPush t a) -> Push t l a
+sDistribute n f = sConcat (mkPull n f) 
+
 -- pUnCoalesce adapted from Niklas branch.
 -- | Combines work that was distributed in a Coalesced way.
 -- | Applies a permutation on stores.
