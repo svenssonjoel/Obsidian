@@ -19,14 +19,14 @@ reduceLocal f arr
       arr' <- force $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
-local = pJoin
+-- local = pJoin
 
 reduceBlocks :: MemoryOps a
           => (a -> a -> a)
           -> SPull a -> SPush Block a
 reduceBlocks f arr =
   local $ do
-    imm <- force $ pConcat (fmap (reduceLocal f) (splitUp 32 arr))
+    imm <- force $ pConcat (fmap (local_ (reduceLocal f)) (splitUp 32 arr))
     reduceLocal f imm
     
 reduceGrid :: MemoryOps a

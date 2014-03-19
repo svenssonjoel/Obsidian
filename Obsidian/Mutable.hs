@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables,
-             TypeFamilies #-}
+             TypeFamilies,
+             EmptyDataDecls #-}
 
 {- Joel Svensson 2013 -}
 

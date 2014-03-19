@@ -24,7 +24,7 @@ performSmall =
     kern <- capture 128 (reduce (+)) --  . splitUp 512) 
 
     useVector (V.fromList [0..511 :: Int32]) $ \i ->
-      useVector (V.fromList (P.replicate 16 0)) $ \ o-> -- [0,0 :: Int32]) $ \ o ->
+      allocaVector 2 $ \ o -> 
       do
         o <== (1,kern) <> i 
         r <- peekCUDAVector o
@@ -39,7 +39,7 @@ performLarge =
     kern <- capture 256 (reduce (+)) --  . splitUp 256) 
 
     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
-      allocaVector (256)  $ \(o :: CUDAVector Int32) ->
+      allocaVector 256  $ \(o :: CUDAVector Int32) ->
         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
         do
           fill o 0 
@@ -49,3 +49,5 @@ performLarge =
           r <- peekCUDAVector o2
           lift $ putStrLn $ show r 
 
+
+main = performSmall 

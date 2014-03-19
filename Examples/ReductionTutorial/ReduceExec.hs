@@ -90,10 +90,17 @@ performAll4096 = sequence_ all4096
 -- Large reductions (Multiblock reductions) 
 -- ######################################################################
 
-performLarge r =
+performLarge  =
   withCUDA $
   do
-    kern <- capture 256 (r (+) . splitUp 512) 
+    kern1 <- capture 256 (mapRed1 (+) . splitUp 512)
+    kern2 <- capture 256 (mapRed2 (+) . splitUp 512)
+    kern3 <- capture 256 (mapRed3 (+) . splitUp 512)
+    kern4 <- capture 256 (mapRed4 (+) . splitUp 512)
+    kern5 <- capture 256 (mapRed5 (+) . splitUp 512)
+    kern6 <- capture 256 (mapRed6 (+) . splitUp 512)
+    kern7 <- capture 256 (mapRed7 (+) . splitUp 512)
+                                           
 
     mt <- lift $ newPureMT 
 
@@ -102,7 +109,18 @@ performLarge r =
     
     useVector inputs $ \i ->
       allocaVector 512  $ \(o :: CUDAVector Word32) ->
-        allocaVector 1  $ \(o2 :: CUDAVector Word32) -> 
+        allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
+
+        body cpuresult kern1 i o o2
+        body cpuresult kern2 i o o2
+        body cpuresult kern3 i o o2
+        body cpuresult kern4 i o o2
+        body cpuresult kern5 i o o2
+        body cpuresult kern6 i o o2
+        body cpuresult kern7 i o o2
+                                                        
+  where
+    body cpuresult kern i o o2 = 
         do
           fill o 0 
           o <== (512,kern) <> i
@@ -112,12 +130,101 @@ performLarge r =
           lift $ putStrLn $ show r
           lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
-allLarge = [performLarge mapRed1,
-            performLarge mapRed2,
-            performLarge mapRed3,
-            performLarge mapRed4,
-            performLarge mapRed5,
-            performLarge mapRed6,
-            performLarge mapRed7]
 
-performAllLarge = sequence_ allLarge
+performAllLarge = performLarge2
+
+--allLarge = [performLarge mapRed1,
+--            performLarge mapRed2,
+--            performLarge mapRed3,
+--             performLarge mapRed4,
+--             performLarge mapRed5,
+--             performLarge mapRed6,
+--             performLarge mapRed7]
+
+-- performAllLarge = sequence_ allLarge
+
+
+-- ######################################################################
+-- Experiment
+performLarge1  =
+  withCUDA $
+  do
+    kern1 <- capture 32 (mapRed1 (+) . splitUp 512)
+    kern2 <- capture 64 (mapRed1 (+) . splitUp 512)
+    kern3 <- capture 96 (mapRed1 (+) . splitUp 512)
+    kern4 <- capture 128 (mapRed1 (+) . splitUp 512)
+    kern5 <- capture 160 (mapRed1 (+) . splitUp 512)
+    kern6 <- capture 192 (mapRed1 (+) . splitUp 512)
+    kern7 <- capture 256 (mapRed1 (+) . splitUp 512)
+                                           
+
+    mt <- lift $ newPureMT 
+
+    let inputs = (randoms mt 262144 :: V.Vector Word32) --  P.take 262144 $ randoms g
+        cpuresult = V.sum inputs 
+    
+    useVector inputs $ \i ->
+      allocaVector 512  $ \(o :: CUDAVector Word32) ->
+        allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
+
+        body cpuresult kern1 i o o2
+        body cpuresult kern2 i o o2
+        body cpuresult kern3 i o o2
+        body cpuresult kern4 i o o2
+        body cpuresult kern5 i o o2
+        body cpuresult kern6 i o o2
+        body cpuresult kern7 i o o2
+                                                        
+  where
+    body cpuresult kern i o o2 = 
+        do
+          fill o 0 
+          o <== (512,kern) <> i
+          o2 <== (1,kern) <> o 
+
+          r <- peekCUDAVector o2
+          lift $ putStrLn $ show r
+          lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
+
+
+
+performLarge2  =
+  withCUDA $
+  do
+    kern1 <- capture 16 (mapRed2 (+) . splitUp 512)
+    kern2 <- capture 64 (mapRed2 (+) . splitUp 512)
+    kern3 <- capture 96 (mapRed2 (+) . splitUp 512)
+    kern4 <- capture 128 (mapRed2 (+) . splitUp 512)
+    kern5 <- capture 160 (mapRed2 (+) . splitUp 512)
+    kern6 <- capture 192 (mapRed2 (+) . splitUp 512)
+    kern7 <- capture 256 (mapRed2 (+) . splitUp 512)
+                                           
+
+    mt <- lift $ newPureMT 
+
+    let inputs = (randoms mt 262144 :: V.Vector Word32) --  P.take 262144 $ randoms g
+        cpuresult = V.sum inputs 
+    
+    useVector inputs $ \i ->
+      allocaVector 512  $ \(o :: CUDAVector Word32) ->
+        allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
+
+        body cpuresult kern1 i o o2
+        body cpuresult kern2 i o o2
+        body cpuresult kern3 i o o2
+        body cpuresult kern4 i o o2
+        body cpuresult kern5 i o o2
+        body cpuresult kern6 i o o2
+        body cpuresult kern7 i o o2
+                                                        
+  where
+    body cpuresult kern i o o2 = 
+        do
+          fill o 0 
+          o <== (512,kern) <> i
+          o2 <== (1,kern) <> o 
+
+          r <- peekCUDAVector o2
+          lift $ putStrLn $ show r
+          lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
+

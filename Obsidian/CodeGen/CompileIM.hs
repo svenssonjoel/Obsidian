@@ -476,7 +476,7 @@ compile pform config kname (params,im)
       = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
     cudabody = (if (configSharedMem config > 0)
-                then [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |]] 
+                then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
                 else []) ++
                 --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
                 --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
