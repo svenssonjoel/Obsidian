@@ -34,18 +34,18 @@ import Obsidian.Run.CUDA.Exec
 mapFusion :: SPull EInt32 -> Program Block (SPush Block EInt32)
 mapFusion arr =
   do
-    imm <- force $ (fmap (+1) . fmap (+1)) arr
-    imm1 <- force $ (fmap (+1) . fmap (+1)) imm
+    imm <- forcePull $ (fmap (+1) . fmap (+1)) arr
+    imm1 <- forcePull $ (fmap (+1) . fmap (+1)) imm
     return $ push imm1
 
-local = pJoin 
+-- local = pJoin 
 
-mapFusion' :: (Pushable t, Write Pull EInt32 t)
+mapFusion' :: (Sync t, Pushable t, Write t)
               => SPull EInt32 -> (SPush t EInt32)
 mapFusion' arr =
   local $ do
-    imm <- force $ (fmap (+1) . fmap (+1)) arr
-    imm1 <- force $ (fmap (+1) . fmap (+1)) imm
+    imm <- forcePull $ (fmap (+1) . fmap (+1)) arr
+    imm1 <- forcePull $ (fmap (+1) . fmap (+1)) imm
     return $ push imm1
 
 input1 :: DPull EInt32
@@ -86,11 +86,11 @@ performKern =
 localReverse :: Pushable t => SPull EInt32 -> SPush t EInt32
 localReverse arr = push . reverse $ arr
 
-warpLocal :: SPull EInt32 -> Program Warp (SPush Warp EInt32) 
+warpLocal :: SPull EInt32 -> SPush Warp EInt32
 warpLocal arr =
-  do
+  local ( do
    arr1 <- force $ (localReverse arr :: SPush Warp EInt32)  
-   return $ push arr1
+   return $ push arr1 )
    --arr2 <- force $ warpLocal arr1
    --arr3 <- force  $ fmap (+100)  arr2
    --return $ push $ fmap (\x -> x-100) arr3

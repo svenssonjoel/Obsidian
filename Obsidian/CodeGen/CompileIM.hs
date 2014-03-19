@@ -478,9 +478,9 @@ compile pform config kname (params,im)
     cudabody = (if (configSharedMem config > 0)
                 then [BlockDecl [cdecl| extern __shared__ typename uint8_t sbase[]; |]] 
                 else []) ++
-                [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
-                [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
-                       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
+                --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
+                --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
                 [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
                (if (usesTid im) 
                 then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]

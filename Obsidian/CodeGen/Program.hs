@@ -91,7 +91,11 @@ newtype CM a = CM (State Context a)
    deriving (Monad, MonadState Context)
 
 runCM :: CM a -> Context -> a 
-runCM (CM cm) ctx = evalState cm ctx
+--runCM (CM cm) ctx = evalState cm ctx
+runCM (CM cm) = evalState  cm 
+
+evalCM :: CM a -> Context -> (a, Context)
+evalCM (CM cm) = runState cm 
 
 setUsesTid :: CM ()
 setUsesTid = modify $ \ctx -> ctx { ctxGLBUsesTid = True } 
@@ -116,19 +120,23 @@ emptyCtx = Context Nothing False False
 usesWarps :: IMList t -> Bool
 usesWarps = any (go . fst)
   where
---    go (SWarpForAll _ _ _ _) = True
-   -- go (SWarpForAll _ _) = True
-   -- go (SNWarps _ _) = True
-  --go (SForAllBlocks _ im) = usesWarps im 
+    go (SDistrPar _ _ im) = usesWarps im 
+    go (SForAll Warp _ _) = True
     go _ = False
 
 usesTid :: IMList t -> Bool
 usesTid = any (go . fst)
   where
-  --  go (SForAll _ _ _) = True
-    go (SForAll _ _ _) = True
-    -- go (SForAllBlocks _ im) = usesTid im
-    go _ = False 
+    go (SDistrPar _ _ im) = usesTid im 
+    go (SForAll Block _ _) = True
+    go _ = False
+
+usesGid :: IMList t -> Bool
+usesGid = any (go . fst)
+  where
+    go (SForAll Grid _ _) = True
+    go _ = False
+ 
 
 
 ---------------------------------------------------------------------------

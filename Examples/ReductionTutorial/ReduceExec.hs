@@ -87,24 +87,37 @@ performAll4096 = do
   sequence_ all4096
 
 -- ######################################################################
--- 
+-- Large reductions (Multiblock reductions) 
 -- ######################################################################
 
+performLarge r =
+  withCUDA $
+  do
+    kern <- capture 256 (r (+) . splitUp 512) 
 
+    g <- lift $ newStdGen
 
--- performLarge =
---   withCUDA $
---   do
---     kern <- capture 256 (reduce (+)) --  . splitUp 256) 
+    let (inputs :: [Word32]) = P.take 262144 $ randoms g
+        cpuresult = sum inputs 
+    
+    useVector (V.fromList inputs) $ \i ->
+      allocaVector 512  $ \(o :: CUDAVector Word32) ->
+        allocaVector 1  $ \(o2 :: CUDAVector Word32) -> 
+        do
+          fill o 0 
+          o <== (512,kern) <> i
+          o2 <== (1,kern) <> o 
 
---     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
---       allocaVector (256)  $ \(o :: CUDAVector Int32) ->
---         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
---         do
---           fill o 0 
---           o <== (256,kern) <> i
---           o2 <== (1,kern) <> o 
+          r <- peekCUDAVector o2
+          lift $ putStrLn $ show $ P.take 10 r
+          lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
---           r <- peekCUDAVector o2
---           lift $ putStrLn $ show r 
+allLarge = [performLarge mapRed1,
+            performLarge mapRed2,
+            performLarge mapRed3,
+            performLarge mapRed4,
+            performLarge mapRed5,
+            performLarge mapRed6,
+            performLarge mapRed7]
 
+performAllLarge = sequence_ allLarge
