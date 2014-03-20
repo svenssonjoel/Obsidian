@@ -23,7 +23,3 @@ reconstruct blocks threads arr
 
               
 
---getReconstruct = putStrLn $ genKernel "recon" (reconstruct 256 256) (input :- ())
---  where
---    input :: DPull EWord32
---    input = undefinedGlobal (variable "X")
