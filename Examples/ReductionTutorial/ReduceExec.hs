@@ -19,10 +19,10 @@ import Control.Monad.State
 import Data.Int
 import Data.Word
 
-performSmall n r = 
+performSmall n threads r = 
   withCUDA $
   do
-    kern <- capture 256 (r (+) . splitUp n)
+    kern <- capture threads (r (+) . splitUp n)
 
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral n)
    
@@ -36,27 +36,27 @@ performSmall n r =
         lift $ putStrLn $ show r
         lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
 
-all512 = [performSmall 512 mapRed1,
-          performSmall 512 mapRed2,
-          performSmall 512 mapRed3,
-          performSmall 512 mapRed4,
-          performSmall 512 mapRed5,
-          performSmall 512 mapRed6,
-          performSmall 512 mapRed7]
+all512 = [performSmall 512 256 mapRed1,
+          performSmall 512 256 mapRed2,
+          performSmall 512 256 mapRed3,
+          performSmall 512 64 mapRed4,
+          performSmall 512 64 mapRed5,
+          performSmall 512 32 mapRed6,
+          performSmall 512 16 mapRed7]
 
-all4096 = [performSmall 4096 mapRed1,
-           performSmall 4096 mapRed2,
-           performSmall 4096 mapRed3,
-           performSmall 4096 mapRed4,
-           performSmall 4096 mapRed5,
-           performSmall 4096 mapRed6,
-           performSmall 4096 mapRed7]
+-- all4096 = [performSmall 4096 mapRed1,
+--            performSmall 4096 mapRed2,
+--            performSmall 4096 mapRed3,
+--            performSmall 4096 mapRed4,
+--            performSmall 4096 mapRed5,
+--            performSmall 4096 mapRed6,
+--            performSmall 4096 mapRed7]
 
            
 
 performAll512 = sequence_ all512
 
-performAll4096 = sequence_ all4096
+--performAll4096 = sequence_ all4096
 
 -- ######################################################################
 -- Experiment (works only for specific blks/elts combos
