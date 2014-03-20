@@ -295,3 +295,15 @@ singletonP a =
   do
     a' <- a
     wf a' 0 
+
+
+-- Danger! use only with Scalar a's 
+singletonPush :: Program t a -> SPush t a
+singletonPush prg =
+  mkPush 1 $ \wf -> do
+    a <- prg
+    forAll 1 $ \ix -> 
+      wf a 0
+-- Danger! use only with Scalar a's
+singletonPush' :: a -> SPush t a
+singletonPush' = singletonPush . return 

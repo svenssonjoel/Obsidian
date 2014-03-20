@@ -166,6 +166,11 @@ pUnCoalesce arr =
 runPush :: Program t (Push t s a) -> Push t s a
 runPush = local 
 
+runPush1 :: (a -> Program t (Push t s b)) -> a -> Push t s b
+runPush1 f a = local (f a)
+
+runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
+runPush2 f a b = local (f a b)  
 
 
 local :: Program t (Push t s a) -> Push t s a 

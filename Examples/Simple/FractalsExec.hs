@@ -23,17 +23,16 @@ import Data.ByteString as BS
 perform =
   withCUDA $
   do
-    kern <- capture 256 mandel --  . splitUp 512) 
-
+    kern <- capture 256 mandel
     
---     useVector (V.fromList (P.replicate (512*512) 0)) $ \ o-> -- [0,0 :: Int32]) $ \ o ->
     allocaVector (512*512) $ \o -> 
       do
         o <== (512,kern) 
-        r <- peekCUDAVector o
 
-        -- lift $ putStrLn $ show r 
-        lift $ BS.writeFile "fractal.out" (pack r)
+        r <- copyOut o 
+
+        -- Still going via list !!! 
+        lift $ BS.writeFile "fractal.out" (pack (V.toList r))
 
 
 

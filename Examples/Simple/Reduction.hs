@@ -19,21 +19,36 @@ reduceLocal f arr
       arr' <- force $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
+reduceLocal' :: (Sync t, MemoryOps a, Write t, Pushable t )
+               => (a -> a -> a)
+               -> SPull a
+               -> Program t a
+reduceLocal' f arr
+  | len arr == 1 = return (arr ! 0)
+  | otherwise    =
+    do
+      let (a1,a2) = halve arr
+      arr' <- force $ push $ zipWith f a1 a2
+      reduceLocal' f arr'
+
 -- local = pJoin
 
 reduceBlocks :: MemoryOps a
           => (a -> a -> a)
-          -> SPull a -> SPush Block a
+          -> SPull a -> Program Block a
 reduceBlocks f arr =
-  local $ do
-    imm <- force $ pConcat (fmap (local_ (reduceLocal f)) (splitUp 32 arr))
-    reduceLocal f imm
+    do
+      imm <- force $ pConcat (fmap body (splitUp 32 arr))
+      reduceLocal' f imm
+  where
+    body arr = singletonPush (reduceLocal' f arr)
     
 reduceGrid :: MemoryOps a
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
-reduceGrid f arr = pConcat $ fmap (reduceBlocks f) (splitUp 256 arr) 
-    
+reduceGrid f arr = pConcat $ fmap body (splitUp 256 arr) 
+    where
+      body arr = singletonPush (reduceBlocks f arr)
 
 
 reduce :: MemoryOps a

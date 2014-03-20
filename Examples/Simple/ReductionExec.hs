@@ -36,7 +36,7 @@ performSmall =
 performLarge =
   withCUDA $
   do
-    kern <- capture 256 (reduce (+)) --  . splitUp 256) 
+    kern <- capture 128 (reduce (+)) --  . splitUp 256) 
 
     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
       allocaVector 256  $ \(o :: CUDAVector Int32) ->
@@ -50,4 +50,4 @@ performLarge =
           lift $ putStrLn $ show r 
 
 
-main = performSmall 
+main = performLarge 
