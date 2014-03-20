@@ -160,29 +160,29 @@ pUnCoalesce arr =
 
 
 ---------------------------------------------------------------------------
--- Join 
+-- RunPush 
 ---------------------------------------------------------------------------
 
--- | A scope for a computation that uses local memory within. The input is a program that
--- uses shared memory to compute some push array. The output is the same push array
--- but all usage of shared memory is hidden.
+runPush :: Program t (Push t s a) -> Push t s a
+runPush = local 
+
+
+
 local :: Program t (Push t s a) -> Push t s a 
 local = pJoin
 
--- | local lifted to functions
-local_ :: (a -> Program t (Push t s b)) -> a -> Push t s b 
-local_ f a = local (f a) 
 
--- | local computation resulting in a pull array, converted to a push array
+local_ :: (a -> Program t (Push t s b)) -> a -> Push t s b 
+local_ f = local . f 
+
+
 localPull :: (ASize s, Pushable t) => Program t (Pull s a) -> Push t s a
 localPull = local . liftM push
 
--- | localPull lifted to functions
 localPull_ :: (ASize s, Pushable t)
               => (a -> Program t (Pull s b)) -> a -> Push t s b
 localPull_ f a = localPull (f a)
 
--- | Hides the intermediate results of computing a Push array.
 pJoin ::  Program t (Push t s a) -> Push t s a
 pJoin prg = mkPush n $ \wf -> do
   parr <- prg
