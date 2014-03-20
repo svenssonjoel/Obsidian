@@ -26,34 +26,35 @@ input = undefinedGlobal (variable "X")
 -- Kernel1  (Thread acceses element tid and tid+1 
 ---------------------------------------------------------------------------
 
+-- red1 :: MemoryOps a
+--       => (a -> a -> a)
+--       -> SPull a
+--       -> BProgram (SPush Block a)
+-- red1 f arr
+--   | len arr == 1 = return (push arr)
+--   | otherwise    = 
+--     do
+--       let (a1,a2) = evenOdds arr
+--       arr' <- forcePull (zipWith f a1 a2)
+--       red1 f arr'   
+
+
 red1 :: MemoryOps a
       => (a -> a -> a)
       -> SPull a
-      -> BProgram (SPush Block a)
+      -> BProgram a
 red1 f arr
-  | len arr == 1 = return (push arr)
+  | len arr == 1 = return (arr ! 0)
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      arr' <- forcePull (zipWith f a1 a2)
-      red1 f arr'   
-
-
--- Alternative way of describing the same reduction 
-red1' :: MemoryOps a
-      => (a -> a -> a)
-      -> SPull a
-      -> BProgram (SPull a)
-red1' f arr
-  | len arr == 1 = return arr
-  | otherwise    = 
-    do
-      let (a1,a2) = evenOdds arr
-      arr' <- forcePull $ zipWith f a1 a2
-      red1' f arr'   
+      imm <- forcePull $ zipWith f a1 a2
+      red1 f imm   
 
 mapRed1 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed1 f arr = pConcat (fmap (local_ (red1 f)) arr) 
+mapRed1 f arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (red1 f arr) 
 
 getRed1 = putStrLn $ fst $
           genKernelSpecsNL 256 "red1"
@@ -67,9 +68,9 @@ getRed1 = putStrLn $ fst $
 red2 :: MemoryOps a
            => (a -> a -> a)
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red2 f arr
-  | len arr == 1 = return $ push arr
+  | len arr == 1 = return $ (arr ! 0) 
   | otherwise    = 
     do
       let (a1,a2) = halve arr
@@ -77,7 +78,9 @@ red2 f arr
       red2 f arr'   
 
 mapRed2 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed2 f arr = pConcat (fmap (local_ (red2 f)) arr) 
+mapRed2 f arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (red2 f arr)
 
 getRed2 = putStrLn $ fst $
           genKernelSpecsNL 256 "red2"
