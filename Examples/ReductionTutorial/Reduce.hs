@@ -95,10 +95,10 @@ red3 :: MemoryOps a
            => (a -> a -> a)
            -> Word32 
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red3 f cutoff arr
   | len arr == cutoff =
-    return $ push $ singleton $ foldPull1 f arr -- (arr ! 0) (arr ! 1) 
+    return (foldPull1 f arr) 
   | otherwise = 
     do
       let (a1,a2) = halve arr
@@ -107,7 +107,9 @@ red3 f cutoff arr
 
 
 mapRed3 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed3 f arr = pConcat (fmap (local_ (red3 f 2)) arr) 
+mapRed3 f arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (red3 f 2 arr)
 
 getRed3 = putStrLn $ fst $
           genKernelSpecsNL 256 "red3"
@@ -125,14 +127,16 @@ getRed3 = putStrLn $ fst $
 red4 :: MemoryOps a
            => (a -> a -> a)
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red4 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f) (splitUp 8 arr)))
     red3 f 2 arr' 
 
 mapRed4 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed4 f arr = pConcat (fmap (local_ (red4 f)) arr) 
+mapRed4 f arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (red4 f arr) 
 
 getRed4 = putStrLn $ fst $
           genKernelSpecsNL 256 "red4"
@@ -147,7 +151,7 @@ getRed4 = putStrLn $ fst $
 red5 :: MemoryOps a
            => (a -> a -> a)
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red5 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f)
@@ -156,7 +160,9 @@ red5 f arr =
   
 
 mapRed5 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed5 f arr = pConcat (fmap (local_ (red5 f)) arr) 
+mapRed5 f arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (red5 f arr) 
 
 getRed5 = putStrLn $ fst $
           genKernelSpecsNL 256 "red5"
@@ -171,14 +177,16 @@ getRed5 = putStrLn $ fst $
 red6 :: MemoryOps a
            => (a -> a -> a)
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red6 f arr =
   do
     arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 16 arr))
     red3 f 2 arr' 
 
 mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed6 f arr = pConcat (fmap (local_ (red6 f)) arr) 
+mapRed6 f arr = pConcat (fmap body arr) 
+  where
+    body arr = singletonPush (red6 f arr) 
 
 getRed6 = putStrLn $ fst $
           genKernelSpecsNL 256 "red6"
@@ -193,7 +201,7 @@ getRed6 = putStrLn $ fst $
 red7 :: MemoryOps a
            => (a -> a -> a)
            -> SPull a
-           -> BProgram (SPush Block a)
+           -> BProgram a
 red7 f arr =
   do
     arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 32 arr))
@@ -201,7 +209,9 @@ red7 f arr =
   
 
 mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed7 f arr = pConcat (fmap (local_ (red7 f)) arr) 
+mapRed7 f arr = pConcat (fmap body arr) 
+  where
+    body arr = singletonPush (red7 f arr)
 
 getRed7 = putStrLn $ fst $
           genKernelSpecsNL 256 "red7"
