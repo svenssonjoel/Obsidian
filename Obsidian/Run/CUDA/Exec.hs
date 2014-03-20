@@ -41,7 +41,8 @@ import qualified Data.Map as M
 import Data.Maybe
 
 import System.IO.Unsafe
-import System.Process 
+import System.Process
+import System.Random.MWC  
 
 import Control.Monad.State
 
@@ -49,6 +50,11 @@ import Control.Monad.State
 
 debug = False
 
+---------------------------------------------------------------------------
+-- Tools 
+---------------------------------------------------------------------------
+mkRandomVec :: forall a.(V.Storable a, Variate a) => Int -> IO (V.Vector a)
+mkRandomVec k = withSystemRandom $ \g -> uniformVector g k :: IO (V.Vector a) 
 
 ---------------------------------------------------------------------------
 -- An array located in GPU memory
