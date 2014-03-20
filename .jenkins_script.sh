@@ -16,6 +16,7 @@ cd Examples/Simple
 cabal sandbox init --sandbox=../../.cabal-sandbox
 cabal install .
 
-cd Examples/ReductionTutorial
+
+cd ../ReductionTutorial
 cabal sandbox init --sandbox=../../.cabal-sandbox 
 cabal install . 
