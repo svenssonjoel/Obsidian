@@ -1,7 +1,7 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ReduceExec where
+module Main where
 
 import Reduce
 
