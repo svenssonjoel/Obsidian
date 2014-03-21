@@ -8,10 +8,8 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {- LANGUAGE UndecidableInstances -} -- remove
 
-{- 2013
-   Joel Svensson
-   Niklas Ulvinge
--} 
+-- 2013 - 2014 Joel Svensson
+-- 2013 Niklas Ulvinge
 
 module Obsidian.LibraryG where
 
@@ -142,20 +140,20 @@ pUnCoalesce arr =
 ---------------------------------------------------------------------------
 -- load 
 ---------------------------------------------------------------------------
--- load :: ASize l => Word32 -> Pull l a -> Push Block l a 
--- load n arr =
---   mkPush m $ \wf ->
---   forAll (sizeConv n') $ \tid ->
---   do
---     seqFor (fromIntegral n) $ \ix -> 
---       wf (arr ! (tid + (ix*n'))) (tid + (ix*n')) 
+load :: ASize l => Word32 -> Pull l a -> Push Block l a 
+load n arr =
+  mkPush m $ \wf ->
+  forAll (sizeConv n') $ \tid ->
+  do
+    seqFor (fromIntegral n) $ \ix -> 
+      wf (arr ! (tid + (ix*n'))) (tid + (ix*n')) 
 
---   where
---     m = len arr
---     n' = sizeConv m `div` fromIntegral n
+  where
+    m = len arr
+    n' = sizeConv m `div` fromIntegral n
 
--- store :: ASize l => Word32 -> Pull l a -> Push Block l a 
--- store = load 
+store :: ASize l => Word32 -> Pull l a -> Push Block l a 
+store = load 
 
 
 

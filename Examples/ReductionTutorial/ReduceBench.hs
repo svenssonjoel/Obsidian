@@ -26,6 +26,18 @@ import System.Exit
 
 import Data.IORef
 
+import Data.Time.Clock
+
+-- ######################################################################
+-- Tools
+-- ######################################################################
+cyclesPerSecond :: IO Word64
+cyclesPerSecond = do
+  t1 <- rdtsc
+  --threadDelay 10
+  t2 <- rdtsc
+  return $ t2 - t1
+
 
 -- ######################################################################
 -- Main
@@ -79,6 +91,7 @@ runBenchmark kern t elts =
         do
           fill o 0
         
+<<<<<<< HEAD
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
           forM_ [0..999] $ \_ ->
@@ -86,8 +99,25 @@ runBenchmark kern t elts =
           cnt1 <- lift rdtsc
           t1   <- lift getCurrentTime
 
+=======
+
+          t <- lift $ newIORef (0 :: Word64)
+
+          ct0 <- lift getCurrentTime
+          forM_ [0..999] $ \_ ->
+            do 
+              t0 <- o <==! (blcks,kern) <> i
+              lift $ modifyIORef' t (\i -> i + t0) 
+          ct1 <- lift getCurrentTime
+    
+>>>>>>> 2a9649dd0af388fc298731ccb8ef942046b72489
           r <- peekCUDAVector o
           when (sum r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
 
+<<<<<<< HEAD
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+=======
+          t_tot <- lift $  readIORef t 
+          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime ct1 ct0)   -- ++ show t_tot 
+>>>>>>> 2a9649dd0af388fc298731ccb8ef942046b72489
