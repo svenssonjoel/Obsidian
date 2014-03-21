@@ -94,7 +94,7 @@ runBenchmark kern t elts =
 
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
-          forM_ [0..999] $ \_ ->
+          forM_ [0..999] $ \_ -> do 
             o <== (blcks,kern) <> i
             syncAll
           cnt1 <- lift rdtsc
