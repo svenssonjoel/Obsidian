@@ -157,7 +157,7 @@ runBenchmark kern t elts =
     body cpuresult kern i o = 
         do
           fill o 0
-          -- t1 <- lift $ rdtsc
+        
 
           t <- lift $ newIORef (0 :: Word64)
           
@@ -167,15 +167,9 @@ runBenchmark kern t elts =
               lift $ modifyIORef t (\i -> i + t0) 
 
 
+          r <- peekCUDAVector o
+          when (sum r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
+        
+
           t_tot <- lift $  readIORef t 
           lift $ putStrLn $ "SELFTIMED: " ++ show t_tot -- (t2 - t1) 
-              
-          -- t2 <- lift $ rdtsc
-    
-          
-          r <- peekCUDAVector o
-          --lift $ putStrLn $ show (P.take 10 r) 
-          --r <- peekCUDAVector o2
-          --lift $ putStrLn $ show r
-          when (sum r /= cpuresult) $ exitWith (ExitFailure 1) 
-          -- lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((sum r) == cpuresult)
