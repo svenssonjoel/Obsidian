@@ -111,7 +111,13 @@ performLarge blcks elts r  =
 -- Main
 -- ######################################################################
 
-kernels = [("r1", mapRed1 (+))] 
+kernels = [("r1", mapRed1 (+))
+          ,("r2", mapRed2 (+))
+          ,("r3", mapRed3 (+))
+          ,("r4", mapRed4 (+))
+          ,("r5", mapRed5 (+))
+          ,("r6", mapRed6 (+))
+          ,("r7", mapRed7 (+))] 
 
 main = do
   args <- getArgs
