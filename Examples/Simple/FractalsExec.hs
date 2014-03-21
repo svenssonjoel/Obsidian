@@ -27,7 +27,7 @@ perform =
     
     allocaVector (512*512) $ \o -> 
       do
-        o <== (512,kern) 
+        o <== (1024,kern) 
 
         r <- copyOut o 
 

@@ -73,17 +73,17 @@ iters bid tid =
   where
     extract (_,_,c) = ((w32ToW8 c) `mod` 16) * 16
 
-
-genRect :: forall b. MemoryOps b
+genRect :: MemoryOps b
            => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
 genRect bs ts p = generate bs $
-                  \bid -> (tDistribute ts $ p bid  :: SPush Block b)
+                  \bid -> (tDistribute ts $ p bid)
+
 
 mandel = genRect 512 512 (runPush2 iters)  
-
+        
 getMandel = putStrLn $
             fst $
             genKernelSpecsNL 512 "mandel" mandel
