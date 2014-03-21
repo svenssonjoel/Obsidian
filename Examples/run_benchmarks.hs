@@ -36,6 +36,7 @@ all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
   [ 
      -- mkBenchmark "test/bench-add-vector.kfc" [] defaultCfgSpc
+     mkBenchmark "ReductionTutorial/Reduce.cabal" ["r1","128","256"] defaultCfgSpc
   ]
 
 -- | Default configuration space over which to vary settings:
