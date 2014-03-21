@@ -204,7 +204,7 @@ instance Scalar a => KernelO (CUDAVector a) where
 --     lift $ CUDA.sync
 --     t2 <- lift rdtsc
 --     return (t2 - t1) 
-
+syncAll :: CUDA () 
 syncAll = lift $ CUDA.sync
 
 -- Tweak these 
