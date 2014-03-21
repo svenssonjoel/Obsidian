@@ -49,7 +49,8 @@ cabal-version:       >=1.10
 --executable Simple
 
 executable Reduce.exe 
-  main-is: ReduceExec.hs 
+--  main-is: ReduceExec.hs 
+  main-is: ReduceBench.hs 
   
   other-extensions: ScopedTypeVariables
                   , MultiParamTypeClasses
@@ -66,7 +67,7 @@ executable Reduce.exe
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.0.1.3
-             
+               , rdtsc >= 1.3, time >= 1.4
   -- Directories containing source files.
   -- hs-source-dirs:      
   

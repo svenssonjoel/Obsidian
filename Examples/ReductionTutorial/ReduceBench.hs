@@ -20,7 +20,8 @@ import Data.Int
 import Data.Word
 
 import System.Environment
-import System.CPUTime.Rdtsc
+import System.CPUTime.Rdtsc (rdtsc)
+import Data.Time.Clock (getCurrentTime, diffUTCTime)
 import System.Exit
 
 import Data.IORef
@@ -39,6 +40,7 @@ kernels = [("r1", mapRed1 (+))
           ,("r7", mapRed7 (+))] 
 
 main = do
+  putStrLn "Running reduction benchmark..." 
   args <- getArgs
   when (length args > 3 || length args < 3) $
     do
@@ -77,18 +79,15 @@ runBenchmark kern t elts =
         do
           fill o 0
         
-
-          t <- lift $ newIORef (0 :: Word64)
-          
+          t0   <- lift getCurrentTime
+          cnt0 <- lift rdtsc
           forM_ [0..999] $ \_ ->
-            do 
-              t0 <- o <==! (blcks,kern) <> i
-              lift $ modifyIORef t (\i -> i + t0) 
-
+            o <== (blcks,kern) <> i
+          cnt1 <- lift rdtsc
+          t1   <- lift getCurrentTime
 
           r <- peekCUDAVector o
           when (sum r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
-        
 
-          t_tot <- lift $  readIORef t 
-          lift $ putStrLn $ "SELFTIMED: " ++ show t_tot 
+          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+          lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)

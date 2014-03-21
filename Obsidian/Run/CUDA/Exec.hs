@@ -44,6 +44,7 @@ import System.IO.Unsafe
 import System.Process
 import System.Random.MWC
 import System.CPUTime.Rdtsc
+import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 import Control.Monad.State
 
@@ -185,6 +186,8 @@ instance Scalar a => KernelO (CUDAVector a) where
       Nothing -- stream
       (ktInputs k ++ ktOutput k) -- params    
 
+-- | A variant that returns kernel timing information as well.
+-- TODO: We probably can remove this:
 (<==!) :: KernelO b => b -> (Word32, KernelT (KOutput b)) -> CUDA Word64
 (<==!) o (nb,kern) =
   do
