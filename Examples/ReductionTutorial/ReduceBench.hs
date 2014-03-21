@@ -177,4 +177,5 @@ runBenchmark kern t elts =
           --lift $ putStrLn $ show (P.take 10 r) 
           --r <- peekCUDAVector o2
           --lift $ putStrLn $ show r
-          lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((sum r) == cpuresult)
+          when (sum r /= cpuresult) $ exitWith (ExitFailure 1) 
+          -- lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((sum r) == cpuresult)
