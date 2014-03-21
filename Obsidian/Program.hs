@@ -16,6 +16,7 @@
 
 
 
+
 module Obsidian.Program  (
   -- Hierarchy 
   Thread, Block, Grid, Step, Zero, Warp, 
@@ -61,9 +62,11 @@ import Control.Applicative
 -- Thread/Block/Grid 
 ---------------------------------------------------------------------------
 
+
+
 -- A hierarchy! 
 data Step a -- A step in the hierarchy
-data Zero
+data Zero 
   
 type Thread = Zero
 type Warp   = Step Thread

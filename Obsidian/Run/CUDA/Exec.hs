@@ -41,7 +41,9 @@ import qualified Data.Map as M
 import Data.Maybe
 
 import System.IO.Unsafe
-import System.Process 
+import System.Process
+import System.Random.MWC
+import System.CPUTime.Rdtsc
 
 import Control.Monad.State
 
@@ -49,6 +51,11 @@ import Control.Monad.State
 
 debug = False
 
+---------------------------------------------------------------------------
+-- Tools 
+---------------------------------------------------------------------------
+mkRandomVec :: forall a.(V.Storable a, Variate a) => Int -> IO (V.Vector a)
+mkRandomVec k = withSystemRandom $ \g -> uniformVector g k :: IO (V.Vector a) 
 
 ---------------------------------------------------------------------------
 -- An array located in GPU memory
@@ -178,9 +185,26 @@ instance Scalar a => KernelO (CUDAVector a) where
       Nothing -- stream
       (ktInputs k ++ ktOutput k) -- params    
 
+(<==!) :: KernelO b => b -> (Word32, KernelT (KOutput b)) -> CUDA Word64
+(<==!) o (nb,kern) =
+  do
+    let k = addOutParam kern o
+    t1 <- lift rdtsc 
+    lift $ CUDA.launchKernel
+      (ktFun k)
+      (fromIntegral nb,1,1)
+      (fromIntegral (ktThreadsPerBlock k), 1, 1)
+      (fromIntegral (ktSharedBytes k))
+      Nothing -- stream
+      (ktInputs k ++ ktOutput k) -- params
+    lift $ CUDA.sync
+    t2 <- lift rdtsc
+    return (t2 - t1) 
+
 -- Tweak these 
 infixl 4 <>
 infixl 3 <==
+infixl 3 <==!
 
 ---------------------------------------------------------------------------
 -- Execute a kernel that has no Output ( a -> GProgram ()) KernelT (GProgram ()) 

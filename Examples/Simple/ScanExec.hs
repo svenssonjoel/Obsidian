@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ScanExec where
+module Main where
 
 import Scan
 

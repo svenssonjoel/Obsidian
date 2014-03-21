@@ -20,7 +20,7 @@ import Data.Word
 perform =
   withCUDA $
   do
-    kern <- capture 256 (reconstruct 256 256)
+    kern <- capture 256 (reconstruct 1 256)
 
 
     -- input needs to be "one longer" (hence 256) 

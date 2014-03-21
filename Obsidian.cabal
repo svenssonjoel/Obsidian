@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.0.1.0
+Version:        0.0.1.3
 
 
 License:                BSD3
@@ -36,11 +36,13 @@ Library
                , language-c-quote == 0.7.2
                , mainland-pretty == 0.2.6
                , process == 1.1.0.2
-               , vector == 0.10.0.1
+               , vector == 0.10.9.1
+               , mwc-random == 0.13.1.1 
                , cuda == 0.5.0.2
+               , rdtsc == 1.3.0.0
              
   exposed-modules: Obsidian
-                 
+                 ,  Obsidian.Run.CUDA.Exec                    
             
   other-modules:  Obsidian.Array
                ,  Obsidian.Atomic
@@ -61,7 +63,7 @@ Library
                ,  Obsidian.CodeGen.Memory
                ,  Obsidian.CodeGen.Program
                ,  Obsidian.CodeGen.Reify 
-               ,  Obsidian.Run.CUDA.Exec 
+              
 
         
   GHC-Options: 
