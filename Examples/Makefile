@@ -13,5 +13,5 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 	cabal sandbox init
 	(cd ReductionTutorial; cabal sandbox init --sandbox=../.cabal-sandbox/)
 	(cd Simple; cabal sandbox init --sandbox=../.cabal-sandbox/)
-	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher -j 
+	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher -j --reinstall
 	cabal install --bindir=. --program-suffix=.exe
