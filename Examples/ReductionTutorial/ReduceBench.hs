@@ -23,6 +23,8 @@ import System.Environment
 import System.CPUTime.Rdtsc
 import System.Exit
 
+import Data.IORef
+
 performSmall n threads r = 
   withCUDA $
   do
@@ -137,28 +139,36 @@ runBenchmark kern t elts =
 
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (blcks * elts))
     
-    --let cpuresult = V.sum inputs 
+    let cpuresult = V.sum inputs 
     
     useVector inputs $ \i ->
       allocaVector (fromIntegral blcks)  $ \(o :: CUDAVector Word32) ->
-        body capt i o
+        body cpuresult capt i o
         --allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
                                                         
   where
     blcks = 8192
-    body kern i o = 
+    body cpuresult kern i o = 
         do
           fill o 0
-          t1 <- lift $ rdtsc
+          -- t1 <- lift $ rdtsc
 
-          -- forM_ [0..999] $ \_ ->
-          o <== (blcks,kern) <> i
+          t <- lift $ newIORef (0 :: Word64)
+          
+          forM_ [0..999] $ \_ ->
+            do 
+              t0 <- o <==! (blcks,kern) <> i
+              lift $ modifyIORef t (\i -> i + t0) 
 
-          t2 <- lift $ rdtsc
 
-          lift $ putStrLn $ "SELFTIMED: " ++ show (t2 - t1) 
-          -- r <- peekCUDAVector o
+          t_tot <- lift $  readIORef t 
+          lift $ putStrLn $ "SELFTIMED: " ++ show t_tot -- (t2 - t1) 
+              
+          -- t2 <- lift $ rdtsc
+    
+          
+          r <- peekCUDAVector o
           --lift $ putStrLn $ show (P.take 10 r) 
           --r <- peekCUDAVector o2
           --lift $ putStrLn $ show r
-          --lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((r P.!! 0) == cpuresult)
+          lift $ putStrLn $ "compare CPU GPU results equal?: " ++ show ((sum r) == cpuresult)
