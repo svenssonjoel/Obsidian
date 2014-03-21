@@ -45,7 +45,16 @@ segmentedScan segSize vec | V.length vec == segSize = V.scanl1 (+) vec
                           | V.length vec < segSize = error "Incorrect vector size"
 segmentedScan segSize vec = V.scanl1 (+) (V.take segSize vec) V.++
                             segmentedScan segSize (V.drop segSize vec) 
-  
+
+
+
+-- ######################################################################
+-- Kernels
+-- ######################################################################
+kernels = [("s1", mapScan1)
+          ,("s2", mapScan2)
+          ,("s3", mapScan3)] 
+
        
 -- ######################################################################
 -- Main
@@ -54,18 +63,25 @@ main = do
 
   putStrLn "Running scan benchmark..."
   args <- getArgs
-  when (length args /=  2) $
+  when (length args /=  3) $
     do
-      putStrLn "Provide 2 args: ThreadsPerBlock, ElementsPerBlock" 
+      putStrLn "Provide 3 args: ThreadsPerBlock, ElementsPerBlock" 
       exitWith (ExitFailure 1)
-  let t = read $ args P.!! 0
-      e = read $ args P.!! 1
-      blcks = 8192
+  let k = args P.!! 0 
+      t = read $ args P.!! 1
+      e = read $ args P.!! 2
+      blcks = 2
 
   let eLog = fromIntegral $ imLog 2 (fromIntegral e) 
   
   withCUDA $ do
-    capt <- capture t (mapScan eLog (+) . splitUp e)
+
+    capt <- case (lookup k kernels) of
+      Nothing ->
+        do lift $ putStrLn "Incorrect kernel"
+           lift $ exitWith (ExitFailure 1)
+      Just kern -> capture t (kern eLog (+) . splitUp e)
+    -- capt <- 
 
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
     let cpuresult = segmentedScan (fromIntegral e) (V.map (`mod` 32) inputs)
@@ -86,7 +102,7 @@ main = do
 
 
         
-        r <- copyOut o -- peekCUDAVector o
+        r <- copyOut o 
         
         --lift $ putStrLn $ show r
         --lift $ putStrLn $ show cpuresult
@@ -94,8 +110,8 @@ main = do
 
         -- Computing the cpuresults take a long time!
         -- I implemented a bad cpu segmented scan (uses V.++) 
-        --lift $ putStrLn "Done: ... Comparing to CPU result" 
-        --when (r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
+        lift $ putStrLn "Done: ... Comparing to CPU result" 
+        when (r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
         
         
         lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
