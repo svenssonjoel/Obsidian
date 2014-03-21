@@ -94,7 +94,7 @@ main = do
 
         t0   <- lift getCurrentTime
         cnt0 <- lift rdtsc
-        forM_ [1] $ \_ -> do
+        forM_ [0..999] $ \_ -> do
           o <== (blcks,capt) <> i
           syncAll
         cnt1 <- lift rdtsc
