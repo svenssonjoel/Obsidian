@@ -1,0 +1,3 @@
+[submodule "HSBencher"]
+	path = HSBencher
+	url = git@github.com:rrnewton/HSBencher.git
