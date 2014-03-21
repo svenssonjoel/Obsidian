@@ -101,7 +101,7 @@ sklansky :: (Choice a, MemoryOps a)
             -> (a -> a -> a)
             -> SPull a
             -> BProgram (SPush Block a)
-sklansky 0 op arr = return $ push arr
+sklansky 0 op arr = return (push arr)
 sklansky n op arr =
   do 
     let arr1 = binSplit (n-1) (fan op) arr
