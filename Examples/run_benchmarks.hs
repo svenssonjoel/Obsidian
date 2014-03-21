@@ -34,11 +34,10 @@ main = defaultMainModifyConfig myconf
 
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
-  [ 
-     -- mkBenchmark "test/bench-add-vector.kfc" [] defaultCfgSpc
-     mkBenchmark "ReductionTutorial/Reduce.cabal" ["r1","128","256"] defaultCfgSpc,
-     mkBenchmark "ReductionTutorial/Reduce.cabal" ["r2","128","256"] defaultCfgSpc,
-     mkBenchmark "ReductionTutorial/Reduce.cabal" ["r3","128","256"] defaultCfgSpc
+  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
+  | variant     <- ["r1", "r2", "r3"]
+  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
+  , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ]
 
 -- | Default configuration space over which to vary settings:
