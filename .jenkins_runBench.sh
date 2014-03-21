@@ -13,6 +13,9 @@ fi
 if [ -f "$HOME/continuous_testing_setup/rn_jenkins_scripts/acquire_ghc.sh" ]; then
   source $HOME/continuous_testing_setup/rn_jenkins_scripts/acquire_ghc.sh
 fi
+if [ -f "$HOME/continuous_testing_setup/rn_jenkins_scripts/acquire_cuda.sh" ]; then
+  source $HOME/continuous_testing_setup/rn_jenkins_scripts/acquire_cuda.sh
+fi
 
 echo "Running benchmarks remotely on server `hostname`"
 set -x
