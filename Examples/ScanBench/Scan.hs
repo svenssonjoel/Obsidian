@@ -120,8 +120,8 @@ fan op arr =  a1 `conc`  fmap (op c) a2
 
 pushM = liftM push
 
-mapScan :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan n f arr = pConcat (fmap body arr)
+mapScan1 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan1 n f arr = pConcat (fmap body arr)
   where
     body arr = runPush (sklansky n f arr)
 
@@ -208,6 +208,7 @@ scan f a global =
 
 mapScan1 f a = pConcatMap $ scan f a
 
+
 --getScan1 = namedPrint "scan" (mapScan1 (+) 0 . splitUp 4096) (input :- ())
 
 
@@ -268,6 +269,7 @@ doubleScan f (c1,c2) arr = concP o1 o2
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
+-} 
 
 phase :: Int -> (a -> a -> a) -> SPull a -> SPush Block a
 phase i f arr =
@@ -289,7 +291,7 @@ sklansky2
      Int
      -> (a -> a -> a)
      -> Pull Word32 a
-     -> Program Block (Push Block Word32 a)
+     -> Program Block (SPush Block a)
 sklansky2 l f = compose [phase i f | i <- [0..(l-1)]]
   
 compose :: MemoryOps a
@@ -319,8 +321,11 @@ oneBits i = (2^i) - 1
 
 
 mapScan2 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan2 n f = pConcatMap $ sklansky2 n f
+mapScan2 n f arr = pConcat $ fmap body arr  -- sklansky2 n f
+    where
+      body arr = runPush (sklansky2 n f arr)
 
+ 
 
 -- getScan2 n = namedPrint ("scanB" ++ show (2^n))  (mapScan2 n (+) . splitUp (2^n)) (input :- ())
 
@@ -340,8 +345,10 @@ sklansky3 l f arr =
 
 
 mapScan3 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan3 n f = pConcatMap $ sklansky3 n f
+mapScan3 n f arr = pConcat (fmap body arr)
+  where
+    body arr = runPush (sklansky3 n f arr)
 
 
 --getScan3 n = namedPrint ("scanC" ++ show (2^n))  (mapScan3 n (+) . splitUp (2^n)) (input :- ())
--} 
+ 

@@ -140,19 +140,19 @@ pUnCoalesce arr =
 ---------------------------------------------------------------------------
 -- load 
 ---------------------------------------------------------------------------
-load :: ASize l => Word32 -> Pull l a -> Push Block l a 
+load :: Word32 -> SPull a -> SPush Block a 
 load n arr =
   mkPush m $ \wf ->
-  forAll (sizeConv n') $ \tid ->
+  forAll (fromIntegral n') $ \tid ->
   do
     seqFor (fromIntegral n) $ \ix -> 
-      wf (arr ! (tid + (ix*n'))) (tid + (ix*n')) 
+      wf (arr ! (tid + (ix*fromIntegral n'))) (tid + (ix*fromIntegral n')) 
 
   where
     m = len arr
-    n' = sizeConv m `div` fromIntegral n
+    n' = m `div` n
 
-store :: ASize l => Word32 -> Pull l a -> Push Block l a 
+store :: Word32 -> SPull a -> SPush Block a 
 store = load 
 
 
