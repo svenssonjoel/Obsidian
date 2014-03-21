@@ -44,7 +44,6 @@ import System.IO.Unsafe
 import System.Process
 import System.Random.MWC
 import System.CPUTime.Rdtsc
-import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
 import Control.Monad.State
 
