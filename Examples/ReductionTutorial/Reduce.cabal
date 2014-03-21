@@ -93,6 +93,7 @@ executable ReduceBench.exe
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.0.1.3
                , rdtsc
+               , time
   -- Directories containing source files.
   -- hs-source-dirs:      
   

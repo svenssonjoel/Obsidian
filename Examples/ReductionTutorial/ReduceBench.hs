@@ -25,6 +25,18 @@ import System.Exit
 
 import Data.IORef
 
+import Data.Time.Clock
+
+-- ######################################################################
+-- Tools
+-- ######################################################################
+cyclesPerSecond :: IO Word64
+cyclesPerSecond = do
+  t1 <- rdtsc
+  --threadDelay 10
+  t2 <- rdtsc
+  return $ t2 - t1
+
 
 -- ######################################################################
 -- Main
@@ -38,7 +50,7 @@ kernels = [("r1", mapRed1 (+))
           ,("r6", mapRed6 (+))
           ,("r7", mapRed7 (+))] 
 
-main = do
+main = do  
   args <- getArgs
   when (length args > 3 || length args < 3) $
     do
@@ -79,16 +91,17 @@ runBenchmark kern t elts =
         
 
           t <- lift $ newIORef (0 :: Word64)
-          
+
+          ct0 <- lift getCurrentTime
           forM_ [0..999] $ \_ ->
             do 
               t0 <- o <==! (blcks,kern) <> i
               lift $ modifyIORef t (\i -> i + t0) 
-
-
+          ct1 <- lift getCurrentTime
+    
           r <- peekCUDAVector o
           when (sum r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
         
 
           t_tot <- lift $  readIORef t 
-          lift $ putStrLn $ "SELFTIMED: " ++ show t_tot 
+          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime ct1 ct0)   -- ++ show t_tot 
