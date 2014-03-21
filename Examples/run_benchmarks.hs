@@ -35,7 +35,7 @@ main = defaultMainModifyConfig myconf
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
   [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["r1", "r2", "r3"]
+  | variant     <- ["r1", "r2", "r3", "r4", "r5", "r6" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ]
