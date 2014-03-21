@@ -96,7 +96,7 @@ runBenchmark kern t elts =
           forM_ [0..999] $ \_ ->
             do 
               t0 <- o <==! (blcks,kern) <> i
-              lift $ modifyIORef t (\i -> i + t0) 
+              lift $ modifyIORef' t (\i -> i + t0) 
           ct1 <- lift getCurrentTime
     
           r <- peekCUDAVector o
