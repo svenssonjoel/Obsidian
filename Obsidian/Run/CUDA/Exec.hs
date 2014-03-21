@@ -184,7 +184,8 @@ instance Scalar a => KernelO (CUDAVector a) where
       (fromIntegral (ktThreadsPerBlock k), 1, 1)
       (fromIntegral (ktSharedBytes k))
       Nothing -- stream
-      (ktInputs k ++ ktOutput k) -- params    
+      (ktInputs k ++ ktOutput k) -- params
+    
 
 -- | A variant that returns kernel timing information as well.
 -- TODO: We probably can remove this:
@@ -203,6 +204,8 @@ instance Scalar a => KernelO (CUDAVector a) where
     lift $ CUDA.sync
     t2 <- lift rdtsc
     return (t2 - t1) 
+
+syncAll = lift $ CUDA.sync
 
 -- Tweak these 
 infixl 4 <>
