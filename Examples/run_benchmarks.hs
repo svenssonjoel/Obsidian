@@ -43,6 +43,10 @@ all_benchmarks =
   | variant     <- ["s1", "s2", "s3" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024y
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
+  ] ++
+  [  mkBenchmark "FractalsBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
+  | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024y
+  , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192
   ]
 
 -- | Default configuration space over which to vary settings:
