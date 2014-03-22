@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Begin running jenkins benchmark script for Obsidian..."
+set -x
+
 # CONVENTION: The working directory is passed as the first argument.
 CHECKOUT=$1
 shift
@@ -18,7 +21,6 @@ if [ -f "$HOME/continuous_testing_setup/rn_jenkins_scripts/acquire_cuda.sh" ]; t
 fi
 
 echo "Running benchmarks remotely on server `hostname`"
-set -x
 
 which cabal
 cabal --version
