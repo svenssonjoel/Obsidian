@@ -25,6 +25,9 @@ echo "Running benchmarks remotely on server `hostname`"
 which cabal
 cabal --version
 
+which c2hs     || echo ok
+c2hs --version || echo ok
+
 unset GHC
 unset GHC_PKG
 unset CABAL
