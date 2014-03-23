@@ -70,7 +70,7 @@ red2 :: MemoryOps a
            -> Pull Word32 a
            -> Program Block a
 red2 f arr
-  | len arr == 1 = return $ (arr ! 0) 
+  | len arr == 1 = return (arr ! 0) 
   | otherwise    = 
     do
       let (a1,a2) = halve arr
@@ -92,24 +92,24 @@ getRed2 = putStrLn $ fst $
 ---------------------------------------------------------------------------
 
 red3 :: MemoryOps a
-           => (a -> a -> a)
-           -> Word32 
+           => Word32 
+           -> (a -> a -> a)
            -> Pull Word32 a
            -> Program Block a
-red3 f cutoff arr
+red3 cutoff f  arr
   | len arr == cutoff =
     return (foldPull1 f arr) 
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull $ zipWith f a1 a2
-      red3 f cutoff arr'   
+      arr' <- forcePull (zipWith f a1 a2)
+      red3 cutoff f arr'   
 
 
 mapRed3 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed3 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red3 f 2 arr)
+    body arr = singletonPush (red3 2 f arr)
 
 getRed3 = putStrLn $ fst $
           genKernelSpecsNL 256 "red3"
@@ -131,7 +131,7 @@ red4 :: MemoryOps a
 red4 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f) (splitUp 8 arr)))
-    red3 f 2 arr' 
+    red3 2 f arr' 
 
 mapRed4 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed4 f arr = pConcat (fmap body arr)
@@ -156,7 +156,7 @@ red5 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f)
                            (coalesce 8 arr)))
-    red3 f 2 arr' 
+    red3 2 f arr' 
   
 
 mapRed5 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
@@ -180,8 +180,8 @@ red6 :: MemoryOps a
            -> Program Block a
 red6 f arr =
   do
-    arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 16 arr))
-    red3 f 2 arr' 
+    arr' <- force (tConcat (fmap (seqReduce f) (coalesce 16 arr)))
+    red3 2 f arr' 
 
 mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed6 f arr = pConcat (fmap body arr) 
@@ -204,8 +204,8 @@ red7 :: MemoryOps a
            -> Program Block a
 red7 f arr =
   do
-    arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 32 arr))
-    red3 f 2 arr' 
+    arr' <- force (tConcat (fmap (seqReduce f) (coalesce 32 arr)))
+    red3 2 f arr' 
   
 
 mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a

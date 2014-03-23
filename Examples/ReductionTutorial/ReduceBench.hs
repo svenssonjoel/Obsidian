@@ -52,24 +52,38 @@ kernels = [("r1", mapRed1 (+))
           ,("r6", mapRed6 (+))
           ,("r7", mapRed7 (+))] 
 
+exitError = do
+  putStrLn "Provide 3 args: Kernel, ThreadsPerBlock, ElementsPerBlock" 
+  exitWith (ExitFailure 1)   
+
 main :: IO ()
 main = do
   putStrLn "Running reduction benchmark..." 
   args <- getArgs
-  when (length args > 3 || length args < 3) $
-    do
-      putStrLn "Provide 3 args: Kernel, ThreadsPerBlock, ElementsPerBlock" 
-      exitWith (ExitFailure 1)
-  let k = args P.!! 0
-      t = read $ args P.!! 1
-      e = read $ args P.!! 2
+  case (length args) of
+      3 -> if (args P.!! 0 == "large")
+           then largeBench args
+           else smallBench args 
+      _ -> exitError
+        
+  where
+    smallBench args = do
+      let k = args P.!! 0
+          t = read $ args P.!! 1
+          e = read $ args P.!! 2
 
-  case (lookup k kernels) of
-    Nothing ->
-      do putStrLn "Incorrect kernel" 
-         exitWith (ExitFailure 1)
-    Just kern -> runBenchmark kern t e
+      case (lookup k kernels) of
+        Nothing -> do
+          putStrLn "Incorrect kernel" 
+          exitWith (ExitFailure 1)
+        Just kern -> runBenchmark kern t e
+    largeBench args = do
+      let k = args P.!! 1
+          t = read $ args P.!! 2
 
+      case (lookup k kernels) of
+        Nothing -> exitError
+        Just kern -> runLargeBenchmark kern t 
 
 runBenchmark :: (Pull EWord32 (SPull (Exp Word32)) -> DPush Grid (Exp Word32)) -> Word32 -> Word32 -> IO ()
 runBenchmark origkern t elts =
@@ -107,3 +121,47 @@ runBenchmark origkern t elts =
 
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+
+
+runLargeBenchmark :: (Pull EWord32 (SPull (Exp Word32)) -> DPush Grid (Exp Word32)) -> Word32 -> IO ()
+runLargeBenchmark origkern t = 
+  withCUDA $
+  do
+    let elts = 4096
+        
+    capt <- capture t (origkern . splitUp elts)
+    
+    (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (blcks * elts))
+    
+    let cpuresult = V.sum inputs 
+    
+    useVector inputs $ \i ->
+      allocaVector (fromIntegral blcks)  $ \(o :: CUDAVector Word32) ->
+        allocaVector 1 $ \out -> 
+          body cpuresult capt i o out
+        --allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
+                                                        
+  where
+    blcks = 4096
+    body cpuresult kern i o out = 
+        do
+          fill o 0
+        
+
+          t0   <- lift getCurrentTime
+          cnt0 <- lift rdtsc
+          forM_ [0..999] $ \_ -> do 
+            o <== (blcks,kern) <> i
+            out <== (1,kern) <> o 
+            syncAll
+          cnt1 <- lift rdtsc
+          t1   <- lift getCurrentTime
+
+          r <- peekCUDAVector out
+          when (r P.!! 0 /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
+
+
+          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+          lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
