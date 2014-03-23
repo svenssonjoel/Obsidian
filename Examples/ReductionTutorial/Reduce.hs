@@ -51,7 +51,7 @@ red1 f arr
       imm <- forcePull (zipWith f a1 a2)
       red1 f imm   
 
-mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push EWord32 Grid a
+mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
 mapRed1 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red1 f arr) 
@@ -201,7 +201,7 @@ getRed6 = putStrLn $ fst $
 red7 :: MemoryOps a
            => (a -> a -> a)
            -> Pull Word32 a
-           -> Program Word32 a
+           -> Program Block a
 red7 f arr =
   do
     arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 32 arr))
