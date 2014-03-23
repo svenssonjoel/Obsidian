@@ -43,6 +43,7 @@ cyclesPerSecond = do
 -- Main
 -- ######################################################################
 
+kernels :: [(String, DPull (SPull (Exp Word32)) -> DPush Grid (Exp Word32))]
 kernels = [("r1", mapRed1 (+))
           ,("r2", mapRed2 (+))
           ,("r3", mapRed3 (+))
@@ -51,6 +52,7 @@ kernels = [("r1", mapRed1 (+))
           ,("r6", mapRed6 (+))
           ,("r7", mapRed7 (+))] 
 
+main :: IO ()
 main = do
   putStrLn "Running reduction benchmark..." 
   args <- getArgs
@@ -69,13 +71,12 @@ main = do
     Just kern -> runBenchmark kern t e
 
 
-runBenchmark kern t elts =
+runBenchmark :: (Pull EWord32 (SPull (Exp Word32)) -> DPush Grid (Exp Word32)) -> Word32 -> Word32 -> IO ()
+runBenchmark origkern t elts =
   withCUDA $
   do
-    capt <- capture t (kern . splitUp elts)
-
+    capt <- capture t (origkern . splitUp elts)
     
-
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (blcks * elts))
     
     let cpuresult = V.sum inputs 
