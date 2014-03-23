@@ -252,7 +252,12 @@ withCUDA p =
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
 ---------------------------------------------------------------------------    
-capture :: ToProgram prg => Word32 -> prg -> CUDA (KernelT prg) 
+
+-- | Compile a program to a CUDA kernel and then load it into memory.
+capture :: ToProgram prg
+        => Word32  -- ^ Threads per block
+        -> prg     -- ^ Program to capture
+        -> CUDA (KernelT prg) 
 capture threadsPerBlock f =
   do
     i <- newIdent
@@ -281,7 +286,7 @@ capture threadsPerBlock f =
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $ KernelT fun threadsPerBlock bytesShared [] []
+    return $! KernelT fun threadsPerBlock bytesShared [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
