@@ -1,13 +1,17 @@
-.phony: default bench build_bench
+.phony: default bench build_bench sand
 
 default: bench
 
-bench: build_bench
+bench: build_bench 
 	./run_benchmarks.exe
 
 # Build the benchmarking script itself:
-build_bench: run_benchmarks.exe
-run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
+build_bench: run_benchmarks.exe 
+run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
+	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher -j --reinstall
+	cabal install --bindir=. --program-suffix=.exe
+
+sand:
 #	(cd ..; cabal sandbox init)
 #	cabal sandbox init --sandbox=../.cabal-sandbox/
 	cabal sandbox init
@@ -15,5 +19,3 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs
 	(cd ScanBench;         cabal sandbox init --sandbox=../.cabal-sandbox/) 
 	(cd FractalsBench;     cabal sandbox init --sandbox=../.cabal-sandbox/)
 	(cd Simple;            cabal sandbox init --sandbox=../.cabal-sandbox/)
-	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher -j --reinstall
-	cabal install --bindir=. --program-suffix=.exe
