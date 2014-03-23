@@ -67,14 +67,13 @@ cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512
     ysq = y*y 
 
 
-iters :: EWord32 -> EWord32 -> TProgram (SPush Thread EWord8)
+iters :: EWord32 -> EWord32 -> SPush Thread EWord8
 iters bid tid =
-  return $ fmap extract (seqUntil (f bid tid) cond  (0,0,1))
+  fmap extract (seqUntil (f bid tid) cond  (0,0,1))
   where
     extract (_,_,c) = ((w32ToW8 c) `mod` 16) * 16
 
-genRect :: MemoryOps b
-           => EWord32
+genRect :: EWord32 
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
@@ -82,7 +81,7 @@ genRect bs ts p = generate bs $
                   \bid -> (tDistribute ts $ p bid)
 
 
-mandel = genRect 512 512 (runPush2 iters)  
+mandel = genRect 512 512 iters  
         
 getMandel = putStrLn $
             fst $
