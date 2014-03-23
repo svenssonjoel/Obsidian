@@ -50,12 +50,12 @@ ymin = -1.2 :: EFloat
 
 
 -- For generating a 512x512 image
-deltaP = (xmax - xmin) / 512.0
-deltaQ = (ymax - ymin) / 512.0
+deltaP s = (xmax - xmin) / (w32ToF s) -- 512.0
+deltaQ s = (ymax - ymin) / (w32ToF s) -- 512.0
 
 
-f bid tid (x,y,iter) = (xsq - ysq + (xmin + (w32ToF tid) * deltaP),
-                        2*x*y + (ymax - (w32ToF bid) * deltaQ),
+f s bid tid (x,y,iter) = (xsq - ysq + (xmin + (w32ToF tid) * deltaP s),
+                        2*x*y + (ymax - (w32ToF bid) * deltaQ s),
                         iter+1) 
   where
     xsq = x*x
@@ -67,13 +67,14 @@ cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512
     ysq = y*y 
 
 
-iters :: EWord32 -> EWord32 -> SPush Thread EWord8
-iters bid tid =
-  fmap extract (seqUntil (f bid tid) cond  (0,0,1))
+iters :: EWord32 -> EWord32 -> EWord32 -> TProgram (SPush Thread EWord8)
+iters s bid tid =
+  return $ fmap extract (seqUntil (f s bid tid) cond  (0,0,1))
   where
     extract (_,_,c) = ((w32ToW8 c) `mod` 16) * 16
 
-genRect :: EWord32 
+genRect :: MemoryOps b
+           => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
@@ -81,9 +82,10 @@ genRect bs ts p = generate bs $
                   \bid -> (tDistribute ts $ p bid)
 
 
-mandel = genRect 512 512 iters  
+-- Generate square Mandelbrot images 
+mandel x = genRect (fromIntegral x) x (runPush2 (iters (fromIntegral x)))  
         
-getMandel = putStrLn $
-            fst $
-            genKernelSpecsNL 512 "mandel" mandel
+--getMandel = putStrLn $
+--            fst $
+--            genKernelSpecsNL 512 "mandel" mandel
   
