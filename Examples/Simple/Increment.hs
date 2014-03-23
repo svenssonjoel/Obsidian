@@ -41,8 +41,8 @@ increment' arr = pConcat (fmap body arr)
 performInc =
   withCUDA $
   do
-    kern <- capture 256 (increment . splitUp 256)
-    --kern <- capture 8 (increment' . (fmap (splitUp 32)) . splitUp 256)
+    -- kern <- capture 256 (increment . splitUp 256)
+    kern <- capture 8 (increment' . (fmap (splitUp 32)) . splitUp 256)
     
 
     useVector (V.fromList [0..511]) $ \i ->

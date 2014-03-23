@@ -41,17 +41,17 @@ input = undefinedGlobal (variable "X")
 
 red1 :: MemoryOps a
       => (a -> a -> a)
-      -> SPull a
-      -> BProgram a
+      -> Pull Word32 a
+      -> Program Block a
 red1 f arr
   | len arr == 1 = return (arr ! 0)
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      imm <- forcePull $ zipWith f a1 a2
+      imm <- forcePull (zipWith f a1 a2)
       red1 f imm   
 
-mapRed1 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push EWord32 Grid a
 mapRed1 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red1 f arr) 
@@ -67,8 +67,8 @@ getRed1 = putStrLn $ fst $
 
 red2 :: MemoryOps a
            => (a -> a -> a)
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Block a
 red2 f arr
   | len arr == 1 = return $ (arr ! 0) 
   | otherwise    = 
@@ -94,8 +94,8 @@ getRed2 = putStrLn $ fst $
 red3 :: MemoryOps a
            => (a -> a -> a)
            -> Word32 
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Block a
 red3 f cutoff arr
   | len arr == cutoff =
     return (foldPull1 f arr) 
@@ -126,8 +126,8 @@ getRed3 = putStrLn $ fst $
 
 red4 :: MemoryOps a
            => (a -> a -> a)
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Block a
 red4 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f) (splitUp 8 arr)))
@@ -150,8 +150,8 @@ getRed4 = putStrLn $ fst $
 
 red5 :: MemoryOps a
            => (a -> a -> a)
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Block a
 red5 f arr =
   do
     arr' <- force (tConcat (fmap (seqReduce f)
@@ -176,8 +176,8 @@ getRed5 = putStrLn $ fst $
 
 red6 :: MemoryOps a
            => (a -> a -> a)
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Block a
 red6 f arr =
   do
     arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 16 arr))
@@ -200,8 +200,8 @@ getRed6 = putStrLn $ fst $
 
 red7 :: MemoryOps a
            => (a -> a -> a)
-           -> SPull a
-           -> BProgram a
+           -> Pull Word32 a
+           -> Program Word32 a
 red7 f arr =
   do
     arr' <- force $  tConcat (fmap (seqReduce f) (coalesce 32 arr))
