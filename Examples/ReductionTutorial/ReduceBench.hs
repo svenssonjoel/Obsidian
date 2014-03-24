@@ -116,7 +116,11 @@ runBenchmark origkern t elts =
           t1   <- lift getCurrentTime
 
           r <- peekCUDAVector o
-          when (sum r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
+          when (sum r /= cpuresult) $ lift $
+            do
+              putStrLn "CPU and GPU results not equal!!" 
+              exitWith (ExitFailure 1)
+              
 
 
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
@@ -159,9 +163,11 @@ runLargeBenchmark origkern t =
           t1   <- lift getCurrentTime
 
           r <- peekCUDAVector out
-          when (r P.!! 0 /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
-
-
+          when (r P.!! 0 /= cpuresult) $ lift $ do 
+            putStrLn "CPU and GPU results not equal!!" 
+            exitWith (ExitFailure 1)
+              
+    
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
