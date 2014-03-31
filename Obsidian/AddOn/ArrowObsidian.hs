@@ -66,8 +66,8 @@ two (Sync f g) = Sync (twoFF f) (two g)
 
 twoFF :: (Pull a -> Pull b) -> Pull a -> Pull b
 twoFF f arr = 
-    Pull nl (\i -> f (
-          Pull  n2 (\j -> arr ! ((sh bit bit2 (i .&. num2)) .|. j))) ! 
+    mkPull nl (\i -> f (
+          mkPull  n2 (\j -> arr ! ((sh bit bit2 (i .&. num2)) .|. j))) ! 
                                     (i .&. mask))
     where 
       n2       = (len arr) `div` 2 :: Word32
@@ -78,7 +78,7 @@ twoFF f arr =
       mask     = complement num2
 
       nl      = 2 * nl2 
-      nl2     = (len (f (Pull n2 (\j -> arr ! variable "X"))))
+      nl2     = (len (f (mkPull n2 (\j -> arr ! variable "X"))))
 
 logInt n | n <= 1 = 0
 logInt n = 1 + logInt (n `div` 2) 
