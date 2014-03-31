@@ -25,20 +25,19 @@ import Data.Word
 seqReduce :: (MemoryOps a)
            => (a -> a -> a)
            -> SPull a
-           -> SPush Thread a
+           -> Program Thread a
 seqReduce op arr =
-  mkPush 1 $ \wf -> 
   do
-    (ns :: Names a)  <- moNames "v" 
-    moAllocateScalar ns 
+    (ns :: Names a)  <- names "v" 
+    allocateScalar ns 
 
-    moAssignScalar ns init  
+    assignScalar ns init  
  
     SeqFor (n-1) $ \ ix ->
       do
-        moAssignScalar ns (moReadFrom ns `op`  (arr ! (ix + 1)))
+        assignScalar ns (readFrom ns `op`  (arr ! (ix + 1)))
     
-    wf (moReadFrom ns) 0
+    return $ readFrom ns
   where
     n = sizeConv$ len arr
     init = arr ! 0 
@@ -52,19 +51,18 @@ seqIterate :: (MemoryOps a)
               => EWord32
               -> (EWord32 -> a -> a)
               -> a
-              -> SPush Thread a
+              -> Program Thread a
 seqIterate n f init =
-  mkPush 1 $  \wf -> 
   do
-    (ns :: Names a)  <- moNames "v" 
-    moAllocateScalar ns 
+    (ns :: Names a)  <- names "v" 
+    allocateScalar ns 
 
-    moAssignScalar ns init
+    assignScalar ns init
     SeqFor n $ \ix ->
       do
-        moAssignScalar ns $ f ix (moReadFrom ns)
+        assignScalar ns $ f ix (readFrom ns)
 
-    wf (moReadFrom ns) 0
+    return $ readFrom ns
 
 ---------------------------------------------------------------------------
 -- 
@@ -73,21 +71,20 @@ seqUntil :: (MemoryOps a)
             => (a -> a)
             -> (a -> EBool)
             -> a
-            -> SPush Thread a
+            -> Program Thread a
 seqUntil f p init =
-  mkPush 1 $ \wf -> 
   do 
-    (ns :: Names a) <- moNames "v" 
-    moAllocateScalar ns 
+    (ns :: Names a) <- names "v" 
+    allocateScalar ns 
 
-    moAssignScalar ns init
-    SeqWhile (p (moReadFrom ns)) $ 
+    assignScalar ns init
+    SeqWhile (p (readFrom ns)) $ 
       do
-        (tmp :: Names a) <- moNames "t"
-        moAllocateScalar tmp
-        moAssignScalar tmp (moReadFrom ns) 
-        moAssignScalar ns $ f (moReadFrom tmp)
-    wf (moReadFrom ns) 0
+        (tmp :: Names a) <- names "t"
+        allocateScalar tmp
+        assignScalar tmp (readFrom ns) 
+        assignScalar ns $ f (readFrom tmp)
+    return $ readFrom ns
   
 ---------------------------------------------------------------------------
 -- Sequential scan
@@ -99,13 +96,13 @@ seqScan :: (MemoryOps a)
            -> SPush Thread a
 seqScan op arr {-(Pull n ixf)-}  =
   mkPush n $ \wf ->  do
-    (ns :: Names a) <- moNames "v" -- (ixf 0) 
-    moAllocateScalar ns -- (ixf 0)
-    moAssignScalar ns (arr ! 0)
-    wf (moReadFrom ns) 0
+    (ns :: Names a) <- names "v" -- (ixf 0) 
+    allocateScalar ns -- (ixf 0)
+    assignScalar ns (arr ! 0)
+    wf (readFrom ns) 0
     SeqFor (sizeConv (n-1)) $ \ix -> do
-      moAssignScalar ns  $ moReadFrom ns `op` (arr ! (ix + 1))
-      wf (moReadFrom ns) (ix+1)
+      assignScalar ns  $ readFrom ns `op` (arr ! (ix + 1))
+      wf (readFrom ns) (ix+1)
     where
       n = len arr
 
@@ -117,13 +114,13 @@ seqScanCin :: (MemoryOps a)
            -> SPush Thread a
 seqScanCin op a arr {-(Pull n ixf)-} =
   mkPush n $ \wf ->  do
-    (ns :: Names a) <- moNames "v" -- (ixf 0) 
-    moAllocateScalar ns -- (ixf 0)
-    moAssignScalar ns a -- (ixf 0)
+    (ns :: Names a) <- names "v" -- (ixf 0) 
+    allocateScalar ns -- (ixf 0)
+    assignScalar ns a -- (ixf 0)
     -- wf (readFrom ns) 0 
     SeqFor (sizeConv  n) $ \ix -> do
-      moAssignScalar ns  $ moReadFrom ns `op` (arr ! ix)
-      wf (moReadFrom ns) ix
+      assignScalar ns  $ readFrom ns `op` (arr ! ix)
+      wf (readFrom ns) ix
   where
     n = len arr
 ---------------------------------------------------------------------------

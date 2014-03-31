@@ -36,8 +36,6 @@ import Obsidian.Memory
 
 import Obsidian.Names
 
--- import qualified Obsidian.Mutable as M
-
 import Data.Word
 
 import Control.Monad
@@ -53,36 +51,36 @@ instance Write Warp where
   unsafeWritePush volatile p  =
     do
       let n = len p
-      names <- moNames "arr"
-      moAllocateVolatileArray names n
+      names <- names "arr"
+      allocateVolatileArray names n
      
-      p <: moWarpAssignArray names (variable "warpID") n 
-      return $ moWarpPullFrom names (variable "warpID") n
+      p <: warpAssignArray names (variable "warpID") n 
+      return $ warpPullFrom names (variable "warpID") n
 
 instance Write Block where
   unsafeWritePush volatile p =
     do
       let  n = len p
-      names <- moNames "arr"
+      names <- names "arr"
       if (volatile)
-        then moAllocateVolatileArray names n
-        else moAllocateArray names n
+        then allocateVolatileArray names n
+        else allocateArray names n
              
-      p <: moAssignArray names 
-      return $ moPullFrom names n
+      p <: assignArray names 
+      return $ pullFrom names n
 
 instance Write Thread where
   unsafeWritePush volatile p =
     do
-      (snames :: Names a)  <- moNames "arr" 
+      (snames :: Names a)  <- names "arr" 
 
       -- Here I know that this pattern match will succeed
       let n = len p
     
-      moAllocateArray snames  n
-      p <: moAssignArray snames 
+      allocateArray snames  n
+      p <: assignArray snames 
       
-      return $ moPullFrom snames n
+      return $ pullFrom snames n
 
 ---------------------------------------------------------------------------
 -- Force functions 

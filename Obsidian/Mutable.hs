@@ -85,8 +85,8 @@ undefinedMutable v = Mutable v undefined
 
 newS :: MemoryOps a => SPush Block a -> Program Block (Mutable Shared Word32 a)
 newS arr = do
-  (snames :: Names a) <- moNames "arr"
-  moAllocateArray snames n
+  (snames :: Names a) <- names "arr"
+  allocateArray snames n
   let mut = Mutable n snames
   writeTo mut arr
   return $ mut -- Mutable n snames 
@@ -102,7 +102,7 @@ writeTo :: MemoryOps a
            -> Push Block Word32 a
            -> Program Block ()
 writeTo (Mutable n snames) p 
-  | n <= m =  p <: moAssignArray snames
+  | n <= m =  p <: assignArray snames
   | otherwise = error "forceTo: Incompatible sizes" 
   where
     m = len p
@@ -121,8 +121,8 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: MemoryOps a => Mutable Shared Word32 a -> SPull  a
-pullFrom (Mutable n snames) = moPullFrom snames n  
+toPull :: MemoryOps a => Mutable Shared Word32 a -> SPull  a
+toPull (Mutable n snames) = pullFrom snames n  
 
 
 ---------------------------------------------------------------------------
