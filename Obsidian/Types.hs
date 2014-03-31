@@ -1,5 +1,14 @@
-module Obsidian.Types where 
+{-|
+Module      : Types
+Description : Type information, used internally by Obsídian.
+Copyright   : (c) Joel Svensson, 2014
+License     : BSD
+Maintainer  : bo.joel.svensson@gmail.com
+Stability   : experimental
 
+-}
+
+module Obsidian.Types where 
 
 ---------------------------------------------------------------------------
 -- Types
@@ -14,8 +23,9 @@ data Type
   | Word8 | Word16 | Word32 | Word64 
   | Float | Double                     
             
--- Used by CUDA, C And OpenCL generators        
-  | Pointer Type   -- C thing 
+-- Used by CUDA, C And OpenCL generators
+  | Volatile Type  -- For warp local computations. 
+  | Pointer Type   -- Pointer to a @type@ 
   | Global Type    -- OpenCL thing
   | Local Type     -- OpenCL thing
   deriving (Eq, Ord, Show)

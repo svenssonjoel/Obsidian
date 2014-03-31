@@ -54,10 +54,10 @@ red1 f arr
 mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
 mapRed1 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red1 f arr) 
+    body arr = singletonPushP (red1 f arr) 
 
-getRed1 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red1"
+getRed1 = putStrLn $
+          genKernel 256 "red1"
             (mapRed1 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -80,10 +80,10 @@ red2 f arr
 mapRed2 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed2 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red2 f arr)
+    body arr = singletonPushP (red2 f arr)
 
-getRed2 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red2"
+getRed2 = putStrLn $ 
+          genKernel 256 "red2"
             (mapRed2 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -109,10 +109,10 @@ red3 cutoff f  arr
 mapRed3 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed3 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red3 2 f arr)
+    body arr = singletonPushP (red3 2 f arr)
 
-getRed3 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red3"
+getRed3 = putStrLn $ 
+          genKernel 256 "red3"
             (mapRed3 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -136,10 +136,10 @@ red4 f arr =
 mapRed4 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed4 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red4 f arr) 
+    body arr = singletonPushP (red4 f arr) 
 
-getRed4 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red4"
+getRed4 = putStrLn $
+          genKernel 256 "red4"
             (mapRed4 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -162,10 +162,10 @@ red5 f arr =
 mapRed5 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed5 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (red5 f arr) 
+    body arr = singletonPushP (red5 f arr) 
 
-getRed5 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red5"
+getRed5 = putStrLn $
+          genKernel 256 "red5"
             (mapRed5 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -174,22 +174,25 @@ getRed5 = putStrLn $ fst $
 -- Kernel6 More sequential work 
 ---------------------------------------------------------------------------
 
-red6 :: MemoryOps a
-           => (a -> a -> a)
+red5' :: MemoryOps a
+           => Word32
+           -> (a -> a -> a)
            -> Pull Word32 a
            -> Program Block a
-red6 f arr =
+red5' n f arr =
   do
-    arr' <- force (tConcat (fmap (seqReduce f) (coalesce 16 arr)))
+    arr' <- force (tConcat (fmap (seqReduce f) (coalesce n arr)))
     red3 2 f arr' 
+
+red6 = red5' 16 
 
 mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed6 f arr = pConcat (fmap body arr) 
   where
-    body arr = singletonPush (red6 f arr) 
+    body arr = singletonPushP (red6 f arr) 
 
-getRed6 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red6"
+getRed6 = putStrLn $ 
+          genKernel 256 "red6"
             (mapRed6 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
@@ -198,23 +201,25 @@ getRed6 = putStrLn $ fst $
 -- Kernel7 Even more sequential work 
 ---------------------------------------------------------------------------
 
-red7 :: MemoryOps a
-           => (a -> a -> a)
-           -> Pull Word32 a
-           -> Program Block a
-red7 f arr =
-  do
-    arr' <- force (tConcat (fmap (seqReduce f) (coalesce 32 arr)))
-    red3 2 f arr' 
+red7 = red5' 32
+
+-- red7 :: MemoryOps a
+--            => (a -> a -> a)
+--            -> Pull Word32 a
+--            -> Program Block a
+-- red7 f arr =
+--   do
+--     arr' <- force (tConcat (fmap (seqReduce f) (coalesce 32 arr)))
+--     red3 2 f arr' 
   
 
 mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed7 f arr = pConcat (fmap body arr) 
   where
-    body arr = singletonPush (red7 f arr)
+    body arr = singletonPushP (red7 f arr)
 
-getRed7 = putStrLn $ fst $
-          genKernelSpecsNL 256 "red7"
+getRed7 = putStrLn $
+          genKernel 256 "red7"
             (mapRed7 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 

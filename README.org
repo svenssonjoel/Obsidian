@@ -30,17 +30,9 @@
   + global arrays have sizes! make the code generation aware of this! 
   + Think about completely dissallowing Int and Word as types in Obsidian programs.
     Require that the programmer explicitly makes a Int32, Int64, Word32, Word64 Choice-
-  + (In Progress) update the SPDMC based code outputer (cleaner, nicer) 
+
   + clean up and check for bugs in: 
     * CodeGen.Memory.hs
     * CodeGen.Liveness.hs 
-  + The CSE code is definitely completely broken in relation 
-    to all news now.
   + More thinking about the mutable array interface(and implementation) is needed.
-  + Generating a kernel should not really need the prototypical input arrays. 
-    The sizes of Local computations are now set by the splitUp functions. 
-    The number and types of input a generated kernel takes should be possible 
-    to extract from the type of the obsidian function used to generate it. 
-  + There is a bug causing some a -> GProgram (Push b) kernels to generate no code. 
-    See what is wrong, start in InOut.hs..
 	    

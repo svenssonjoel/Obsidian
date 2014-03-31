@@ -54,9 +54,10 @@ deltaP = (xmax - xmin) / 512.0
 deltaQ = (ymax - ymin) / 512.0
 
 
-f bid tid (x,y,iter) = (xsq - ysq + (xmin + (w32ToF tid) * deltaP),
-                        2*x*y + (ymax - (w32ToF bid) * deltaQ),
-                        iter+1) 
+f b t (x,y,iter) =
+  (xsq - ysq + (xmin + t * deltaP),
+   2*x*y + (ymax - b * deltaQ),
+   iter+1) 
   where
     xsq = x*x
     ysq = y*y
@@ -69,16 +70,25 @@ cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512
 
 iters :: EWord32 -> EWord32 -> SPush Thread EWord8
 iters bid tid =
-  fmap extract (seqUntil (f bid tid) cond  (0,0,1))
+  fmap extract (seqUntil (f bid' tid') cond  (0,0,1))
   where
-    extract (_,_,c) = ((w32ToW8 c) `mod` 16) * 16
+    extract (_,_,c) = (w32ToW8 (c `mod` 16)) * 16
+    tid' = w32ToF tid
+    bid' = w32ToF bid 
 
 genRect :: EWord32 
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
-genRect bs ts p = generate bs $
-                  \bid -> (tDistribute ts $ p bid)
+genRect bs ts p = pConcat (mkPull bs 
+                  (\bid -> (tConcat (mkPull ts (p bid)))))
+
+-- genRect :: EWord32 
+--            -> Word32
+--            -> (EWord32 -> EWord32 -> SPush Thread b)
+--            -> DPush Grid b 
+-- genRect bs ts p = generate bs $
+--                   \bid -> (tConcat (mkPull ts (p bid)))
 
 
 mandel = genRect 512 512 iters  

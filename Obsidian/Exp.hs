@@ -30,7 +30,7 @@ import Obsidian.Globs
 
 ---------------------------------------------------------------------------
 -- some synonyms
-type Data a = Exp a 
+--type Data a = Exp a 
 
 
 type EInt    = Exp Int      
@@ -45,6 +45,17 @@ type EWord8  = Exp Word8
 type EWord16 = Exp Word16 
 type EWord32  = Exp Word32 
 type EWord64  = Exp Word64 
+
+type EI8   = Exp Int8
+type EI16  = Exp Int16
+type EI32  = Exp Int32
+type EI64  = Exp Int64
+
+type EW8   = Exp Word8   
+type EW16  = Exp Word16 
+type EW32  = Exp Word32 
+type EW64  = Exp Word64 
+
 
 type EFloat  = Exp Float  
 type EDouble = Exp Double 
@@ -201,7 +212,7 @@ data Op a where
 
   -- I DO NOT EVEN KNOW WHAT THIS MEANS: work around it! 
   ShiftL     :: forall a b. (Num b, Bits a) => Op ((a, b) -> a)  
-  ShiftR     :: forall a b .(Num b, Bits a) => Op ((a, b) -> a)  
+  ShiftR     :: forall a b. (Num b, Bits a) => Op ((a, b) -> a)  
   
   -- built-ins
   Min        :: Ord a => Op ((a,a) -> a) 

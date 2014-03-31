@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables,
              TypeFamilies,
-             EmptyDataDecls #-}
+             EmptyDataDecls,
+             FlexibleInstances #-}
 
 {- Joel Svensson 2013 -}
 
@@ -12,7 +13,7 @@ module Obsidian.Mutable ( Mutable(Mutable)
                         , writeTo
                         , pullFrom
                         , atomicInc
-                        , mutlen -- hack
+--                         , mutlen -- hack
                         , namedMutable
                         , undefinedMutable
                         )  where 
@@ -45,27 +46,34 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- Mutable arrays 
 ---------------------------------------------------------------------------
+
 data Shared
 data Global
 
 -- EXPERIMENTS 
 -- Memory hierarchy size correspondence   
-type family MSize a
-type instance MSize Shared = Word32
-type instance MSize Global = EWord32
+--type family MSize a
+--type instance MSize Shared = Word32
+--type instance MSize Global = EWord32
 
 -- Memory hierarchy program correspondence
-type family MProgram a
-type instance MProgram Shared = Block
-type instance MProgram Global = Grid 
+--type family MProgram a
+--type instance MProgram Shared = Block
+--type instance MProgram Global = Grid 
   
 -- Starting with implementing only the shared mem kind
-data Mutable s a = Mutable (MSize s) (Names a)
+data Mutable mloc s a = Mutable s (Names a)
 
-mutlen (Mutable n _) = n
+-- mutlen (Mutable n _) = n
 
-type MShared a = Mutable Shared a
-type MGlobal a = Mutable Global a
+type MShared a = Mutable Shared Word32 a
+type MGlobal a = Mutable Global EWord32 a
+
+
+instance ArrayLength (Mutable Shared) where
+  len (Mutable n _) = n
+
+  
 
 
 namedMutable s v = Mutable v (Single s)
@@ -75,7 +83,7 @@ undefinedMutable v = Mutable v undefined
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: MemoryOps a => SPush Block a -> Program Block (Mutable Shared a)
+newS :: MemoryOps a => SPush Block a -> Program Block (Mutable Shared Word32 a)
 newS arr = do
   (snames :: Names a) <- moNames "arr"
   moAllocateArray snames n
@@ -90,7 +98,7 @@ newS arr = do
 ---------------------------------------------------------------------------
 -- Much Hacking here 
 writeTo :: MemoryOps a
-           => Mutable Shared a
+           => Mutable Shared Word32 a
            -> Push Block Word32 a
            -> Program Block ()
 writeTo (Mutable n snames) p 
@@ -102,7 +110,7 @@ writeTo (Mutable n snames) p
     
 -- Add forceTo with offsets (why? just thought it might be useful)
 forceTo :: MemoryOps a
-           => Mutable Shared a
+           => Mutable Shared Word32 a
            -> Push Block Word32 a
            -> Program Block ()
 forceTo m arr =
@@ -113,7 +121,7 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-pullFrom :: MemoryOps a => Mutable Shared a -> SPull  a
+pullFrom :: MemoryOps a => Mutable Shared Word32 a -> SPull  a
 pullFrom (Mutable n snames) = moPullFrom snames n  
 
 
@@ -121,9 +129,9 @@ pullFrom (Mutable n snames) = moPullFrom snames n
 -- Atomics
 ---------------------------------------------------------------------------
 -- | Increment atomically 
-atomicInc :: forall a s t . AtomicInc a
+atomicInc :: forall mloc a s t . AtomicInc a
              => EWord32  
-             -> Mutable s (Exp a)
+             -> Mutable mloc s (Exp a)
              -> TProgram ()
 atomicInc ix (Mutable n noms) = mapNamesM_ f noms
   where
@@ -131,10 +139,10 @@ atomicInc ix (Mutable n noms) = mapNamesM_ f noms
   
 
 -- | Add atomically 
-atomicAdd :: forall a s. AtomicAdd a
+atomicAdd :: forall mloc a s. AtomicAdd a
              => EWord32
              -> Exp a 
-             -> Mutable Shared (Exp a)
+             -> Mutable mloc s  (Exp a)
              -> TProgram ()
 atomicAdd ix v (Mutable n noms) = mapNamesM_ f noms
   where
@@ -142,10 +150,10 @@ atomicAdd ix v (Mutable n noms) = mapNamesM_ f noms
   
 
 -- | Subtract atomically     
-atomicSub :: forall a s. AtomicSub a
+atomicSub :: forall mloc a s. AtomicSub a
              => EWord32
              -> Exp a
-             -> Mutable s (Exp a)
+             -> Mutable mloc s (Exp a)
              -> TProgram ()
 atomicSub ix v (Mutable n noms) = mapNamesM_ f noms
                                
@@ -154,10 +162,10 @@ atomicSub ix v (Mutable n noms) = mapNamesM_ f noms
 
 
 -- Special case ? No. 
-atomicExch :: forall a s. AtomicExch a
+atomicExch :: forall mloc a s. AtomicExch a
               => EWord32
               -> Exp a
-              -> Mutable s (Exp a)
+              -> Mutable mloc s (Exp a)
               -> TProgram ()
 atomicExch ix v  (Mutable n (Single nom)) = f nom
   where

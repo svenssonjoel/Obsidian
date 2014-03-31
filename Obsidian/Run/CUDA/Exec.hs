@@ -18,8 +18,8 @@ import qualified Foreign.CUDA.Driver.Device as CUDA
 import qualified Foreign.CUDA.Analysis.Device as CUDA
 import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
-import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.Reify
+import Obsidian.CodeGen.CUDA
 
 import Obsidian.Types -- experimental
 import Obsidian.Exp
@@ -145,7 +145,7 @@ instance Scalar a => KernelI (CUDAVector a) where
                          CUDA.IArg $ fromIntegral (cvLen b)]) o
 
 instance Scalar a => KernelM (CUDAVector a) where
-  type KMutable (CUDAVector a) = Mutable Global (Exp a) 
+  type KMutable (CUDAVector a) = Mutable Global EW32 (Exp a) 
   addMutable (KernelT f t s i o) b =
     KernelT f t s (i ++ [CUDA.VArg (cvPtr b),
                          CUDA.IArg $ fromIntegral (cvLen b)]) o
@@ -215,14 +215,14 @@ infixl 3 <==
 -- Execute a kernel that has no Output ( a -> GProgram ()) KernelT (GProgram ()) 
 ---------------------------------------------------------------------------
 exec :: (Word32, KernelT (GProgram ())) -> CUDA ()
-exec (nb, k) = 
-  lift $ CUDA.launchKernel
-      (ktFun k)
-      (fromIntegral nb,1,1)
-      (fromIntegral (ktThreadsPerBlock k), 1, 1)
-      (fromIntegral (ktSharedBytes k))
-      Nothing -- stream
-      (ktInputs k)
+exec (nb, k) =
+ lift $ CUDA.launchKernel
+     (ktFun k)
+     (fromIntegral nb,1,1)
+     (fromIntegral (ktThreadsPerBlock k), 1, 1)
+     0 {- (fromIntegral (ktSharedBytes k)) -}
+     Nothing -- stream
+     (ktInputs k)
 ---------------------------------------------------------------------------
 -- Get a fresh identifier
 ---------------------------------------------------------------------------
@@ -246,8 +246,9 @@ withCUDA p =
       (x:xs) ->
         do 
           ctx <- CUDA.create (fst x) [CUDA.SchedAuto] 
-          runStateT p (CUDAState 0 ctx (snd x)) 
+          (a,_) <- runStateT p (CUDAState 0 ctx (snd x)) 
           CUDA.destroy ctx
+          return a
 
 ---------------------------------------------------------------------------
 -- Capture without an inputlist! 
@@ -268,12 +269,11 @@ capture threadsPerBlock f =
         fn     = kn ++ ".cu"
         cub    = fn ++ ".cubin"
 
-        (prgstr,bytesShared) = genKernelSpecsNL threadsPerBlock kn f
+        prgstr = genKernel threadsPerBlock kn f
         header = "#include <stdint.h>\n" -- more includes ? 
 
     when debug $ 
       do 
-        lift $ putStrLn $ "Bytes shared mem: " ++ show bytesShared
         lift $ putStrLn $ prgstr
 
     let arch = archStr props
@@ -286,7 +286,7 @@ capture threadsPerBlock f =
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
            
-    return $! KernelT fun threadsPerBlock bytesShared [] []
+    return $! KernelT fun threadsPerBlock 0 {-bytesShared-} [] []
 
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 

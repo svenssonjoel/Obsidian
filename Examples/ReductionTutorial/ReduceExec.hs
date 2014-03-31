@@ -102,6 +102,34 @@ performLarge blcks elts r  =
 
 
 -- ######################################################################
+-- Kernel launch code
+-- ######################################################################
+launchReduce =
+  withCUDA $
+  do
+    let n = blocks * elts
+        blocks = 4096
+        elts   = 4096
+        
+    kern <- capture 32 (mapRed5 (+) . splitUp elts)
+
+    (inputs :: V.Vector Word32) <- lift (mkRandomVec (fromIntegral n))
+  
+    
+    useVector inputs (\i ->
+      allocaVector (fromIntegral blocks)  (\ o  ->
+        allocaVector 1  (\ o2  -> do 
+          do o <== (blocks,kern) <> i
+             o2 <== (1,kern) <> o 
+             copyOut o2
+             )
+        )
+      )
+             
+          
+
+
+-- ######################################################################
 -- Main
 -- ######################################################################
 

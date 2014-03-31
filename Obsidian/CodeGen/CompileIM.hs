@@ -150,7 +150,34 @@ compileType (Word64) = [cty| typename uint64_t |]
 compileType (Float) = [cty| float |]
 compileType (Double) = [cty| double |]
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
+compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|] 
 
+--compileType' (Volatile t) = [cty| volatile $ty:(compileType t)|] 
+--compileType' t = compileType t 
+
+{-
+
+  Solve the volatile issue.
+  When operating in a warp without syncs Add Volatile to pointers
+  and only there!
+  Need a way to convey this information all the way from the force functions
+  down to the code generator.
+  
+  Also, Change code generation to declare names of pointers into
+  shared memory at different types (that are used in the program)
+    __shared__ uint8_t sbase[X]
+    uint32_t *sbaseU32 = sbase;
+    float *sbaseF = sbase;
+  This changes how offsets are computed within code. May need names for each
+  intermediate array used in the program
+    __shared__ uint8_t sbase[X]
+    uint32_t *arr1 = sbase;
+    uint32_t *arr2 = (sbase + 16U); 
+    float *arr3 = sbase;
+    float *arr4 = (sbase + 4U); 
+   
+
+-} 
 
 ---------------------------------------------------------------------------
 -- **     
@@ -476,7 +503,8 @@ compile pform config kname (params,im)
       = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
     cudabody = (if (configSharedMem config > 0)
-                then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
+                -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
+                then [BlockDecl [cdecl| __shared__  typename uint8_t sbase[$uint:(configSharedMem config)]; |]] 
                 else []) ++
                 --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
                 --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],

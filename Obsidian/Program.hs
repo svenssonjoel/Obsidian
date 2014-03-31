@@ -31,14 +31,12 @@ module Obsidian.Program  (
   -- helpers
   printPrg,
   runPrg,
-  uniqueNamed, uniqueNamed_,  -- core, 
+  uniqueNamed, uniqueNamed_,  
 
   assign, allocate, declare,
   atomicOp, 
   -- Programming interface
   seqFor, forAll, forAll2, seqWhile, sync, distrPar,
---   warpForAll,
-  -- module Control.Applicative                          
   ) where 
  
 import Data.Word

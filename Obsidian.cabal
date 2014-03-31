@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.0.1.4
+Version:        0.0.1.5
 
 
 License:                BSD3
@@ -42,6 +42,7 @@ Library
                , rdtsc == 1.3.0.0
              
   exposed-modules: Obsidian
+                 ,  Obsidian.CodeGen.CUDA
                  ,  Obsidian.Run.CUDA.Exec                    
             
   other-modules:  Obsidian.Array

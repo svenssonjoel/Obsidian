@@ -157,6 +157,16 @@ instance Compile P.Thread  where
   -- Can add cases for P.ForAll here.
   -- Turn into sequential loop. Could be important to make push
   -- operate uniformly across entire hierarchy.
+  compile s (P.ForAll n f) = 
+    do
+      let (i1,i2) = split2 s
+          nom = "i" ++ show (supplyValue i1)
+          v = variable nom
+          p = f v
+      (a,im) <-  compile i2 p
+
+      return ((),out $ SSeqFor nom (expToIExp n) im)
+                             
   compile s p = cs s p 
 
 -- Compile Warp program

@@ -15,7 +15,7 @@
 -} 
 
 
-module Obsidian.CodeGen.Reify where 
+module Obsidian.CodeGen.Reify (ToProgram(..)) where 
 
 import Obsidian.Exp 
 import Obsidian.Array
@@ -28,13 +28,10 @@ import Obsidian.Force
 import Obsidian.Memory
 
 import Obsidian.Names
-import Obsidian.LibraryG
+import Obsidian.Library
 
 import qualified Obsidian.CodeGen.Program as CG
 import Obsidian.CodeGen.CompileIM
-import Obsidian.CodeGen.Liveness
-import Obsidian.CodeGen.Memory
-import Text.PrettyPrint.Mainland
 
 import Data.Word
 import Data.Int
@@ -72,9 +69,9 @@ instance ToProgram (GProgram ()) where
   
 -- This instance might fix the problem with empty kernels being generated
 instance (ToProgram (Push Grid l a)) => ToProgram (GProgram (Push Grid l a)) where
-  toProgram i p a = toProgram i (pJoin p) a
+  toProgram i p a = toProgram i (runPush p) a
 
-  toProgram_ i p = toProgram_ i (pJoin p) 
+  toProgram_ i p = toProgram_ i (runPush p) 
 
 -- No ToProgram (GProgram (Pull a)) instance is needed. These programs
 -- cannot currently be created using the API. The reason is that GProgram (Pull a)
@@ -149,7 +146,7 @@ instance (ToProgram b, Scalar t) => ToProgram (Pull Word32 (Exp t) -> b) where
   toProgram_ _ _ = error "toProgram_: static length" 
 
 
-instance (ToProgram b, Scalar t) => ToProgram (Mutable Global (Exp t) -> b) where
+instance (ToProgram b, Scalar t) => ToProgram (Mutable Global EWord32 (Exp t) -> b) where
   toProgram i f (a :- rest) = ((nom,Pointer t):(n,Word32):ins,prg)
     where
       (ins,prg) = toProgram (i+1) (f input) rest
@@ -203,19 +200,16 @@ type instance InputList (a -> b)        = a :- (InputList b)
 type instance InputList (Push Grid l b) = ()
 type instance InputList (GProgram b)    = () 
 
+-- genKernelSM :: ToProgram prg => Word32 -> String -> prg -> (String, Word32)
+-- genKernelSM = genKernelSpecsNL
 
-
----------------------------------------------------------------------------
--- Generate CUDA kernels
----------------------------------------------------------------------------
-
-genKernelSpecsNL :: ToProgram prg => Word32 -> String -> prg -> (String, Word32)
-genKernelSpecsNL nt kn prg = (prgStr,bytesShared) 
-  where
-    prgStr = pretty 75 $ ppr $ compile PlatformCUDA (Config nt bytesShared) kn (a,rim) 
-    (a,im) = toProgram_ 0 prg
-    iml = computeLiveness im
-    (m,mm) = mmIM iml sharedMem (M.empty)
-    bytesShared = size m 
-    rim = renameIM mm iml
+-- genKernelSpecsNL :: ToProgram prg => Word32 -> String -> prg -> (String, Word32)
+-- genKernelSpecsNL nt kn prg = (prgStr,bytesShared) 
+--   where
+--     prgStr = pretty 75 $ ppr $ compile PlatformCUDA (Config nt bytesShared) kn (a,rim) 
+--     (a,im) = toProgram_ 0 prg
+--     iml = computeLiveness im
+--     (m,mm) = mmIM iml sharedMem (M.empty)
+--     bytesShared = size m 
+--     rim = renameIM mm iml
 

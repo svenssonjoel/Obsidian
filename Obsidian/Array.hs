@@ -1,8 +1,6 @@
-{-# LANGUAGE MultiParamTypeClasses,  
-             FlexibleInstances, FlexibleContexts,
-             GADTs, 
-             TypeFamilies,
-             RankNTypes #-} 
+{-# LANGUAGE MultiParamTypeClasses,
+             FlexibleInstances,
+             GADTs  #-} 
 
 {- Joel Svensson 2012
 
@@ -23,12 +21,14 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        {- pushN, -} 
                        setSize,
                        toDynamic,
+                       fromDynamic,
+                       toDynamicPush,
                        foldPull1, 
                        (!),
                        (<:), 
                        Array(..),
+                       ArrayLength(..),
                        ASize(..),
-                      --  ToPush(..),
                        namedGlobal,
                        undefinedGlobal) where
 
@@ -82,14 +82,17 @@ data Pull s a = Pull {pullLen :: s,
                       pullFun :: EWord32 -> a}
 
 -- | Create a push array. 
-mkPush :: s -> ((a -> EWord32 -> TProgram ())
-                             -> Program t ()) -> Push t s a
+mkPush :: s
+       -> ((a -> EWord32 -> TProgram ()) -> Program t ())
+       -> Push t s a
 mkPush n p = Push n p 
 
 -- | Create a pull array. 
 mkPull n p = Pull n p 
 
- 
+-- Fix this.
+--   * you cannot safely resize either push or pull arrays
+--   * you can shorten pull arrays safely.  
 setSize :: l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
 
@@ -100,34 +103,34 @@ toDynamic :: SPull a -> DPull a
 toDynamic (Pull n ixf) = Pull (fromIntegral n) ixf 
 
 fromDynamic :: Word32 -> DPull a -> SPull a
-fromDynamic n (Pull _ ixf) = Pull n ixf 
--- The above should be generalised for push and pull arrays both. 
+fromDynamic n (Pull _ ixf) = Pull n ixf
 
+toDynamicPush :: SPush t a -> DPush t a
+toDynamicPush (Push s p) = Push (fromIntegral s) p 
+-- The above should be generalised for push and pull arrays both.
 
--- Fix this.
---   * you cannot safely resize either push or pull arrays
---   * you can shorten pull arrays safely. 
-class Array a where
+class ArrayLength a where
   len    :: a s e -> s
+
+instance ArrayLength Pull  where 
+  len      (Pull s _)   = s
+
+instance ArrayLength (Push t)  where 
+  len      (Push s _) = s
+
+  
+class Array a where
   aMap   :: (e -> e') -> a s e -> a s e'
   ixMap  :: (Exp Word32 -> Exp Word32)
             -> a s e -> a s e
   
 instance Array Pull where 
-  len      (Pull s _)   = s
   aMap   f (Pull n ixf) = Pull n (f . ixf)
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
   
 instance Array (Push t) where 
-  len      (Push s _) = s
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
-
-class Indexible a where 
-  access :: a s e -> Exp Word32 -> e 
-  
-instance Indexible Pull where
-  access p ix = pullFun p ix
 
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
@@ -145,19 +148,6 @@ foldPull1 f (Pull n ixf) = f (ixf (fromIntegral (n-1))) (foldPull1 f (Pull (n-1)
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
---convertToPush :: Pull Word32 e -> Push Block Word32 e 
---convertToPush (Pull n ixf) =
---    Push n $ \wf -> forAll (fromIntegral n) $ \i -> wf (ixf i) i
-
--- class ToPush arr t where
---   toPush :: ASize s => arr s e -> Push t s e
-
--- instance Pushable t => ToPush Pull t where
---   toPush = push
-
--- instance Pushable t => ToPush (Push t) t where
---   toPush = id 
-
 class Pushable t where
   push :: ASize s => Pull s e -> Push t s e 
 
@@ -201,9 +191,14 @@ instance Pushable Grid where
 ---------------------------------------------------------------------------
 
 pushApp (Push _ p) a = p a
+
 infixl 9 <:
+(<:) :: Push t s a
+        -> (a -> EWord32 -> Program Thread ())
+        -> Program t ()
 (<:) = pushApp 
 
 infixl 9 ! 
-(!) :: Indexible a => a s e -> Exp Word32 -> e 
-(!) = access
+(!) :: Pull s e -> Exp Word32 -> e 
+(!) arr = pullFun arr 
+

@@ -4,18 +4,22 @@
 module Examples where
 
 
-import Obsidian.Program
-import Obsidian.Exp
-import Obsidian.Types
-import Obsidian.Array
-import Obsidian.Library
-import Obsidian.LibraryG
-import Obsidian.Force
-import Obsidian.CodeGen.Reify
-import Obsidian.CodeGen.CompileIM
-import Obsidian.CodeGen.Memory
-import Obsidian.CodeGen.Liveness
-import Text.PrettyPrint.Mainland hiding ((<>) )
+-- import Obsidian.Program
+-- import Obsidian.Exp
+-- import Obsidian.Types
+-- import Obsidian.Array
+-- import Obsidian.Library
+-- import Obsidian.LibraryG
+-- import Obsidian.Force
+-- import Obsidian.CodeGen.Reify
+-- import Obsidian.CodeGen.CompileIM
+-- import Obsidian.CodeGen.Memory
+-- import Obsidian.CodeGen.Liveness
+-- import Text.PrettyPrint.Mainland hiding ((<>) )
+
+import Obsidian
+import Obsidian.CodeGen.CUDA
+
 
 import Data.Word
 import Data.Int
@@ -38,12 +42,11 @@ mapFusion arr =
     imm1 <- forcePull $ (fmap (+1) . fmap (+1)) imm
     return $ push imm1
 
--- local = pJoin 
 
-mapFusion' :: (Sync t, Pushable t, Write t)
+mapFusion' :: (Forceable t, Pushable t)
               => SPull EInt32 -> (SPush t EInt32)
 mapFusion' arr =
-  local $ do
+  runPush $ do
     imm <- forcePull $ (fmap (+1) . fmap (+1)) arr
     imm1 <- forcePull $ (fmap (+1) . fmap (+1)) imm
     return $ push imm1
@@ -53,15 +56,6 @@ input1 = namedGlobal "apa" (variable "X")
 
 mapKern :: DPull EInt32 -> DPush Grid EInt32 
 mapKern arr = pConcat $ (fmap mapFusion' . splitUp 256)  arr
-
-
-
-genKern = ppr $ compile PlatformCUDA (Config 256 1) "apa" (a,rim) 
-  where
-     (a,im) = toProgram_ 0 mapKern
-     iml = computeLiveness im
-     (m,mm) = mmIM iml sharedMem (M.empty)
-     rim = renameIM mm iml
 
 performKern =
   withCUDA $
@@ -88,7 +82,7 @@ localReverse arr = push . reverse $ arr
 
 warpLocal :: SPull EInt32 -> SPush Warp EInt32
 warpLocal arr =
-  local ( do
+  runPush ( do
    arr1 <- force $ (localReverse arr :: SPush Warp EInt32)  
    return $ push arr1 )
    --arr2 <- force $ warpLocal arr1
@@ -119,14 +113,6 @@ grid arr = pConcat $ fmap block (splitUp 500 arr)
 --       iml = computeLiveness im
 --       (m,mm) = mmIM iml sharedMem (M.empty)
 --       rim = renameIM mm iml
-
-genGrid = ppr $ compile PlatformCUDA (Config 32 1) "apa" (a,rim) 
-   where
-      (a,im) = toProgram_ 0 grid
-      iml = computeLiveness im
-      (m,mm) = mmIM iml sharedMem (M.empty)
-      rim = renameIM mm iml
-
 
 
 performGrid =

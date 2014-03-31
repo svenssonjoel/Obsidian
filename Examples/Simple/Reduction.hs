@@ -7,6 +7,61 @@ import Prelude hiding (zipWith)
 
 import Control.Monad
 
+import Data.Word
+
+---------------------------------------------------------------------------
+-- reduceLocalSilly
+---------------------------------------------------------------------------
+sumUp :: Pull Word32 EWord32 -> EWord32
+sumUp arr 
+  | len arr == 1 = arr ! 0 
+  | otherwise    =
+      let (a1,a2) = halve arr
+          arr'    = zipWith (+) a1 a2
+      in sumUp arr' 
+
+sumUp' :: Pull Word32 EWord32 -> Program Block EWord32
+sumUp' arr 
+  | len arr == 1 = return (arr ! 0)
+  | otherwise    = do
+      let (a1,a2) = halve arr
+      arr' <-  forcePull (zipWith (+) a1 a2)
+      sumUp' arr' 
+
+sumUpT :: Pull Word32 EWord32 -> Program Thread EWord32
+sumUpT arr 
+  | len arr == 1 = return (arr ! 0)
+  | otherwise    = do
+      let (a1,a2) = halve arr
+      arr' <- forcePull (zipWith (+) a1 a2)
+      sumUpT arr' 
+
+
+
+mapSumUp :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
+mapSumUp arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (return (sumUp arr))
+
+mapSumUp' :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
+mapSumUp' arr = pConcat (fmap body arr)
+  where
+    body arr = singletonPush (sumUp' arr)
+
+
+-- {{{0,1,2,3,4,5,6,7}},{{8,9,10,11,12,13,14,15}}}
+mapSumUpT :: Pull EWord32 (SPull (SPull EWord32)) -> Push Grid EWord32 EWord32
+mapSumUpT arr = pConcat (fmap body arr)
+  where
+    body arr = tConcat (fmap bodyThread arr) 
+    bodyThread arr = singletonPush (sumUpT arr)
+
+
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
 reduceLocal :: (Sync t, MemoryOps a, Write t, Pushable t )
                => (a -> a -> a)
                -> SPull a
@@ -46,7 +101,7 @@ reduceBlocks f arr =
 reduceGrid :: MemoryOps a
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
-reduceGrid f arr = pConcat $ fmap body (splitUp 256 arr) 
+reduceGrid f arr = pConcat $ fmap body (splitUp 4096 arr) 
     where
       body arr = singletonPush (reduceBlocks f arr)
 

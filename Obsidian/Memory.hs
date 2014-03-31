@@ -27,35 +27,70 @@ import Data.Word
 -- Local Memory
 ---------------------------------------------------------------------------
 class MemoryOps a where
+  -- | Obtain new names for variables / arrays 
   moNames          :: String -> Program t (Names a) 
-  moAllocateArray  :: Names a -> Word32 -> Program t ()
-  moAllocateScalar :: Names a -> Program t () 
+
+  -- Array operations 
   moAssignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
-  moWarpAssignArray ::  Names a -> EWord32 -> Word32 -> a -> EWord32 -> Program Thread () 
-  moAssignScalar   :: Names a -> a -> Program Thread () 
+  moAllocateArray  :: Names a -> Word32 -> Program t ()
   moPullFrom       :: Names a -> Word32 -> Pull Word32 a
-  moWarpPullFrom   :: Names a -> EWord32 -> Word32 -> Pull Word32 a
+
+  
+
+  -- Scalar operations 
+  moAssignScalar   :: Names a -> a -> Program Thread ()
+  moAllocateScalar :: Names a ->  Program t () 
   moReadFrom       :: Names a -> a
+  
+  
+  -- Warp level operations   
+  moWarpAssignArray   ::  Names a
+                      -> EWord32
+                      -> Word32
+                      -> a
+                      -> EWord32
+                      -> Program Thread ()
+  moWarpPullFrom      :: Names a -> EWord32 -> Word32 -> Pull Word32 a
+  
+  -- Extra
+  moAllocateVolatileArray :: Names a -> Word32 -> Program t ()
+
+
+
 
 ---------------------------------------------------------------------------
 -- Instances
 ---------------------------------------------------------------------------
 instance Scalar a => MemoryOps (Exp a) where
+
+  -- Names 
   moNames pre = do {i <- uniqueNamed pre; return (Single i)}
+
+  --Array ops 
   moAllocateArray (Single name) n = 
     Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Pointer (typeOf (undefined :: Exp a)))
+  moAssignArray  (Single name) a ix = Assign name [ix] a
+  moPullFrom (Single name) n = mkPull n (\i -> index name i)
+  
+  -- Scalar ops 
   moAllocateScalar (Single name) =
     Declare name (typeOf (undefined :: Exp a)) 
-  moAssignArray  (Single name) a ix = Assign name [ix] a
+  moAssignScalar (Single name) a    = Assign name [] a
+  moReadFrom  (Single name) = variable name
+
+  -- Warp ops   
   moWarpAssignArray (Single name) warpID step a ix =
     Assign name [warpID * fromIntegral step + ix] a 
 
-  moAssignScalar (Single name) a    = Assign name [] a  
-  moPullFrom (Single name) n = mkPull n (\i -> index name i)
   moWarpPullFrom (Single name) warpID n
     = mkPull n (\i -> index name (warpID * fromIntegral n + i))
-  moReadFrom  (Single name) = variable name
+
+  -- Extra 
+  moAllocateVolatileArray (Single name) n = 
+    Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+                  (Volatile (Pointer (typeOf (undefined :: Exp a))))
+  
 
 
 instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
@@ -68,6 +103,13 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
     do 
       moAllocateArray ns1 {-a-} n
       moAllocateArray ns2 {-b-} n
+      
+  moAllocateVolatileArray (Tuple ns1 ns2) {-(a,b)-} n =
+    do 
+      moAllocateVolatileArray ns1 {-a-} n
+      moAllocateVolatileArray ns2 {-b-} n
+
+      
   moAllocateScalar (Tuple ns1 ns2) {-(a,b)-} =
     do
       moAllocateScalar ns1 {-a-}
@@ -101,6 +143,8 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
         p2 = moReadFrom ns2
     in (p1,p2)
 
+  
+
 
 instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
   moNames pre {-(a,b)-} =
@@ -114,6 +158,12 @@ instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
       moAllocateArray ns1 {-a-} n
       moAllocateArray ns2 {-b-} n
       moAllocateArray ns3 {-b-} n
+  moAllocateVolatileArray (Triple ns1 ns2 ns3) {-(a,b)-} n =
+    do 
+      moAllocateVolatileArray ns1 {-a-} n
+      moAllocateVolatileArray ns2 {-b-} n
+      moAllocateVolatileArray ns3 {-b-} n 
+      
   moAllocateScalar (Triple ns1 ns2 ns3) {-(a,b)-} =
     do
       moAllocateScalar ns1 {-a-}
