@@ -54,7 +54,7 @@ red1 f arr
 mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
 mapRed1 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPushP (red1 f arr) 
+    body arr = singletonPush (red1 f arr) 
 
 getRed1 = putStrLn $
           genKernel 256 "red1"
@@ -80,7 +80,7 @@ red2 f arr
 mapRed2 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed2 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPushP (red2 f arr)
+    body arr = singletonPush (red2 f arr)
 
 getRed2 = putStrLn $ 
           genKernel 256 "red2"
@@ -98,7 +98,7 @@ red3 :: MemoryOps a
            -> Program Block a
 red3 cutoff f  arr
   | len arr == cutoff =
-    return (foldPull1 f arr) 
+    return (fold1 f arr ! 0) 
   | otherwise = 
     do
       let (a1,a2) = halve arr
@@ -109,7 +109,7 @@ red3 cutoff f  arr
 mapRed3 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed3 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPushP (red3 2 f arr)
+    body arr = singletonPush (red3 2 f arr)
 
 getRed3 = putStrLn $ 
           genKernel 256 "red3"
@@ -120,9 +120,10 @@ getRed3 = putStrLn $
 ---------------------------------------------------------------------------
 -- Kernel4 (Thread performs sequential computations)
 -- seqReduce is a built-in primitive that results in a for loop.
--- An alternative is to use foldPull1 and get an unrolled loop in the
+-- An alternative is to use fold1 and get an unrolled loop in the
 -- generated code. 
 ---------------------------------------------------------------------------
+seqReducePush f = singletonPush . seqReduce f 
 
 red4 :: MemoryOps a
            => (a -> a -> a)
@@ -130,13 +131,13 @@ red4 :: MemoryOps a
            -> Program Block a
 red4 f arr =
   do
-    arr' <- force (tConcat (fmap (seqReduce f) (splitUp 8 arr)))
-    red3 2 f arr' 
-
+    arr' <- force (tConcat (fmap (seqReducePush f) (splitUp 8 arr)))
+    red3 2 f arr'
+    
 mapRed4 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed4 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPushP (red4 f arr) 
+    body arr = singletonPush (red4 f arr) 
 
 getRed4 = putStrLn $
           genKernel 256 "red4"
@@ -154,7 +155,7 @@ red5 :: MemoryOps a
            -> Program Block a
 red5 f arr =
   do
-    arr' <- force (tConcat (fmap (seqReduce f)
+    arr' <- force (tConcat (fmap (seqReducePush f)
                            (coalesce 8 arr)))
     red3 2 f arr' 
   
@@ -162,7 +163,7 @@ red5 f arr =
 mapRed5 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed5 f arr = pConcat (fmap body arr)
   where
-    body arr = singletonPushP (red5 f arr) 
+    body arr = singletonPush (red5 f arr) 
 
 getRed5 = putStrLn $
           genKernel 256 "red5"
@@ -181,7 +182,7 @@ red5' :: MemoryOps a
            -> Program Block a
 red5' n f arr =
   do
-    arr' <- force (tConcat (fmap (seqReduce f) (coalesce n arr)))
+    arr' <- force (tConcat (fmap (seqReducePush f) (coalesce n arr)))
     red3 2 f arr' 
 
 red6 = red5' 16 
@@ -189,7 +190,7 @@ red6 = red5' 16
 mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed6 f arr = pConcat (fmap body arr) 
   where
-    body arr = singletonPushP (red6 f arr) 
+    body arr = singletonPush (red6 f arr) 
 
 getRed6 = putStrLn $ 
           genKernel 256 "red6"
@@ -216,7 +217,7 @@ red7 = red5' 32
 mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed7 f arr = pConcat (fmap body arr) 
   where
-    body arr = singletonPushP (red7 f arr)
+    body arr = singletonPush (red7 f arr)
 
 getRed7 = putStrLn $
           genKernel 256 "red7"

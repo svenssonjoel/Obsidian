@@ -41,12 +41,12 @@ sumUpT arr
 mapSumUp :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
 mapSumUp arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (return (sumUp arr))
+    body arr = singletonPushP (return (sumUp arr))
 
 mapSumUp' :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
 mapSumUp' arr = pConcat (fmap body arr)
   where
-    body arr = singletonPush (sumUp' arr)
+    body arr = singletonPushP (sumUp' arr)
 
 
 -- {{{0,1,2,3,4,5,6,7}},{{8,9,10,11,12,13,14,15}}}
@@ -54,7 +54,7 @@ mapSumUpT :: Pull EWord32 (SPull (SPull EWord32)) -> Push Grid EWord32 EWord32
 mapSumUpT arr = pConcat (fmap body arr)
   where
     body arr = tConcat (fmap bodyThread arr) 
-    bodyThread arr = singletonPush (sumUpT arr)
+    bodyThread arr = singletonPushP (sumUpT arr)
 
 
 
@@ -62,7 +62,7 @@ mapSumUpT arr = pConcat (fmap body arr)
 --
 ---------------------------------------------------------------------------
 
-reduceLocal :: (Sync t, MemoryOps a, Write t, Pushable t )
+reduceLocal :: (Forceable t, MemoryOps a, Pushable t )
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -74,7 +74,7 @@ reduceLocal f arr
       arr' <- force $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
-reduceLocal' :: (Sync t, MemoryOps a, Write t, Pushable t )
+reduceLocal' :: (Forceable t, MemoryOps a, Pushable t )
                => (a -> a -> a)
                -> SPull a
                -> Program t a
@@ -96,14 +96,14 @@ reduceBlocks f arr =
       imm <- force $ pConcat (fmap body (splitUp 32 arr))
       reduceLocal' f imm
   where
-    body arr = singletonPush (reduceLocal' f arr)
+    body arr = singletonPushP (reduceLocal' f arr)
     
 reduceGrid :: MemoryOps a
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduceGrid f arr = pConcat $ fmap body (splitUp 4096 arr) 
     where
-      body arr = singletonPush (reduceBlocks f arr)
+      body arr = singletonPushP (reduceBlocks f arr)
 
 
 reduce :: MemoryOps a

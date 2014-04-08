@@ -3,20 +3,6 @@
 {-# LANGUAGE GADTs #-}
 module Examples where
 
-
--- import Obsidian.Program
--- import Obsidian.Exp
--- import Obsidian.Types
--- import Obsidian.Array
--- import Obsidian.Library
--- import Obsidian.LibraryG
--- import Obsidian.Force
--- import Obsidian.CodeGen.Reify
--- import Obsidian.CodeGen.CompileIM
--- import Obsidian.CodeGen.Memory
--- import Obsidian.CodeGen.Liveness
--- import Text.PrettyPrint.Mainland hiding ((<>) )
-
 import Obsidian
 import Obsidian.CodeGen.CUDA
 

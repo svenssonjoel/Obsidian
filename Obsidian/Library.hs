@@ -1,4 +1,4 @@
-{- Joel Svensson 2012, 2013 
+{- Joel Svensson 2012, 2013, 2014 
    Mary Sheeran  2012
 
    Notes:
@@ -110,18 +110,11 @@ everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegra
 ---------------------------------------------------------------------------
 -- replicate 
 ---------------------------------------------------------------------------
--- | Generates a Pull array of length @n@, all ellements are @a@. 
-replicate :: l -> a -> Pull l a 
-replicate n a = mkPull n (\ix -> a)
-
 -- | Generates a Pull array of length one, containing @a@. 
-singleton :: ASize l => a -> Pull l a
+singleton :: (Array a, ASize l) => e -> a l e
 singleton a = replicate 1 a
 
--- | Generates a Pull array of consecutive numbers, starting at 0. 
-iota :: l -> Pull l EWord32
-iota n = mkPull n id 
-
+generate n f = fmap f (iota n) 
 ---------------------------------------------------------------------------
 -- last and first 
 ---------------------------------------------------------------------------
@@ -315,13 +308,13 @@ concP p1 p2  =
 ---------------------------------------------------------------------------
 
 -- Danger! use only with Scalar a's 
--- | Create a singleton Push array.
-singletonPush :: a -> SPush t a
-singletonPush = singletonPushP . return 
+-- -- | Create a singleton Push array.
+--singletonPush :: a -> SPush t a
+--singletonPush = singletonPushP . return 
 
--- | Monadic version of @singletonPush@.
-singletonPushP :: Program t a -> SPush t a
-singletonPushP prg =
+-- | Monadic version of @singleton@.
+singletonPush :: Program t a -> SPush t a
+singletonPush prg =
   mkPush 1 $ \wf -> do
     a <- prg
     forAll 1 $ \ix -> 

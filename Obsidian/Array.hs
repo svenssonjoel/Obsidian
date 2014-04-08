@@ -5,6 +5,8 @@
 {- Joel Svensson 2012
 
    Notes:
+    2014-04-08: Experimenting with API 
+    ---- OUTDATED ----
     2013-08-26: Experimenting with warp programs.
                 These do not fit that well in established Idioms!
                 TODO: Improve this situation. 
@@ -20,14 +22,11 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        push,
                        {- pushN, -} 
                        setSize,
-                       toDynamic,
-                       fromDynamic,
-                       toDynamicPush,
-                       foldPull1, 
+                       {- foldPull1, -}
                        (!),
                        (<:), 
                        Array(..),
-                       ArrayLength(..),
+                      --  ArrayLength(..),
                        ASize(..),
                        namedGlobal,
                        undefinedGlobal) where
@@ -37,7 +36,8 @@ import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
 
-import Data.List
+import Prelude hiding (replicate) 
+import Data.List hiding (replicate) 
 import Data.Word
 
 ---------------------------------------------------------------------------
@@ -97,53 +97,64 @@ setSize :: l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
 
 ---------------------------------------------------------------------------
--- to, from Dynamic
+-- Array Class 
 --------------------------------------------------------------------------- 
-toDynamic :: SPull a -> DPull a
-toDynamic (Pull n ixf) = Pull (fromIntegral n) ixf 
-
-fromDynamic :: Word32 -> DPull a -> SPull a
-fromDynamic n (Pull _ ixf) = Pull n ixf
-
-toDynamicPush :: SPush t a -> DPush t a
-toDynamicPush (Push s p) = Push (fromIntegral s) p 
--- The above should be generalised for push and pull arrays both.
-
-class ArrayLength a where
-  len    :: a s e -> s
-
-instance ArrayLength Pull  where 
-  len      (Pull s _)   = s
-
-instance ArrayLength (Push t)  where 
-  len      (Push s _) = s
-
-  
 class Array a where
-  aMap   :: (e -> e') -> a s e -> a s e'
-  ixMap  :: (Exp Word32 -> Exp Word32)
-            -> a s e -> a s e
+  len       :: a s e -> s
   
-instance Array Pull where 
+  iota      :: ASize s => s -> a s EWord32
+  replicate :: ASize s => s -> e -> a s e 
+
+  aMap      :: (e -> e') -> a s e -> a s e'
+  ixMap     :: (EWord32 -> EWord32)
+               -> a s e -> a s e
+
+  fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
+  
+  -- technicalities
+  toDyn     :: a Word32 e -> a EW32 e
+  fromDyn   :: Word32 -> a EW32 e -> a Word32 e 
+  
+instance Array Pull where
+  len    (Pull n ixf) = n
+  
+  iota   s = Pull s $ \ix -> ix 
+  replicate s e = Pull s $ \_ -> e
+
   aMap   f (Pull n ixf) = Pull n (f . ixf)
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
+
+  fold1  f (Pull n ixf) = replicate 1
+                          $ foldl1 f [ixf (fromIntegral i) | i <- [0..(n-1)]]   
   
-instance Array (Push t) where 
+  -- technicalities
+  toDyn (Pull n ixf) = Pull (fromIntegral n) ixf
+  fromDyn n (Pull _ ixf) = Pull n ixf 
+   
+  
+instance Array (Push t) where
+  len  (Push s p) = s 
+  iota s = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf ix ix 
+  replicate s e = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf e ix 
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  fold1 = error "fold1: not implemented on Push arrays" 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+ 
 
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
 instance Array arr => Functor (arr w) where 
   fmap = aMap
-
----------------------------------------------------------------------------
--- Fold a pull array
----------------------------------------------------------------------------
-foldPull1 :: (a -> a -> a) -> SPull a -> a
-foldPull1 _ (Pull 1 ixf) = ixf 0  
-foldPull1 f (Pull n ixf) = f (ixf (fromIntegral (n-1))) (foldPull1 f (Pull (n-1) ixf))
 
 ---------------------------------------------------------------------------
 -- Pushable

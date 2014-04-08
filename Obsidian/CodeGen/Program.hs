@@ -117,6 +117,8 @@ getNWarps = do
 emptyCtx = Context Nothing False False
 ---------------------------------------------------------------------------
 
+
+-- Sort these out and improve! 
 usesWarps :: IMList t -> Bool
 usesWarps = any (go . fst)
   where
@@ -130,7 +132,12 @@ usesTid = any (go . fst)
     go (SDistrPar _ _ im) = usesTid im 
     go (SForAll Block _ _) = True
     go _ = False
-
+usesBid :: IMList t -> Bool
+usesBid = any (go . fst)
+  where
+    go (SDistrPar Block _ im) = True -- usesBid im
+    -- go (SForAll Block _ _) = True
+    go _ = False
 usesGid :: IMList t -> Bool
 usesGid = any (go . fst)
   where

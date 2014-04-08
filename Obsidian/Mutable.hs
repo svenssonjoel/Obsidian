@@ -70,8 +70,8 @@ type MShared a = Mutable Shared Word32 a
 type MGlobal a = Mutable Global EWord32 a
 
 
-instance ArrayLength (Mutable Shared) where
-  len (Mutable n _) = n
+--instance ArrayLength (Mutable Shared) where
+--  len (Mutable n _) = n
 
   
 

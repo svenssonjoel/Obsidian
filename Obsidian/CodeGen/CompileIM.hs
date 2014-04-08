@@ -365,8 +365,11 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
 
-compileForAll PlatformCUDA c (SForAll Grid n im) =
-  error "compileForAll: Grid"
+compileForAll PlatformCUDA c (SForAll Grid n im) = cim
+  -- The grid case is special. May need more thought
+  --error "compileForAll: Grid"
+  where
+    cim = compileIM PlatformCUDA c im
 
 compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
   where
@@ -509,7 +512,13 @@ compile pform config kname (params,im)
                 --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
                 --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                 --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
-                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
+--                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
+               (if (usesGid im) 
+                then [BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
+                else []) ++ 
+               (if (usesBid im) 
+                then [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
+                else []) ++ 
                (if (usesTid im) 
                 then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
                 else []) ++
