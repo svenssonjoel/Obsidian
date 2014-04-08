@@ -22,7 +22,6 @@ import Data.Word
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
 import Data.Time.Clock (getCurrentTime, diffUTCTime)
-import System.Exit
 
 import Data.IORef
 
@@ -53,8 +52,7 @@ kernels = [("r1", mapRed1 (+))
           ,("r7", mapRed7 (+))] 
 
 exitError = do
-  putStrLn "Provide 3 args: Kernel, ThreadsPerBlock, ElementsPerBlock" 
-  exitWith (ExitFailure 1)   
+  error "Provide 3 args: Kernel, ThreadsPerBlock, ElementsPerBlock" 
 
 main :: IO ()
 main = do
@@ -73,9 +71,7 @@ main = do
           e = read $ args P.!! 2
 
       case (lookup k kernels) of
-        Nothing -> do
-          putStrLn "Incorrect kernel" 
-          exitWith (ExitFailure 1)
+        Nothing   -> error "Incorrect kernel" 
         Just kern -> runBenchmark kern t e
     largeBench args = do
       let k = args P.!! 1
@@ -116,15 +112,12 @@ runBenchmark origkern t elts =
           t1   <- lift getCurrentTime
 
           r <- peekCUDAVector o
-          when (sum r /= cpuresult) $ lift $
-            do
-              putStrLn "CPU and GPU results not equal!!" 
-              exitWith (ExitFailure 1)
-              
-
-
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+          when (sum r /= cpuresult) $ lift $
+            putStrLn "WARNING: CPU and GPU results not equal!!"
+
 
 
 
@@ -152,9 +145,9 @@ runLargeBenchmark origkern t =
         do
           fill o 0
         
-
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
+          -- Scale up the benchmark 1000 times to make it take long enough.
           forM_ [0..999] $ \_ -> do 
             o <== (blcks,kern) <> i
             out <== (1,kern) <> o 
@@ -163,11 +156,8 @@ runLargeBenchmark origkern t =
           t1   <- lift getCurrentTime
 
           r <- peekCUDAVector out
-          when (r P.!! 0 /= cpuresult) $ lift $ do 
-            putStrLn "CPU and GPU results not equal!!" 
-            exitWith (ExitFailure 1)
-              
-    
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
+          when (r P.!! 0 /= cpuresult) $ lift $ do 
+            putStrLn "WARNING: CPU and GPU results not equal!!" 

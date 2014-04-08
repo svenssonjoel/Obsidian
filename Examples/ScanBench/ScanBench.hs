@@ -22,7 +22,6 @@ import Data.Word
 
 import System.Environment
 import System.CPUTime.Rdtsc
-import System.Exit
 
 import Data.Time.Clock
 
@@ -64,9 +63,7 @@ main = do
   putStrLn "Running scan benchmark..."
   args <- getArgs
   when (length args /=  3) $
-    do
-      putStrLn "Provide 3 args: ThreadsPerBlock, ElementsPerBlock" 
-      exitWith (ExitFailure 1)
+    error "Provide 3 args: ThreadsPerBlock, ElementsPerBlock" 
   let k = args P.!! 0 
       t = read $ args P.!! 1
       e = read $ args P.!! 2
@@ -77,9 +74,7 @@ main = do
   withCUDA $ do
 
     capt <- case (lookup k kernels) of
-      Nothing ->
-        do lift $ putStrLn "Incorrect kernel"
-           lift $ exitWith (ExitFailure 1)
+      Nothing -> error "Incorrect kernel"
       Just kern -> capture t (kern eLog (+) . splitUp e)
     -- capt <- 
 
@@ -109,10 +104,10 @@ main = do
         --lift $ putStrLn $ show (r == cpuresult)
 
         -- Computing the cpuresults take a long time!
-        -- I implemented a bad cpu segmented scan (uses V.++) 
-        lift $ putStrLn "Done: ... Comparing to CPU result" 
-        when (r /= cpuresult) $ lift $ exitWith (ExitFailure 1) 
-        
-        
+        -- I implemented a bad cpu segmented scan (uses V.++)         
         lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
         lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+        lift $ putStrLn "Done: ... Comparing to CPU result"         
+        when (r /= cpuresult) $ 
+           lift $ putStrLn "WARNING: GPU and CPU results don't match " 
