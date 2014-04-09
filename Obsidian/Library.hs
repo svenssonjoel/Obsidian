@@ -260,7 +260,7 @@ binSplit ::Int
 binSplit = twoK
 
 -- See if this should be specifically for Static size pull arrays
-twoK ::Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
+twoK :: Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
 twoK 0 f = f  -- divide 0 times and apply f
 twoK n f = \arr -> 
               let arr' = mkPull lt (\i -> (f (mkPull  m (\j -> (arr ! (g i j)))) ! (h i))) 
@@ -271,8 +271,6 @@ twoK n f = \arr ->
                   nl2   = len (f (mkPull  m (\j -> arr ! variable "X")))
                   lt    = nl2 `shiftL` n 
               in arr'
-
-
 
 ---------------------------------------------------------------------------
 -- ***                          PUSHY LIBRARY                       *** ---

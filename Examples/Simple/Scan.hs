@@ -19,7 +19,7 @@ sklanskyLocal n op arr =
     arr2 <- force $ push arr1
     sklanskyLocal (n-1) op arr2
 
-fan op arr =  a1 `conc`  fmap (op c) a2 
+fan op arr =  a1 `append`  fmap (op c) a2 
     where 
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))              
