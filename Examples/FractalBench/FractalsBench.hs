@@ -31,7 +31,7 @@ main = do
   args <- getArgs
   when (length args /=  2) $
     do
-      putStrLn "Provide 2 args: ThreadsPerBlock, ElementsPerBlock" 
+      putStrLn "Provide 2 args: ThreadsPerBlock, ImageSize" 
       exitWith (ExitFailure 1)
 
   let t = read $ args P.!! 0

@@ -67,25 +67,24 @@ cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512
     ysq = y*y 
 
 
-iters :: EWord32 -> EWord32 -> EWord32 -> TProgram (SPush Thread EWord8)
+iters :: EWord32 -> EWord32 -> EWord32 ->  Program Thread EW8  
 iters s bid tid =
-  return $ fmap extract (seqUntil (f s bid tid) cond  (0,0,1))
+  do (_,_,c) <- seqUntil (f s bid tid) cond  (0,0,1)
+     return (color c) 
   where
-    extract (_,_,c) = ((w32ToW8 c) `mod` 16) * 16
+    color c= ((w32ToW8 c) `mod` 16) * 16
 
 genRect :: MemoryOps b
            => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
-genRect bs ts p = generate bs $
+genRect bs ts p = pDistribute bs $
                   \bid -> (tDistribute ts $ p bid)
 
 
 -- Generate square Mandelbrot images 
-mandel x = genRect (fromIntegral x) x (runPush2 (iters (fromIntegral x)))  
-        
---getMandel = putStrLn $
---            fst $
---            genKernelSpecsNL 512 "mandel" mandel
+mandel x = genRect (fromIntegral x) x body 
+  where
+    body i j = singletonPush (iters (fromIntegral x) i j) 
   

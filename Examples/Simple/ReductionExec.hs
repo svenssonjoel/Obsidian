@@ -50,4 +50,4 @@ performSmall =
 --           lift $ putStrLn $ show r 
 
 
-main = performLarge 
+main = performSmall 

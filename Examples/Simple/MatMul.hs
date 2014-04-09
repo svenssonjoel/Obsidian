@@ -31,7 +31,7 @@ dotProd :: (Num a, MemoryOps a)
            => Pull Word32 a
            -> Pull Word32 a
            -> Push Thread Word32 a
-dotProd a b = seqReduce (+) (zipWith (*) a b)
+dotProd a b = singletonPush $ seqReduce (+) (zipWith (*) a b)
 
 
 transpose :: Pull Word32 (Pull Word32 a) -> Pull Word32 (Pull Word32 a)

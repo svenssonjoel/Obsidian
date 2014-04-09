@@ -26,8 +26,8 @@ perform =
     
     kern <- capture 32
             (\a b ->
-              toDynamicPush (matMul (fromDynamic 32 (splitUp 32 a))
-                                    (fromDynamic 32 (splitUp 32 b))))
+              toDyn (matMul (fromDyn 32 (splitUp 32 a))
+                            (fromDyn 32 (splitUp 32 b))))
 
             
     useVector (V.fromList (P.replicate (32*32) (2.0 :: Float))) $ \i1 ->

@@ -68,11 +68,12 @@ cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512
     ysq = y*y 
 
 
-iters :: EWord32 -> EWord32 -> SPush Thread EWord8
+iters :: EWord32 -> EWord32 -> Program Thread EW8 
 iters bid tid =
-  fmap extract (seqUntil (f bid' tid') cond  (0,0,1))
+  do (_,_,c) <- seqUntil (f bid' tid') cond  (0,0,1)
+     return (color c) 
   where
-    extract (_,_,c) = (w32ToW8 (c `mod` 16)) * 16
+    color c = (w32ToW8 (c `mod` 16)) * 16
     tid' = w32ToF tid
     bid' = w32ToF bid 
 
@@ -91,9 +92,10 @@ genRect bs ts p = pConcat (mkPull bs
 --                   \bid -> (tConcat (mkPull ts (p bid)))
 
 
-mandel = genRect 512 512 iters  
+mandel = genRect 512 512 body -- iters
+  where 
+    body i j = singletonPush (iters i j) 
         
 getMandel = putStrLn $
-            fst $
-            genKernelSpecsNL 512 "mandel" mandel
+            genKernel 512 "mandel" mandel
   
