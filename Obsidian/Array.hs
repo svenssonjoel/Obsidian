@@ -110,6 +110,9 @@ class Array a where
                -> a s e -> a s e
 
   fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
+
+  -- would require Choice !
+  append    :: (ASize s, Choice e) => a s e -> a s e -> a s e 
   
   -- technicalities
   toDyn     :: a Word32 e -> a EW32 e
@@ -126,7 +129,15 @@ instance Array Pull where
 
   fold1  f (Pull n ixf) = replicate 1
                           $ foldl1 f [ixf (fromIntegral i) | i <- [0..(n-1)]]   
-  
+
+  append a1 a2 = Pull (n1+n2)
+               $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
+                       (a1 ! ix) 
+                       (a2 ! (ix - (sizeConv n1)))
+    where 
+      n1 = len a1
+      n2 = len a2 
+
   -- technicalities
   toDyn (Pull n ixf) = Pull (fromIntegral n) ixf
   fromDyn n (Pull _ ixf) = Pull n ixf 
@@ -144,6 +155,15 @@ instance Array (Push t) where
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
 
   fold1 = error "fold1: not implemented on Push arrays" 
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
 
    -- technicalities
   toDyn (Push n p) = Push (fromIntegral n) p 

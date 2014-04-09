@@ -114,6 +114,9 @@ everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegra
 singleton :: (Array a, ASize l) => e -> a l e
 singleton a = replicate 1 a
 
+-- | Generate a pull or push array usign a function from Index to element.
+generate :: (Functor (a s), Array a, ASize s)
+         => s -> (EWord32 -> b) -> a s b
 generate n f = fmap f (iota n) 
 ---------------------------------------------------------------------------
 -- last and first 
