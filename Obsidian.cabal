@@ -52,7 +52,6 @@ Library
                ,  Obsidian.Force
                ,  Obsidian.Globs
                ,  Obsidian.Library
-               ,  Obsidian.LibraryG 
                ,  Obsidian.Memory
                ,  Obsidian.Mutable
                ,  Obsidian.Names
