@@ -49,19 +49,9 @@ import Data.Word
 
 data Shared
 data Global
-
--- EXPERIMENTS 
--- Memory hierarchy size correspondence   
---type family MSize a
---type instance MSize Shared = Word32
---type instance MSize Global = EWord32
-
--- Memory hierarchy program correspondence
---type family MProgram a
---type instance MProgram Shared = Block
---type instance MProgram Global = Grid 
   
--- Starting with implementing only the shared mem kind
+-- A mutable array has an attached location.
+-- Either it recides in Global or in Shared memory. 
 data Mutable mloc s a = Mutable s (Names a)
 
 -- mutlen (Mutable n _) = n
@@ -70,8 +60,8 @@ type MShared a = Mutable Shared Word32 a
 type MGlobal a = Mutable Global EWord32 a
 
 
---instance ArrayLength (Mutable Shared) where
---  len (Mutable n _) = n
+instance ArrayLength (Mutable Shared) where
+  len (Mutable n _) = n
 
   
 
@@ -103,7 +93,7 @@ writeTo :: MemoryOps a
            -> Program Block ()
 writeTo (Mutable n snames) p 
   | n <= m =  p <: assignArray snames
-  | otherwise = error "forceTo: Incompatible sizes" 
+  | otherwise = error "WriteTo: Incompatible sizes" 
   where
     m = len p
    

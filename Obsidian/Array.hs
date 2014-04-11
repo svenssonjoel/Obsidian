@@ -26,7 +26,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        (!),
                        (<:), 
                        Array(..),
-                      --  ArrayLength(..),
+                       ArrayLength(..),
                        ASize(..),
                        namedGlobal,
                        undefinedGlobal) where
@@ -98,29 +98,42 @@ setSize n (Pull _ ixf) = mkPull n ixf
 
 ---------------------------------------------------------------------------
 -- Array Class 
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
+class ArrayLength a where
+  -- | Get the length of an array.
+  len :: a s e -> s
+
+instance ArrayLength Pull where
+  len    (Pull n ixf) = n
+
+instance ArrayLength (Push t) where
+  len  (Push s p) = s
+
 class Array a where
-  len       :: a s e -> s
-  
+  -- | Array of consecutive integers
   iota      :: ASize s => s -> a s EWord32
+  -- | Create an array by replicating an element. 
   replicate :: ASize s => s -> e -> a s e 
 
+  -- | Map a function over an array. 
   aMap      :: (e -> e') -> a s e -> a s e'
+  -- | Perform arbitrary permutations (dangerous). 
   ixMap     :: (EWord32 -> EWord32)
                -> a s e -> a s e
-
+  -- | Reduce an array using a provided operator. 
   fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
 
   -- would require Choice !
+  -- | Append two arrays. 
   append    :: (ASize s, Choice e) => a s e -> a s e -> a s e 
   
   -- technicalities
+  -- | Statically sized array to dynamically sized array.
   toDyn     :: a Word32 e -> a EW32 e
+  -- | Dynamically sized array to statically sized array. 
   fromDyn   :: Word32 -> a EW32 e -> a Word32 e 
   
 instance Array Pull where
-  len    (Pull n ixf) = n
-  
   iota   s = Pull s $ \ix -> ix 
   replicate s e = Pull s $ \_ -> e
 
@@ -144,7 +157,6 @@ instance Array Pull where
    
   
 instance Array (Push t) where
-  len  (Push s p) = s 
   iota s = Push s $ \wf ->
     do
       forAll (sizeConv s) $ \ix -> wf ix ix 
