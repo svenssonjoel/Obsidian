@@ -144,7 +144,7 @@ drop n arr = setSize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
 -- fold (sequential , unrolled)  
 ---------------------------------------------------------------------------
 -- | Fold a nonempty pull array using a given operator. The result a singleton array (push or pull). 
-fold1 :: (Array a, ASize s) => (e -> e -> e) -> Pull Word32 e -> a s e
+fold1 :: Array a => (e -> e -> e) -> Pull Word32 e -> a Word32 e
 fold1  f arr = replicate 1
                $ foldl1 f [arr ! (fromIntegral i) | i <- [0..(n-1)]]   
   where n = len arr
