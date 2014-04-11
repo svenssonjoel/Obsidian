@@ -20,7 +20,7 @@ import Data.Word
 -- TODO: Rename module to something better
 
 ---------------------------------------------------------------------------
--- seqReduce (actually reduce) 
+-- seqReduce 
 ---------------------------------------------------------------------------
 seqReduce :: (MemoryOps a)
            => (a -> a -> a)
@@ -123,16 +123,4 @@ seqScanCin op a arr {-(Pull n ixf)-} =
       wf (readFrom ns) ix
   where
     n = len arr
----------------------------------------------------------------------------
--- Sequential Map (here for uniformity) 
----------------------------------------------------------------------------
-
-seqMap :: (a -> b)
-          -> SPull a
-          -> SPush Thread b
-seqMap f arr =
-  mkPush (len arr) $ \wf -> do
-    SeqFor (sizeConv (len arr)) $ \ix ->
-      wf (f (arr ! ix)) ix
-
-
+    
