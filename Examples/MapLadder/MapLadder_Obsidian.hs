@@ -27,12 +27,12 @@ main = do
   runBenchmark len
 
 
-mapRed1 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed1 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed1 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red1 f arr) 
 
-red1 :: MemoryOps a
+red1 :: Storable a
       => (a -> a -> a)
       -> SPull a
       -> BProgram a

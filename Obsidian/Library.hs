@@ -309,23 +309,6 @@ concP p1 p2  =
 
 
 
----------------------------------------------------------------------------
--- Singleton push arrays 
----------------------------------------------------------------------------
-
--- Danger! use only with Scalar a's 
--- -- | Create a singleton Push array.
---singletonPush :: a -> SPush t a
---singletonPush = singletonPushP . return 
-
--- | Monadic version of @singleton@.
-singletonPush :: Program t a -> SPush t a
-singletonPush prg =
-  mkPush 1 $ \wf -> do
-    a <- prg
-    forAll 1 $ \ix -> 
-      wf a 0
-
 
 ---------------------------------------------------------------------------
 -- load / Store 
@@ -477,4 +460,28 @@ runPull1 f a = runPull (f a)
 -- | Lifts @runPull@ to two input functions.
 runPull2 :: (Pushable t, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
 runPull2 f a b = runPull (f a b)
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
+pushPrg :: Program t a -> SPush t a
+pushPrg = singletonPush
+
+
+---------------------------------------------------------------------------
+-- Singleton push arrays 
+---------------------------------------------------------------------------
+
+-- Danger! use only with Scalar a's 
+-- -- | Create a singleton Push array.
+--singletonPush :: a -> SPush t a
+--singletonPush = singletonPushP . return 
+
+-- | Monadic version of @singleton@.
+singletonPush :: Program t a -> SPush t a
+singletonPush prg =
+  mkPush 1 $ \wf -> do
+    a <- prg
+    forAll 1 $ \ix -> 
+      wf a 0
 

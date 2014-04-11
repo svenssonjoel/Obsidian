@@ -26,7 +26,7 @@ input = undefinedGlobal (variable "X")
 -- Kernel1  (Thread acceses element tid and tid+1 
 ---------------------------------------------------------------------------
 
--- red1 :: MemoryOps a
+-- red1 :: Storable a
 --       => (a -> a -> a)
 --       -> SPull a
 --       -> BProgram (SPush Block a)
@@ -39,7 +39,7 @@ input = undefinedGlobal (variable "X")
 --       red1 f arr'   
 
 
-red1 :: MemoryOps a
+red1 :: Storable a
       => (a -> a -> a)
       -> Pull Word32 a
       -> Program Block a
@@ -51,7 +51,7 @@ red1 f arr
       imm <- forcePull (zipWith f a1 a2)
       red1 f imm   
 
-mapRed1 :: MemoryOps a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
+mapRed1 :: Storable a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
 mapRed1 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red1 f arr) 
@@ -65,7 +65,7 @@ getRed1 = putStrLn $
 -- Kernel2 (Thread acceses element tid and tid+n )
 ---------------------------------------------------------------------------
 
-red2 :: MemoryOps a
+red2 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
            -> Program Block a
@@ -77,7 +77,7 @@ red2 f arr
       arr' <- forcePull (zipWith f a1 a2)
       red2 f arr'   
 
-mapRed2 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed2 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed2 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red2 f arr)
@@ -91,7 +91,7 @@ getRed2 = putStrLn $
 -- Kernel3 (Thread acceses element tid and tid+n + last op optimisation
 ---------------------------------------------------------------------------
 
-red3 :: MemoryOps a
+red3 :: Storable a
            => Word32 
            -> (a -> a -> a)
            -> Pull Word32 a
@@ -106,7 +106,7 @@ red3 cutoff f  arr
       red3 cutoff f arr'   
 
 
-mapRed3 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed3 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed3 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red3 2 f arr)
@@ -125,7 +125,7 @@ getRed3 = putStrLn $
 ---------------------------------------------------------------------------
 seqReducePush f = singletonPush . seqReduce f 
 
-red4 :: MemoryOps a
+red4 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
            -> Program Block a
@@ -134,7 +134,7 @@ red4 f arr =
     arr' <- force (tConcat (fmap (seqReducePush f) (splitUp 8 arr)))
     red3 2 f arr'
     
-mapRed4 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed4 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed4 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red4 f arr) 
@@ -149,7 +149,7 @@ getRed4 = putStrLn $
 -- Kernel5 (Thread performs sequential computations, in a coalesced fashion) 
 ---------------------------------------------------------------------------
 
-red5 :: MemoryOps a
+red5 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
            -> Program Block a
@@ -160,7 +160,7 @@ red5 f arr =
     red3 2 f arr' 
   
 
-mapRed5 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed5 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed5 f arr = pConcat (fmap body arr)
   where
     body arr = singletonPush (red5 f arr) 
@@ -175,7 +175,7 @@ getRed5 = putStrLn $
 -- Kernel6 More sequential work 
 ---------------------------------------------------------------------------
 
-red5' :: MemoryOps a
+red5' :: Storable a
            => Word32
            -> (a -> a -> a)
            -> Pull Word32 a
@@ -187,7 +187,7 @@ red5' n f arr =
 
 red6 = red5' 16 
 
-mapRed6 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed6 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed6 f arr = pConcat (fmap body arr) 
   where
     body arr = singletonPush (red6 f arr) 
@@ -204,7 +204,7 @@ getRed6 = putStrLn $
 
 red7 = red5' 32
 
--- red7 :: MemoryOps a
+-- red7 :: Storable a
 --            => (a -> a -> a)
 --            -> Pull Word32 a
 --            -> Program Block a
@@ -214,7 +214,7 @@ red7 = red5' 32
 --     red3 2 f arr' 
   
 
-mapRed7 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed7 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapRed7 f arr = pConcat (fmap body arr) 
   where
     body arr = singletonPush (red7 f arr)
@@ -251,7 +251,7 @@ getAll fn = writeFile fn str
 -- Kernel1  (Thread acceses element tid and tid+1 
 ---------------------------------------------------------------------------
 
-red1l :: MemoryOps a
+red1l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -291,7 +291,7 @@ performR1l =
 -- Kernel2l (Thread acceses element tid and tid+n )
 ---------------------------------------------------------------------------
 
-red2l :: MemoryOps a
+red2l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -329,7 +329,7 @@ performR2l =
 -- Kernel3l (Thread acceses element tid and tid+n + last op optimisation
 ---------------------------------------------------------------------------
 
-red3l :: MemoryOps a
+red3l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -367,7 +367,7 @@ performR3l =
 -- Kernel4 (Thread performs sequential computations) 
 ---------------------------------------------------------------------------
 
-kernel4l :: MemoryOps a
+kernel4l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -386,7 +386,7 @@ mapKernel4l f = pConcatMap $ pJoin . kernel4l f
 -- Kernel5 (Thread performs sequential computations, in a coalesced fashion) 
 ---------------------------------------------------------------------------
 
-kernel5l :: MemoryOps a
+kernel5l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -406,7 +406,7 @@ mapKernel5l f = pConcatMap $ pJoin . kernel5l f
 -- Kernel6l More sequential work 
 ---------------------------------------------------------------------------
 
-kernel6l :: MemoryOps a
+kernel6l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -426,7 +426,7 @@ mapKernel6l f = pConcatMap $ pJoin . kernel6l f
 -- Kernel7l More sequential work 
 ---------------------------------------------------------------------------
 
-kernel7l :: MemoryOps a
+kernel7l :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -458,7 +458,7 @@ getAllL fn = writeFile fn str
 ---------------------------------------------------------------------------
 -- Naive Push Reduction  
 ---------------------------------------------------------------------------
-naiveReduceLocal :: MemoryOps a
+naiveReduceLocal :: Storable a
                     => (a -> a -> a)
                     -> SPull a
                     -> BProgram (SPush Block a)
@@ -479,7 +479,7 @@ naiveReductions f = pConcatMap $ pJoin . reduceLocal f
 ---------------------------------------------------------------------------
 -- reduceLocal f arr | len arr == 1 = return $ push Block arr
 
--- reduceLocal :: MemoryOps a => (a -> a -> a) -> SPull a -> BProgram (SPush Block a)
+-- reduceLocal :: Storable a => (a -> a -> a) -> SPull a -> BProgram (SPush Block a)
 -- reduceLocal f arr | len arr == 2 = return $ push Block arr'
 --   where arr' = mkPull 1 $ \_ -> f (arr ! 0) (arr ! 1)
 -- reduceLocal f arr | len arr < 32 =
@@ -493,7 +493,7 @@ naiveReductions f = pConcatMap $ pJoin . reduceLocal f
 --     arr' <- force $ zipWith f a1 a2
 --     reduceLocal f arr'
     
-reduceLocal :: MemoryOps a => (a -> a -> a) -> SPull a -> BProgram (SPush Block a)
+reduceLocal :: Storable a => (a -> a -> a) -> SPull a -> BProgram (SPush Block a)
 reduceLocal f arr | len arr == 2 = return $ push arr'
   where arr' = mkPull 1 $ \_ -> f (arr ! 0) (arr ! 1)
 reduceLocal f arr  = 
@@ -554,25 +554,25 @@ stride stride arr =
 --                           \i -> mkPull n $ \j -> ixf (i * fromIntegral n + j )
 
 
-reduce :: MemoryOps a => (a -> a -> a) -> SPull a -> Program Block (SPush Block a)
+reduce :: Storable a => (a -> a -> a) -> SPull a -> Program Block (SPush Block a)
 reduce f arr =
   do
      arr' <- force $  pConcatMap (seqReduce f) (coalesce 8 arr)
      reduceLocal f arr'
 
-reduceNC :: MemoryOps a => (a -> a -> a) -> SPull a -> Program Block (SPush Block a)
+reduceNC :: Storable a => (a -> a -> a) -> SPull a -> Program Block (SPush Block a)
 reduceNC f arr =
   do
      arr' <- force $  pConcatMap (seqReduce f) (splitUp 8 arr)
      reduceLocal f arr' 
 
-reductions2 :: (ASize l, MemoryOps b)
+reductions2 :: (ASize l, Storable b)
                => (b -> b -> b)
                -> Pull l (SPull b)
                -> Push Grid l b
 reductions2 f = pConcatMap $ pJoin . reduce f
 
-reductions2NC :: (ASize l, MemoryOps b)
+reductions2NC :: (ASize l, Storable b)
                => (b -> b -> b)
                -> Pull l (SPull b)
                -> Push Grid l b

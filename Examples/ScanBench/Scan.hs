@@ -23,7 +23,7 @@ import qualified Prelude as P
 ---------------------------------------------------------------------------
 
 -- Kernel1 is just a reduction! 
-kernel1 :: MemoryOps a
+kernel1 :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -35,7 +35,7 @@ kernel1 f arr
       arr' <- forcePull (zipWith f a1 a2)
       kernel1 f arr'   
 
-mapKernel1 :: MemoryOps a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapKernel1 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapKernel1 f arr = pConcat (fmap body arr)
   where
     body arr = runPush (kernel1 f arr)
@@ -44,7 +44,7 @@ mapKernel1 f arr = pConcat (fmap body arr)
 -- Sklansky 
 ---------------------------------------------------------------------------
     
-sklansky :: (Choice a, MemoryOps a)
+sklansky :: (Choice a, Storable a)
             => Int
             -> (a -> a -> a)
             -> Pull Word32 a
@@ -61,14 +61,14 @@ fan :: Choice a
        => (a -> a -> a)
        -> SPull a
        -> SPull a
-fan op arr =  a1 `conc`  fmap (op c) a2 
+fan op arr =  a1 `append` fmap (op c) a2 
     where 
       (a1,a2) = halve arr
       c = a1 ! fromIntegral (len a1 - 1)
 
 pushM = liftM push
 
-mapScan1 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapScan1 n f arr = pConcat (fmap body arr)
   where
     body arr = runPush (sklansky n f arr)
@@ -95,14 +95,14 @@ phase i f arr =
     sl2 = fromIntegral l2
 
 
-sklansky2 :: MemoryOps a
+sklansky2 :: Storable a
            => Int
            -> (a -> a -> a)
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
 sklansky2 l f = compose [phase i f | i <- [0..(l-1)]]
   
-compose :: MemoryOps a
+compose :: Storable a
            => [Pull Word32 a -> Push Block Word32 a] 
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
@@ -128,7 +128,7 @@ oneBits i = (2^i) - 1
 
 
 
-mapScan2 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan2 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapScan2 n f arr = pConcat $ fmap body arr  -- sklansky2 n f
     where
       body arr = runPush (sklansky2 n f arr)
@@ -141,7 +141,7 @@ mapScan2 n f arr = pConcat $ fmap body arr  -- sklansky2 n f
 -- TWEAK LOADS
 ----------------------------------------------------------------------------
 
-sklansky3 :: MemoryOps a
+sklansky3 :: Storable a
            => Int
            -> (a -> a -> a)
            -> Pull Word32 a
@@ -152,7 +152,7 @@ sklansky3 l f arr =
     compose [phase i f | i <- [0..(l-1)]] im 
 
 
-mapScan3 :: (Choice a, MemoryOps a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan3 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapScan3 n f arr = pConcat (fmap body arr)
   where
     body arr = runPush (sklansky3 n f arr)

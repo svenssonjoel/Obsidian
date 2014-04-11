@@ -10,7 +10,7 @@
 
 -} 
 
-module Obsidian.Memory (MemoryOps(..))  where
+module Obsidian.Memory (Storable(..))  where
 
 
 import Obsidian.Program
@@ -22,11 +22,12 @@ import Obsidian.Names
 
 import Data.Word
 
+-- class MemoryOps a => Storable a 
 
 ---------------------------------------------------------------------------
 -- Local Memory
 ---------------------------------------------------------------------------
-class MemoryOps a where
+class Storable a where
   -- | Obtain new names for variables / arrays 
   names          :: String -> Program t (Names a) 
 
@@ -61,7 +62,7 @@ class MemoryOps a where
 ---------------------------------------------------------------------------
 -- Instances
 ---------------------------------------------------------------------------
-instance Scalar a => MemoryOps (Exp a) where
+instance Scalar a => Storable (Exp a) where
 
   -- Names 
   names pre = do {i <- uniqueNamed pre; return (Single i)}
@@ -93,7 +94,7 @@ instance Scalar a => MemoryOps (Exp a) where
   
 
 
-instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
+instance (Storable a, Storable b) => Storable (a, b) where
   names pre =
     do
       (a' :: Names a) <- names pre
@@ -143,7 +144,7 @@ instance (MemoryOps a, MemoryOps b) => MemoryOps (a, b) where
   
 
 
-instance (MemoryOps a, MemoryOps b, MemoryOps c) => MemoryOps (a, b, c) where
+instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
   names pre =
     do
       (a :: Names a) <- names pre 

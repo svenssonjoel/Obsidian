@@ -74,7 +74,7 @@ iters s bid tid =
   where
     color c= ((w32ToW8 c) `mod` 16) * 16
 
-genRect :: MemoryOps b
+genRect :: Storable b
            => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)

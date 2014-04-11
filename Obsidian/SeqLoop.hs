@@ -23,7 +23,7 @@ import Data.Word
 -- seqReduce 
 ---------------------------------------------------------------------------
 -- | Sequential reduction of Pull array. Results in a for loop in generated code. 
-seqReduce :: (MemoryOps a)
+seqReduce :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> Program Thread a
@@ -48,7 +48,7 @@ seqReduce op arr =
 -- Iterate
 ---------------------------------------------------------------------------
 -- | iterate a function. Results in a for loop in generated code. 
-seqIterate :: (MemoryOps a)
+seqIterate :: Storable a
               => EWord32
               -> (EWord32 -> a -> a)
               -> a
@@ -70,7 +70,7 @@ seqIterate n f init =
 ---------------------------------------------------------------------------
 -- | iterate a function until a condition holds. Results in a while loop
 -- with a break in the generated code. 
-seqUntil :: (MemoryOps a) 
+seqUntil :: Storable a
             => (a -> a)
             -> (a -> EBool)
             -> a
@@ -94,7 +94,7 @@ seqUntil f p init =
 ---------------------------------------------------------------------------
 -- | Sequential scan over the elements in a pull array. Results in a for loop
 -- in the generated code. 
-seqScan :: (MemoryOps a)
+seqScan :: Storable a
            => (a -> a -> a)
            -> SPull a
            -> SPush Thread a
@@ -111,7 +111,7 @@ seqScan op arr {-(Pull n ixf)-}  =
       n = len arr
 
 -- | Sequential scan that takes a carry-in. 
-seqScanCin :: (MemoryOps a)
+seqScanCin :: Storable a
            => (a -> a -> a)
            -> a -- cin  
            -> SPull a

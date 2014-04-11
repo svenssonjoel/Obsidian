@@ -7,8 +7,6 @@
 
 module Fractals where
 
--- import qualified Obsidian.CodeGen.CUDA as CUDA
-
 import Obsidian
 
 import Data.Word
@@ -84,15 +82,8 @@ genRect :: EWord32
 genRect bs ts p = pConcat (mkPull bs 
                   (\bid -> (tConcat (mkPull ts (p bid)))))
 
--- genRect :: EWord32 
---            -> Word32
---            -> (EWord32 -> EWord32 -> SPush Thread b)
---            -> DPush Grid b 
--- genRect bs ts p = generate bs $
---                   \bid -> (tConcat (mkPull ts (p bid)))
 
-
-mandel = genRect 512 512 body -- iters
+mandel = genRect 512 512 body 
   where 
     body i j = singletonPush (iters i j) 
         

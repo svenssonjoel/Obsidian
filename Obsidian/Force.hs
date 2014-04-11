@@ -44,7 +44,7 @@ import Control.Monad
 ---------------------------------------------------------------------------
 
 class Write t where
-  unsafeWritePush :: MemoryOps a => Bool -> Push t Word32 a -> Program t (Pull Word32 a)
+  unsafeWritePush :: Storable a => Bool -> Push t Word32 a -> Program t (Pull Word32 a)
   -- unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
   
 instance Write Warp where
@@ -96,7 +96,7 @@ instance Forceable Block
 
 -- | force turns a @Push@ array to a @Program@ generating a @Pull@ array.
 --   The returned array represents reading from an array manifest in memory.
-force :: (MemoryOps a, Forceable t)
+force :: (Storable a, Forceable t)
          => Push t Word32 a -> Program t (Pull Word32 a)      
 force arr = do
   rval <- unsafeWritePush False arr
@@ -104,13 +104,13 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (MemoryOps a, Forceable t, Pushable t) 
+forcePull :: (Storable a, Forceable t, Pushable t) 
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 
 -- | unsafeForce is dangerous on @Push@ arrays as it does not
 --   insert synchronization primitives. 
-unsafeForce :: (MemoryOps a, Forceable t) =>
+unsafeForce :: (Storable a, Forceable t) =>
          Push t  Word32 a -> Program t (Pull Word32 a)      
 unsafeForce arr = 
   if (len arr <= 32)

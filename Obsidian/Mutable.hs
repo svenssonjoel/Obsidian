@@ -74,7 +74,7 @@ undefinedMutable v = Mutable v undefined
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: MemoryOps a => SPush Block a -> Program Block (Mutable Shared Word32 a)
+newS :: Storable a => SPush Block a -> Program Block (Mutable Shared Word32 a)
 newS arr = do
   (snames :: Names a) <- names "arr"
   allocateArray snames n
@@ -88,7 +88,7 @@ newS arr = do
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
 -- Much Hacking here 
-writeTo :: MemoryOps a
+writeTo :: Storable a
            => Mutable Shared Word32 a
            -> Push Block Word32 a
            -> Program Block ()
@@ -100,7 +100,7 @@ writeTo (Mutable n snames) p
    
     
 -- Add forceTo with offsets (why? just thought it might be useful)
-forceTo :: MemoryOps a
+forceTo :: Storable a
            => Mutable Shared Word32 a
            -> Push Block Word32 a
            -> Program Block ()
@@ -112,7 +112,7 @@ forceTo m arr =
 -- pullFrom 
 ---------------------------------------------------------------------------
 
-toPull :: MemoryOps a => Mutable Shared Word32 a -> SPull  a
+toPull :: Storable a => Mutable Shared Word32 a -> SPull  a
 toPull (Mutable n snames) = pullFrom snames n  
 
 

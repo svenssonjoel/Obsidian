@@ -62,7 +62,7 @@ mapSumUpT arr = pConcat (fmap body arr)
 --
 ---------------------------------------------------------------------------
 
-reduceLocal :: (Forceable t, MemoryOps a, Pushable t )
+reduceLocal :: (Forceable t, Storable a, Pushable t )
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -74,7 +74,7 @@ reduceLocal f arr
       arr' <- force $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
-reduceLocal' :: (Forceable t, MemoryOps a, Pushable t )
+reduceLocal' :: (Forceable t, Storable a, Pushable t )
                => (a -> a -> a)
                -> SPull a
                -> Program t a
@@ -88,7 +88,7 @@ reduceLocal' f arr
 
 -- local = pJoin
 
-reduceBlocks :: MemoryOps a
+reduceBlocks :: Storable a
           => (a -> a -> a)
           -> SPull a -> Program Block a
 reduceBlocks f arr =
@@ -98,7 +98,7 @@ reduceBlocks f arr =
   where
     body arr = singletonPush (reduceLocal' f arr)
     
-reduceGrid :: MemoryOps a
+reduceGrid :: Storable a
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduceGrid f arr = pConcat $ fmap body (splitUp 4096 arr) 
@@ -106,7 +106,7 @@ reduceGrid f arr = pConcat $ fmap body (splitUp 4096 arr)
       body arr = singletonPush (reduceBlocks f arr)
 
 
-reduce :: MemoryOps a
+reduce :: Storable a
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduce = reduceGrid
