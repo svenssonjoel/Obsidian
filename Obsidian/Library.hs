@@ -140,10 +140,15 @@ take n arr = setSize n arr
 drop :: ASize l => l -> Pull l a -> Pull l a
 drop n arr = setSize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
 
-{-
-   conc (take n arr) (drop n arr) == arr
-   But potentially a lot more expensive to compute! XS
--} 
+---------------------------------------------------------------------------
+-- fold (sequential , unrolled)  
+---------------------------------------------------------------------------
+-- | Fold a nonempty pull array using a given operator. The result a singleton array (push or pull). 
+fold1 :: (Array a, ASize s) => (e -> e -> e) -> Pull Word32 e -> a s e
+fold1  f arr = replicate 1
+               $ foldl1 f [arr ! (fromIntegral i) | i <- [0..(n-1)]]   
+  where n = len arr
+
 
 ---------------------------------------------------------------------------
 -- Shift arrays
@@ -172,15 +177,15 @@ drop n arr = setSize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
 ---------------------------------------------------------------------------
 -- Concatenate the arrays
 ---------------------------------------------------------------------------
--- | Concatenate two Pull arrays (Potentially inefficient).
-conc :: (ASize l, Choice a) => Pull l a -> Pull l a -> Pull l a 
-conc a1 a2 = mkPull (n1+n2)
-               $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
-                       (a1 ! ix) 
-                       (a2 ! (ix - (sizeConv n1)))
-  where 
-    n1 = len a1
-    n2 = len a2 
+-- -- | Concatenate two Pull arrays (Potentially inefficient).
+-- conc :: (ASize l, Choice a) => Pull l a -> Pull l a -> Pull l a 
+-- conc a1 a2 = mkPull (n1+n2)
+--                $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
+--                        (a1 ! ix) 
+--                        (a2 ! (ix - (sizeConv n1)))
+--   where 
+--     n1 = len a1
+--     n2 = len a2 
 
     
 ---------------------------------------------------------------------------

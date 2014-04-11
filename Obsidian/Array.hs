@@ -20,11 +20,9 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        mkPull,
                        mkPush,
                        push,
-                       {- pushN, -} 
                        setSize,
-                       {- foldPull1, -}
                        (!),
-                       (<:), 
+                       (<:),
                        Array(..),
                        ArrayLength(..),
                        ASize(..),
@@ -120,8 +118,8 @@ class Array a where
   -- | Perform arbitrary permutations (dangerous). 
   ixMap     :: (EWord32 -> EWord32)
                -> a s e -> a s e
-  -- | Reduce an array using a provided operator. 
-  fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
+  -- -- | Reduce an array using a provided operator. 
+  -- fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
 
   -- would require Choice !
   -- | Append two arrays. 
@@ -139,9 +137,6 @@ instance Array Pull where
 
   aMap   f (Pull n ixf) = Pull n (f . ixf)
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
-
-  fold1  f (Pull n ixf) = replicate 1
-                          $ foldl1 f [ixf (fromIntegral i) | i <- [0..(n-1)]]   
 
   append a1 a2 = Pull (n1+n2)
                $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
@@ -165,8 +160,6 @@ instance Array (Push t) where
       forAll (sizeConv s) $ \ix -> wf e ix 
   aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
   ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
-
-  fold1 = error "fold1: not implemented on Push arrays" 
 
   -- unfortunately a Choice constraint. 
   append p1 p2  =
@@ -244,4 +237,5 @@ infixl 9 <:
 infixl 9 ! 
 (!) :: Pull s e -> Exp Word32 -> e 
 (!) arr = pullFun arr 
+
 

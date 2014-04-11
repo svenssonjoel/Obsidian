@@ -46,6 +46,10 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- Mutable arrays 
 ---------------------------------------------------------------------------
+--
+-- Global mutable arrays can only be passed as inputs to a function. 
+-- Shared mutable arrays may be created using newS 
+--
 
 data Shared
 data Global
@@ -54,11 +58,8 @@ data Global
 -- Either it recides in Global or in Shared memory. 
 data Mutable mloc s a = Mutable s (Names a)
 
--- mutlen (Mutable n _) = n
-
 type MShared a = Mutable Shared Word32 a
 type MGlobal a = Mutable Global EWord32 a
-
 
 instance ArrayLength (Mutable Shared) where
   len (Mutable n _) = n
