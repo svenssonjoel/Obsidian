@@ -80,11 +80,11 @@ data ONE   = ONE
 data TWO   = TWO
 data THREE = THREE
 
-data Dynamic s = Dynamic (s EWord32) 
-data Static s  = Static  (s Word32)
+data Dynamic s = Dynamic (Dims s EWord32) 
+data Static s  = Static  (Dims s Word32)
 
 class Dimensions d where
-  dims :: d (Dims dim) -> Dims dim EWord32
+  dims :: d dim -> Dims dim EWord32
 
 instance Dimensions Dynamic where
   dims (Dynamic s) = s
@@ -113,9 +113,9 @@ data Index b where
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
 
-data Pull2 d s a = Pull2 (d (Dims s)) (Index s -> a)
+data Pull2 d s a = Pull2 (d s) (Index s -> a)
 
-data Push2 d s t a = Push2 (d (Dims s)) ((Index s ->  a -> Program Thread ()) -> Program t ()) 
+data Push2 d s t a = Push2 (d s) ((Index s ->  a -> Program Thread ()) -> Program t ()) 
 
 rev2 :: Dimensions d => Pull2 d ONE a -> Pull2 d ONE a
 rev2 (Pull2 ds ixf) = Pull2 ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
