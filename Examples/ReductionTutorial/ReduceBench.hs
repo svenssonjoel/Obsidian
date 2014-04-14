@@ -148,7 +148,7 @@ runLargeBenchmark origkern t =
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
           -- Scale up the benchmark 1000 times to make it take long enough.
-          forM_ [0..999] $ \_ -> do 
+          forM_ [0..999 :: Int] $ \_ -> do 
             o <== (blcks,kern) <> i
             out <== (1,kern) <> o 
             syncAll
