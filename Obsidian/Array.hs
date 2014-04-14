@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses,
              FlexibleInstances,
-             GADTs  #-} 
+             GADTs,
+             TypeFamilies #-} 
 
 {- Joel Svensson 2012
 
@@ -29,7 +30,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        namedGlobal,
                        undefinedGlobal) where
 
-import Obsidian.Exp 
+import Obsidian.Exp  hiding (Z) 
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
@@ -67,6 +68,59 @@ instance ASize Word32 where
 
 instance ASize (Exp Word32) where
   sizeConv = id 
+
+
+---------------------------------------------------------------------------
+-- Shapes (Only 1,2 and 3d)  || EXPERIMENTAL || 
+---------------------------------------------------------------------------
+
+
+data ZERO  = ZERO
+data ONE   = ONE
+data TWO   = TWO
+data THREE = THREE
+
+data Dynamic s = Dynamic (s EWord32) 
+data Static s  = Static  (s Word32)
+
+class Dimensions d where
+  dims :: d (Dims dim) -> Dims dim EWord32
+
+instance Dimensions Dynamic where
+  dims (Dynamic s) = s
+
+instance Dimensions Static where
+  dims (Static (Dims1 a)) = Dims1 (fromIntegral a)
+  dims (Static (Dims2 a b)) = Dims2 (fromIntegral a) (fromIntegral b)
+  dims (Static (Dims3 a b c)) = Dims3 (fromIntegral a) (fromIntegral b) (fromIntegral c)
+  dims (Static (Dims0)) = Dims0
+  
+data Dims b a where
+  Dims0 :: ASize a => Dims ZERO a
+  Dims1 :: ASize a => a -> Dims ONE a 
+  Dims2 :: ASize a => a -> a -> Dims TWO a
+  Dims3 :: ASize a => a -> a -> a -> Dims THREE a
+
+size :: ASize a => Dims b a -> a 
+size (Dims0) = 1
+size (Dims1 x) = x
+size (Dims2 x y) = x * y
+size (Dims3 x y z) = x * y * z
+
+data Index b where
+  Ix0 :: Index ZERO
+  Ix1 :: EW32 -> Index ONE
+  Ix2 :: EW32 -> EW32 -> Index TWO
+  Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
+
+data Pull2 d s a = Pull2 (d (Dims s)) (Index s -> a)
+
+data Push2 d s t a = Push2 (d (Dims s)) ((Index s ->  a -> Program Thread ()) -> Program t ()) 
+
+rev2 :: Dimensions d => Pull2 d ONE a -> Pull2 d ONE a
+rev2 (Pull2 ds ixf) = Pull2 ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
+  where
+    (Dims1 n) = dims ds 
 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
