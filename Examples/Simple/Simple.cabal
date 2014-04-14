@@ -54,7 +54,12 @@ executable Fractals.exe
   other-extensions:    ScopedTypeVariables, MultiParamTypeClasses, NoMonomorphismRestriction, TypeOperators, TypeSynonymInstances, FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7, vector >=0.10 && <0.11, mtl >=2.1 && <2.2, random >=1.0 && <1.1, bytestring >=0.10 && <0.11 , Obsidian >= 0.0.1.6
+  build-depends: base >=4.6 && <5
+               , vector >=0.10 && <0.11
+               , mtl >=2.1 && <2.2
+               , random >=1.0 && <1.1
+               , bytestring >=0.10 && <0.11
+               , Obsidian >= 0.0.1.6
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -70,7 +75,12 @@ executable Reduction.exe
   other-extensions:    ScopedTypeVariables, MultiParamTypeClasses, NoMonomorphismRestriction, TypeOperators, TypeSynonymInstances, FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7, vector >=0.10 && <0.11, mtl >=2.1 && <2.2, random >=1.0 && <1.1, bytestring >=0.10 && <0.11 , Obsidian >= 0.0.1.6
+  build-depends: base >=4.6 && <5
+               , vector >=0.10 && <0.11
+               , mtl >=2.1 && <2.2
+               , random >=1.0 && <1.1
+               , bytestring >=0.10 && <0.11
+               , Obsidian >= 0.0.1.6
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -92,7 +102,12 @@ executable Scan.exe
   other-extensions:    ScopedTypeVariables, MultiParamTypeClasses, NoMonomorphismRestriction, TypeOperators, TypeSynonymInstances, FlexibleInstances, FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends:       base >=4.6 && <4.7, vector >=0.10 && <0.11, mtl >=2.1 && <2.2, random >=1.0 && <1.1, bytestring >=0.10 && <0.11 , Obsidian >= 0.0.1.7
+  build-depends: base >=4.6 && <5
+               , vector >=0.10 && <0.11
+               , mtl >=2.1 && <2.2
+               , random >=1.0 && <1.1
+               , bytestring >=0.10 && <0.11
+               , Obsidian >= 0.0.1.7
   
   -- Directories containing source files.
   -- hs-source-dirs:      

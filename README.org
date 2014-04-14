@@ -5,10 +5,6 @@
 * Current features 
     + Pull arrays: traditional "arrays as function from index to value" 
     + Push arrays: a computation that is parameterised on a "write function". 
-    + Mutable arrays:
-      Mutable arrays in shared memory can be created.
-      Global mutable arrays can be passed into a kernel as an argument. 
-    + Atomic operations on mutable arrays.
     + Executing kernels from within Haskell is possible on platforms 
       supported by the CUDA bindings (Linux, Mac). 
       Obsidian.Run.CUDA.Exec provides a very low level interface to running kernels. 
@@ -19,20 +15,19 @@
           + Sort (todo). How ? Which kind of sort. I want one with known number of iterations and in-place capability. 
           + Merge (todo) 
           + Filter (todo, Tricky, whats the lengths?) 
-  
-* Latest tweaks
-  + Replacing code generation with something new based on Language.C.Quote 
-  + pMap is now just fmap! (simplification)
-  
+* In Progress 
+    + Mutable arrays:
+      Mutable arrays in shared memory can be created.
+      Global mutable arrays can be passed into a kernel as an argument. 
+    + Atomic operations on mutable arrays.
 
+  
 * TODOs
   + Look at code generation, is there a problem with the memory management ? 
-  + global arrays have sizes! make the code generation aware of this! 
-  + Think about completely dissallowing Int and Word as types in Obsidian programs.
-    Require that the programmer explicitly makes a Int32, Int64, Word32, Word64 Choice-
-
-  + clean up and check for bugs in: 
-    * CodeGen.Memory.hs
-    * CodeGen.Liveness.hs 
-  + More thinking about the mutable array interface(and implementation) is needed.
 	    
+
+* Versioning Policy (from Apr 14 2014 with the release of version 0.1.0.0) 
+  + A.B.C.D  
+  + A.B changes when API Changes (in a disruptive way) 
+  + C   changes with additions that does not break existing programs 
+  + D   Bugfixes and internal hacking. 

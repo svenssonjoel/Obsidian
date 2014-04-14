@@ -60,7 +60,7 @@ executable FractalsBench.exe
                   , FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends: base >=4.6 && <4.7
+  build-depends: base >=4.6 && <5
                , vector >=0.10 && <0.11
                , mtl >=2.1 && <2.2
                , random >=1.0 && <1.1
