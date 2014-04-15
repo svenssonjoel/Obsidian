@@ -36,7 +36,7 @@ module Obsidian.Program  (
   assign, allocate, declare,
   atomicOp, 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync, distrPar,
+  seqFor, forAll, {-forAll2,-} seqWhile, sync, distrPar,
   ) where 
  
 import Data.Word
@@ -47,6 +47,8 @@ import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Atomic
 import Obsidian.Names
+
+import Obsidian.Dimension
 
 -- Package value-supply
 import Data.Supply
@@ -113,9 +115,9 @@ data Program t a where
 
   -- use threads along one level
   -- Warp, Block, Grid. 
-  ForAll ::  EWord32 
-            -> (EWord32 -> Program Thread ())
-            -> Program t () -- (really atleast Step t - No, also works in sequence in a thread.) ! 
+  ForAll :: Dims d EWord32         -- Not sure Dynamic is really what I want
+            -> (Index d -> Program Thread ())
+            -> Program t () 
 
   
   -- Distribute over Warps yielding a Block
@@ -218,17 +220,17 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program t ()
+forAll :: Dims d EW32 -> (Index d -> Program Thread ()) -> Program t ()
 forAll n f = ForAll n $ \ix -> f ix
   
 -- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 -- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
 
-forAll2 :: EWord32
-           -> EWord32
-           -> (EWord32 -> EWord32 -> Program Thread ())
-           -> Program (Step (Step t)) ()
-forAll2 b n f =  DistrPar b $ \bs -> ForAll n $ \ix -> f bs ix 
+--forAll2 :: EWord32
+--           -> EWord32
+--           -> (EWord32 -> EWord32 -> Program Thread ())
+--           -> Program (Step (Step t)) ()
+--forAll2 b n f =  DistrPar b $ \bs -> ForAll n $ \ix -> f bs ix 
 
 -- forAll2 :: EWord32
 --            -> EWord32
@@ -305,6 +307,15 @@ instance Sync Grid where
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
 ---------------------------------------------------------------------------
+-- I often need to run programs enough to figure out what size array they
+-- holding. Really think through what is needed and what is not.
+-- For example, this is only interesting when sizes are static.
+-- Are there special conditions that hold in that case?
+--  * Programs cannot compute lengths of static sized arrays for example.
+--  * An array must be a result of a Return node.
+--  * The Length of that array must be simple Arithmetic on known quantities.
+--  A special version of run (Program t array -> Word32) should be possible. 
+  
 runPrg :: Int -> Program t a -> (a,Int)
 runPrg i Identifier = (i,i+1)
 
@@ -316,9 +327,9 @@ runPrg i (Bind m f) =
   in runPrg i' (f a)
      
 runPrg i (Sync) = ((),i)
-runPrg i (ForAll n ixf) =
-  let (p,i') = runPrg i (ixf (variable "tid")) 
-  in  (p,i')
+--runPrg i (ForAll n ixf) =
+--  let (p,i') = runPrg i (ixf (variable "tid")) 
+--  in  (p,i')
 runPrg i (DistrPar n f) =
   let (p,i') = runPrg i (f (variable "DUMMY"))
   in (p,i')
@@ -368,19 +379,13 @@ printPrg' i (SeqFor n f) =
        "{\n" ++ prg2 ++ "\n}",
        i')
      
-printPrg' i (ForAll n f) =
-  let (a,prg2,i') = printPrg' i (f (variable "i"))
+--printPrg' i (ForAll n f) =
+--  let (a,prg2,i') = printPrg' i (f (variable "i"))
       
-  in ( a,  
-       "par (i in 0.." ++ show n ++ ")" ++
-       "{\n" ++ prg2 ++ "\n}",
-       i')
---printPrg' i (ForAllBlocks n f) =
---  let (d,prg2,i') = printPrg' i (f (variable "BIX"))
---  in (d, 
---      "blocks (i)" ++
---      "{\n" ++ prg2 ++ "\n}",
---      i')
+--  in ( a,  
+--       "par (i in 0.." ++ show n ++ ")" ++
+--       "{\n" ++ prg2 ++ "\n}",
+--       i')
 printPrg' i (Return a) = (a,"MonadReturn;\n",i)
 printPrg' i (Bind m f) =
   let (a1, str1,i1) = printPrg' i m

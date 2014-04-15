@@ -36,6 +36,8 @@ import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
 
+import Obsidian.Dimension
+
 import Prelude hiding (replicate) 
 import Data.List hiding (replicate) 
 import Data.Word
@@ -70,67 +72,18 @@ instance ASize Word32 where
 
 instance ASize (Exp Word32) where
   sizeConv = id 
--} 
+
 
 ---------------------------------------------------------------------------
--- Shapes (Only 1,2 and 3d)  || EXPERIMENTAL || 
+-- Index
 ---------------------------------------------------------------------------
-
-
-data ZERO  = ZERO
-data ONE   = ONE
-data TWO   = TWO
-data THREE = THREE
-
-data Dynamic s = Dynamic (Dims s EWord32) 
-data Static s  = Static  (Dims s Word32)
-
-class Dimensions d where
-  type Elt d 
-  dims :: d dim -> Dims dim (Elt d) 
-
-  extents :: d dim -> Dims dim EW32
-  
-  modify :: Dims dim2 (Elt d) -> d dim -> d dim2 
-
-instance Dimensions Dynamic where
-  type Elt Dynamic = EW32
-  dims (Dynamic s) = s
-
-  extents (Dynamic s) = s 
-
-  modify s1 (Dynamic s) = Dynamic s1
-
-instance Dimensions Static where
-  type Elt Static = Word32
-
-  dims (Static s) = s
-  
-  extents (Static (Dims1 a)) = Dims1 (fromIntegral a)
-  extents (Static (Dims2 a b)) = Dims2 (fromIntegral a) (fromIntegral b)
-  extents (Static (Dims3 a b c)) = Dims3 (fromIntegral a) (fromIntegral b) (fromIntegral c)
-  extents (Static (Dims0)) = Dims0
-  
-  modify s1 (Static s) = Static s1
-  
-data Dims b a where
-  Dims0 :: Dims ZERO a
-  Dims1 :: a -> Dims ONE a 
-  Dims2 :: a -> a -> Dims TWO a
-  Dims3 :: a -> a -> a -> Dims THREE a
-
-size :: Num a => Dims b a -> a 
-size (Dims0) = 1
-size (Dims1 x) = x
-size (Dims2 x y) = x * y
-size (Dims3 x y z) = x * y * z
 
 data Index b where
   Ix0 :: Index ZERO
   Ix1 :: EW32 -> Index ONE
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
-
+-}
 
 ---------------------------------------------------------------------------
 -- Pull and Push arrays
@@ -179,7 +132,7 @@ instance MultiDim THREE where
 -- Pushable 
 ---------------------------------------------------------------------------
 class Pushable t where
-  push :: Pull q d a -> Push q d t a
+  push :: Dimensions q => Pull q d a -> Push q d t a
 
 -- This is where things get hairy.
 -- Choices of how to represent these 1,2,3D iteration spaces are needed.
@@ -191,7 +144,10 @@ instance Pushable Warp where
   push = undefined
 
 instance Pushable Block where
-  push = undefined
+  push (MkPull n ixf) =
+    MkPush n $ \wf ->
+      forAll (extents n) $ \i -> wf i (ixf i) 
+
 
 instance Pushable Grid where
   push = undefined 
