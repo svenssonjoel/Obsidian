@@ -6,6 +6,7 @@
 {- Joel Svensson 2012
 
    Notes:
+    2014-04-15: Experimenting with 1D,2D and 3D arrays. 
     2014-04-08: Experimenting with API 
     ---- OUTDATED ----
     2013-08-26: Experimenting with warp programs.
@@ -30,7 +31,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        namedGlobal,
                        undefinedGlobal) where
 
-import Obsidian.Exp  hiding (Z) 
+import Obsidian.Exp  
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Program
@@ -84,22 +85,38 @@ data Dynamic s = Dynamic (Dims s EWord32)
 data Static s  = Static  (Dims s Word32)
 
 class Dimensions d where
-  dims :: d dim -> Dims dim EWord32
+  type Elt d 
+  dims :: d dim -> Dims dim (Elt d) 
+
+  extents :: d dim -> Dims dim EW32
+  
+  modify :: Dims dim2 (Elt d) -> d dim -> d dim2 
 
 instance Dimensions Dynamic where
+  type Elt Dynamic = EW32
   dims (Dynamic s) = s
 
+  extents (Dynamic s) = s 
+
+  modify s1 (Dynamic s) = Dynamic s1
+
 instance Dimensions Static where
-  dims (Static (Dims1 a)) = Dims1 (fromIntegral a)
-  dims (Static (Dims2 a b)) = Dims2 (fromIntegral a) (fromIntegral b)
-  dims (Static (Dims3 a b c)) = Dims3 (fromIntegral a) (fromIntegral b) (fromIntegral c)
-  dims (Static (Dims0)) = Dims0
+  type Elt Static = Word32
+
+  dims (Static s) = s
+  
+  extents (Static (Dims1 a)) = Dims1 (fromIntegral a)
+  extents (Static (Dims2 a b)) = Dims2 (fromIntegral a) (fromIntegral b)
+  extents (Static (Dims3 a b c)) = Dims3 (fromIntegral a) (fromIntegral b) (fromIntegral c)
+  extents (Static (Dims0)) = Dims0
+  
+  modify s1 (Static s) = Static s1
   
 data Dims b a where
-  Dims0 :: ASize a => Dims ZERO a
-  Dims1 :: ASize a => a -> Dims ONE a 
-  Dims2 :: ASize a => a -> a -> Dims TWO a
-  Dims3 :: ASize a => a -> a -> a -> Dims THREE a
+  Dims0 :: Dims ZERO a
+  Dims1 :: a -> Dims ONE a 
+  Dims2 :: a -> a -> Dims TWO a
+  Dims3 :: a -> a -> a -> Dims THREE a
 
 size :: ASize a => Dims b a -> a 
 size (Dims0) = 1
@@ -113,14 +130,34 @@ data Index b where
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
 
-data Pull2 d s a = Pull2 (d s) (Index s -> a)
+data Pull2 q d a = Pull2 (q d) (Index d -> a)
+
+class MultiDim d1 where
+  extractRow   :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q ONE a   
+  extractCol   :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q ONE a  
+  extractPlane :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q TWO a 
+
+instance MultiDim TWO where
+  extractRow r (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 i r)) 
+    where (Dims2 x y) = dims d
+          d' = modify (Dims1 x) d
+  extractCol c (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 c i))
+    where (Dims2 x y) = dims d
+          d' = modify (Dims1 y) d
+
+  extractPlane p arr = arr 
+      
+
+-- instance MultiDim THREE 
+
+
 
 data Push2 d s t a = Push2 (d s) ((Index s ->  a -> Program Thread ()) -> Program t ()) 
 
 rev2 :: Dimensions d => Pull2 d ONE a -> Pull2 d ONE a
 rev2 (Pull2 ds ixf) = Pull2 ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
   where
-    (Dims1 n) = dims ds 
+    (Dims1 n) = extents ds 
 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
