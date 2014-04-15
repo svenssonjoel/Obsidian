@@ -132,23 +132,39 @@ data Index b where
 
 data Pull2 q d a = Pull2 (q d) (Index d -> a)
 
-class MultiDim d1 where
-  extractRow   :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q ONE a   
-  extractCol   :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q ONE a  
-  extractPlane :: Dimensions q => EW32 -> Pull2 q d1 a -> Pull2 q TWO a 
+
+class MultiDim d where
+  type Selector d -- Alternative have a data Selector d
+  extractRow   :: Dimensions q => Selector d -> Pull2 q d a -> Pull2 q ONE a   
+  extractCol   :: Dimensions q => Selector d -> Pull2 q d a -> Pull2 q ONE a  
+  extractPlane :: Dimensions q => EW32 -> Pull2 q d a -> Pull2 q TWO a 
 
 instance MultiDim TWO where
+  type Selector TWO = EW32 
   extractRow r (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 i r)) 
-    where (Dims2 x y) = dims d
+    where (Dims2 x _) = dims d
           d' = modify (Dims1 x) d
   extractCol c (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 c i))
-    where (Dims2 x y) = dims d
+    where (Dims2 _ y) = dims d
           d' = modify (Dims1 y) d
 
   extractPlane p arr = arr 
       
 
--- instance MultiDim THREE 
+instance MultiDim THREE where
+  type Selector THREE = (EW32,EW32)
+
+  extractRow (r,p) (Pull2 d ixf) = Pull2 d' (\(Ix1 x) -> ixf (Ix3 x r p))
+    where (Dims3 x _ _) = dims d
+          d' = modify (Dims1 x) d 
+  
+  extractCol (c,p) (Pull2 d ixf) = Pull2 d' (\(Ix1 y) -> ixf (Ix3 c y p))
+    where (Dims3 _ y _) = dims d
+          d' = modify (Dims1 y) d
+
+  extractPlane p (Pull2 d ixf) = Pull2 d' (\(Ix2 x y) -> ixf (Ix3 x y p))
+    where (Dims3 x y _) = dims d
+          d' = modify (Dims2 x y) d 
 
 
 
