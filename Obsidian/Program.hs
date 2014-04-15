@@ -115,7 +115,7 @@ data Program t a where
   -- Warp, Block, Grid. 
   ForAll ::  EWord32 
             -> (EWord32 -> Program Thread ())
-            -> Program t () -- (really atleast Step t) ! 
+            -> Program t () -- (really atleast Step t - No, also works in sequence in a thread.) ! 
 
   
   -- Distribute over Warps yielding a Block
