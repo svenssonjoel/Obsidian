@@ -17,7 +17,7 @@
     2012-12-10: Drastically shortened. 
 -}
 
-module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
+module Obsidian.Array {-(Pull, Push, SPull, DPull, SPush, DPush,
                        Pushable, 
                        mkPull,
                        mkPush,
@@ -29,7 +29,7 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        ArrayLength(..),
                        ASize(..),
                        namedGlobal,
-                       undefinedGlobal) where
+                       undefinedGlobal) -} where
 
 import Obsidian.Exp  
 import Obsidian.Types
@@ -40,6 +40,7 @@ import Prelude hiding (replicate)
 import Data.List hiding (replicate) 
 import Data.Word
 
+{- 
 ---------------------------------------------------------------------------
 -- Aliases
 ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ instance ASize Word32 where
 
 instance ASize (Exp Word32) where
   sizeConv = id 
-
+-} 
 
 ---------------------------------------------------------------------------
 -- Shapes (Only 1,2 and 3d)  || EXPERIMENTAL || 
@@ -118,7 +119,7 @@ data Dims b a where
   Dims2 :: a -> a -> Dims TWO a
   Dims3 :: a -> a -> a -> Dims THREE a
 
-size :: ASize a => Dims b a -> a 
+size :: Num a => Dims b a -> a 
 size (Dims0) = 1
 size (Dims1 x) = x
 size (Dims2 x y) = x * y
@@ -130,21 +131,29 @@ data Index b where
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
 
-data Pull2 q d a = Pull2 (q d) (Index d -> a)
+
+---------------------------------------------------------------------------
+-- Pull and Push arrays
+--------------------------------------------------------------------------- 
+data Pull q d a = MkPull (q d) (Index d -> a)
+data Push q d t a = MkPush (q d) ((Index d ->  a -> Program Thread ()) -> Program t ()) 
 
 
+---------------------------------------------------------------------------
+-- Row, Column, Plane extraction
+--------------------------------------------------------------------------- 
 class MultiDim d where
   type Selector d -- Alternative have a data Selector d
-  extractRow   :: Dimensions q => Selector d -> Pull2 q d a -> Pull2 q ONE a   
-  extractCol   :: Dimensions q => Selector d -> Pull2 q d a -> Pull2 q ONE a  
-  extractPlane :: Dimensions q => EW32 -> Pull2 q d a -> Pull2 q TWO a 
+  extractRow   :: Dimensions q => Selector d -> Pull q d a -> Pull q ONE a   
+  extractCol   :: Dimensions q => Selector d -> Pull q d a -> Pull q ONE a  
+  extractPlane :: Dimensions q => EW32 -> Pull q d a -> Pull q TWO a 
 
 instance MultiDim TWO where
   type Selector TWO = EW32 
-  extractRow r (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 i r)) 
+  extractRow r (MkPull d ixf) = MkPull d' (\(Ix1 i) -> ixf (Ix2 i r)) 
     where (Dims2 x _) = dims d
           d' = modify (Dims1 x) d
-  extractCol c (Pull2 d ixf) = Pull2 d' (\(Ix1 i) -> ixf (Ix2 c i))
+  extractCol c (MkPull d ixf) = MkPull d' (\(Ix1 i) -> ixf (Ix2 c i))
     where (Dims2 _ y) = dims d
           d' = modify (Dims1 y) d
 
@@ -154,27 +163,55 @@ instance MultiDim TWO where
 instance MultiDim THREE where
   type Selector THREE = (EW32,EW32)
 
-  extractRow (r,p) (Pull2 d ixf) = Pull2 d' (\(Ix1 x) -> ixf (Ix3 x r p))
+  extractRow (r,p) (MkPull d ixf) = MkPull d' (\(Ix1 x) -> ixf (Ix3 x r p))
     where (Dims3 x _ _) = dims d
           d' = modify (Dims1 x) d 
   
-  extractCol (c,p) (Pull2 d ixf) = Pull2 d' (\(Ix1 y) -> ixf (Ix3 c y p))
+  extractCol (c,p) (MkPull d ixf) = MkPull d' (\(Ix1 y) -> ixf (Ix3 c y p))
     where (Dims3 _ y _) = dims d
           d' = modify (Dims1 y) d
 
-  extractPlane p (Pull2 d ixf) = Pull2 d' (\(Ix2 x y) -> ixf (Ix3 x y p))
+  extractPlane p (MkPull d ixf) = MkPull d' (\(Ix2 x y) -> ixf (Ix3 x y p))
     where (Dims3 x y _) = dims d
           d' = modify (Dims2 x y) d 
 
+---------------------------------------------------------------------------
+-- Pushable 
+---------------------------------------------------------------------------
+class Pushable t where
+  push :: Pull q d a -> Push q d t a
 
+-- This is where things get hairy.
+-- Choices of how to represent these 1,2,3D iteration spaces are needed.
+--  * Multidimensional parallel loops, is one way. 
+instance Pushable Thread where
+  push = undefined
 
-data Push2 d s t a = Push2 (d s) ((Index s ->  a -> Program Thread ()) -> Program t ()) 
+instance Pushable Warp where
+  push = undefined
 
-rev2 :: Dimensions d => Pull2 d ONE a -> Pull2 d ONE a
-rev2 (Pull2 ds ixf) = Pull2 ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
+instance Pushable Block where
+  push = undefined
+
+instance Pushable Grid where
+  push = undefined 
+  
+  
+
+---------------------------------------------------------------------------
+-- Example
+--------------------------------------------------------------------------- 
+
+rev2 :: Dimensions d => Pull d ONE a -> Pull d ONE a
+rev2 (MkPull ds ixf) = MkPull ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
   where
-    (Dims1 n) = extents ds 
+    (Dims1 n) = extents ds
 
+
+
+
+
+{- 
 ---------------------------------------------------------------------------
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
@@ -346,3 +383,4 @@ infixl 9 !
 (!) arr = pullFun arr 
 
 
+-} 
