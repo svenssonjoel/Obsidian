@@ -59,7 +59,7 @@ executable Fractals.exe
                , mtl >=2.1 && <2.2
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.0.1.6
+               , Obsidian >= 0.1.0.0
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -80,7 +80,7 @@ executable Reduction.exe
                , mtl >=2.1 && <2.2
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.0.1.6
+               , Obsidian >= 0.1.0.0
   
   -- Directories containing source files.
   -- hs-source-dirs:      
@@ -107,7 +107,7 @@ executable Scan.exe
                , mtl >=2.1 && <2.2
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.0.1.7
+               , Obsidian >= 0.1.0.0
   
   -- Directories containing source files.
   -- hs-source-dirs:      
