@@ -3,6 +3,8 @@
              FlexibleInstances  #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-} 
 
 {- CodeGen.Program.
 
@@ -19,6 +21,8 @@ import Obsidian.Exp
 import Obsidian.Globs
 import Obsidian.Types
 import Obsidian.Atomic
+
+import qualified Obsidian.Dimension as D
 
 import qualified Obsidian.Program as P
 import Obsidian.Program (Step,Zero)
@@ -55,6 +59,13 @@ data HLevel = Thread
             | Block
             | Grid
             
+
+data Dims = DimsZ
+          | Dims1 IExp
+          | Dims2 IExp IExp
+          | Dims3 IExp IExp IExp 
+
+
 
 -- Statements 
 data Statement t = SAssign IExp [IExp] IExp
@@ -164,8 +175,9 @@ instance Compile P.Thread  where
   -- Can add cases for P.ForAll here.
   -- Turn into sequential loop. Could be important to make push
   -- operate uniformly across entire hierarchy.
-  compile s (P.ForAll n f) = 
-    do
+  compile s (P.ForAll n f) =
+      error $ show $ D.dimensions n 
+    {- do
       let (i1,i2) = split2 s
           nom = "i" ++ show (supplyValue i1)
           v = variable nom
@@ -173,17 +185,19 @@ instance Compile P.Thread  where
       (a,im) <-  compile i2 p
 
       return ((),out $ SSeqFor nom (expToIExp n) im)
-                             
+    -}                          
   compile s p = cs s p 
 
 -- Compile Warp program
 instance Compile P.Warp where
   compile s (P.DistrPar n f) =
     error "Currently not supported to distribute over the threads, use ForAll instead!"
-  compile s (P.ForAll n f) = do
+  compile s (P.ForAll n f) =
+    error $ show $ D.dimensions n 
+    {- do
     let p = f (variable "warpIx") 
     (a,im) <- compile s p 
-    return (a, out $ SForAll Warp (expToIExp n) im)
+    return (a, out $ SForAll Warp (expToIExp n) im) -} 
     --undefined -- compile a warp program that iterates over a space n large
   compile s (P.Allocate nom n t) = do
     (Just nw) <- getNWarps -- Must be a Just here, or something is wrong!
@@ -198,14 +212,16 @@ instance Compile P.Warp where
 
 -- Compile Block program 
 instance Compile P.Block where
-  compile s (P.ForAll n f) = do
+  compile s (P.ForAll n f) =
+    error $ show $ D.dimensions n 
+    {- do
     let nom = "tid"
         v   = variable nom
         p   = f v
     setUsesTid 
     (a,im) <-  compile s p
     -- in this case a could be () (since it is guaranteed to be anyway). a
-    return (a,out (SForAll Block (expToIExp n) im))
+    return (a,out (SForAll Block (expToIExp n) im)) -} 
     
   compile s (P.DistrPar n'@(Literal n) f) = do
     
@@ -219,13 +235,15 @@ instance Compile P.Block where
 
 -- Compile a Grid Program 
 instance Compile P.Grid where
-  compile s (P.ForAll n f) = do
+  compile s (P.ForAll n f) =
+    error $ show $ D.dimensions n
+    {-do
     
     -- Incorrect, need to compute global thread ids and apply 
     let p = f gid -- (BlockIdx X)
         gid = variable "gid" 
     (a,im) <- compile s p 
-    return (a, out (SForAll Grid (expToIExp n) im))
+    return (a, out (SForAll Grid (expToIExp n) im)) -} 
 
   {- Distribute over blocks -}
   compile s (P.DistrPar n f) = do

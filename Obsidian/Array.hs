@@ -1,7 +1,8 @@
-{-# LANGUAGE MultiParamTypeClasses,
-             FlexibleInstances,
-             GADTs,
-             TypeFamilies #-} 
+{-# LANGUAGE MultiParamTypeClasses #-} 
+{-# LANGUAGE FlexibleInstances #-} 
+{-# LANGUAGE GADTs #-} 
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 {- Joel Svensson 2012
 
@@ -91,15 +92,21 @@ data Index b where
 data Pull q d a = MkPull (q d) (Index d -> a)
 data Push q d t a = MkPush (q d) ((Index d ->  a -> Program Thread ()) -> Program t ()) 
 
+mkPull = MkPull
+mkPush = MkPush 
 
+
+infixl 9 ! 
+(!) :: Pull q d e -> Index d -> e 
+(!) (MkPull n ixf) ix = ixf ix 
 ---------------------------------------------------------------------------
 -- Row, Column, Plane extraction
 --------------------------------------------------------------------------- 
 class MultiDim d where
   type Selector d -- Alternative have a data Selector d
-  extractRow   :: Dimensions q => Selector d -> Pull q d a -> Pull q ONE a   
-  extractCol   :: Dimensions q => Selector d -> Pull q d a -> Pull q ONE a  
-  extractPlane :: Dimensions q => EW32 -> Pull q d a -> Pull q TWO a 
+  extractRow   :: Dimension q => Selector d -> Pull q d a -> Pull q ONE a   
+  extractCol   :: Dimension q => Selector d -> Pull q d a -> Pull q ONE a  
+  extractPlane :: Dimension q => EW32 -> Pull q d a -> Pull q TWO a 
 
 instance MultiDim TWO where
   type Selector TWO = EW32 
@@ -129,36 +136,20 @@ instance MultiDim THREE where
           d' = modify (Dims2 x y) d 
 
 ---------------------------------------------------------------------------
--- Pushable 
+-- Push (Trying to live without a Pushable class) 
 ---------------------------------------------------------------------------
-class Pushable t where
-  push :: Dimensions q => Pull q d a -> Push q d t a
-
--- This is where things get hairy.
--- Choices of how to represent these 1,2,3D iteration spaces are needed.
---  * Multidimensional parallel loops, is one way. 
-instance Pushable Thread where
-  push = undefined
-
-instance Pushable Warp where
-  push = undefined
-
-instance Pushable Block where
-  push (MkPull n ixf) =
+push :: (Shape d, Dimension q) => Pull q d a -> Push q d t a
+push (MkPull n ixf) =
     MkPush n $ \wf ->
       forAll (extents n) $ \i -> wf i (ixf i) 
 
-
-instance Pushable Grid where
-  push = undefined 
-  
   
 
 ---------------------------------------------------------------------------
 -- Example
 --------------------------------------------------------------------------- 
 
-rev2 :: Dimensions d => Pull d ONE a -> Pull d ONE a
+rev2 :: Dimension d => Pull d ONE a -> Pull d ONE a
 rev2 (MkPull ds ixf) = MkPull ds (\(Ix1 i) -> (ixf (Ix1 (n - 1 - i))))
   where
     (Dims1 n) = extents ds

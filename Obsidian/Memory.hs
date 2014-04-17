@@ -20,6 +20,8 @@ import Obsidian.Globs
 import Obsidian.Array -- Importing this feels a bit strange.
 import Obsidian.Names
 
+import Obsidian.Dimension
+
 import Data.Word
 
 -- class MemoryOps a => Storable a 
@@ -34,7 +36,7 @@ class Storable a where
   -- Array operations 
   assignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
   allocateArray  :: Names a -> Word32 -> Program t ()
-  pullFrom       :: Names a -> Word32 -> Pull Word32 a
+  pullFrom       :: Names a -> Index d -> Pull Static d a
 
   
 

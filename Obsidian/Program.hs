@@ -115,7 +115,7 @@ data Program t a where
 
   -- use threads along one level
   -- Warp, Block, Grid. 
-  ForAll :: Dims d EWord32         -- Not sure Dynamic is really what I want
+  ForAll :: Shape d => Dims d EWord32         -- Not sure EWord32 is really what I want
             -> (Index d -> Program Thread ())
             -> Program t () 
 
@@ -220,7 +220,7 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: Dims d EW32 -> (Index d -> Program Thread ()) -> Program t ()
+forAll :: Shape d => Dims d EW32 -> (Index d -> Program Thread ()) -> Program t ()
 forAll n f = ForAll n $ \ix -> f ix
   
 -- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
