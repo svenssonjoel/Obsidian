@@ -294,7 +294,9 @@ data Op a where
 
   -- Vector Access
   GetX :: Vector v => Op (v a -> a) 
-  GetY :: Vector v => Op (v a -> a) 
+  GetY :: Vector v => Op (v a -> a)
+  GetZ :: Vector v => Op (v a -> a)
+  GetW :: Vector v => Op (v a -> a) 
 ---------------------------------------------------------------------------
 -- helpers 
 
@@ -814,6 +816,7 @@ data IBinOp = IAdd | ISub | IMul | IDiv | IMod
             deriving (Eq, Ord, Show) 
 
 data IUnOp = IBitwiseNeg | INot
+           | IGetX | IGetY | IGetZ | IGetW 
            deriving (Eq, Ord, Show)
 
 
@@ -849,8 +852,13 @@ binOpToIBinOp ShiftL     = IShiftL
 binOpToIBinOp ShiftR     = IShiftR
 
 unOpToIUnOp :: Op t -> IUnOp
-unOpToIUnOp   BitwiseNeg = IBitwiseNeg
-unOpToIUnOp   Not = INot 
+unOpToIUnOp BitwiseNeg = IBitwiseNeg
+unOpToIUnOp Not = INot
+unOpToIUnOp GetX = IGetX
+unOpToIUnOp GetY = IGetY
+unOpToIUnOp GetZ = IGetZ
+unOpToIUnOp GetW = IGetW
+
 
 
 ---------------------------------------------------------------------------
