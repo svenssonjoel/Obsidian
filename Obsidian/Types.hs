@@ -19,6 +19,11 @@ data Type
   = Bool
   | Int  | Word        -- A bit problematic since the size of
                        -- of these are platform dependent
+           
+-- Vector types supported by CUDA (Add more) 
+  | FloatV2 | FloatV3 | FloatV4
+  | DoubleV2                       
+    
   | Int8 | Int16 | Int32 | Int64 
   | Word8 | Word16 | Word32 | Word64 
   | Float | Double                     

@@ -63,6 +63,8 @@ type EBool   = Exp Bool
 
 
 
+
+
 ---------------------------------------------------------------------------
 -- Class Scalar. All the things we can handle code generation for 
 
@@ -123,6 +125,50 @@ instance Scalar Word64 where
   sizeOf _ = 8 
   typeOf _ = Word64
 
+-- Vector types attempt 2
+instance Scalar (Vector2 Float) where
+  sizeOf _ = 2 * sizeOf (0 :: Exp Float)
+  typeOf _ = FloatV2 
+
+---------------------------------------------------------------------------
+-- Support CUDA Vector types
+---------------------------------------------------------------------------
+
+data Vector2 a = Vector2 a a
+data Vector3 a = Vector3 a a a
+data Vector4 a = Vector4 a a a a
+
+instance Show a => Show (Vector2 a) where
+  show (Vector2 a b) = "Vector2 " ++ show a ++ " " ++ show b 
+
+instance Show a => Show (Vector3 a) where
+  show (Vector3 a b c ) = "Vector3 " ++ show a ++ " " ++ show b ++ " " ++ show c
+  
+instance Show a => Show (Vector4 a) where
+  show (Vector4 a b c d) = "Vector4 " ++ show a ++ " " ++ show b ++ " " ++ show c ++ " " ++ show d
+
+instance Eq a => Eq (Vector2 a) where
+  (Vector2 a b) == (Vector2 c d) = a == c && b == d
+
+instance Eq a => Eq (Vector3 a) where
+  (Vector3 a b c) == (Vector3 d e f)  = a == d && b == e && c == f
+
+instance Eq a => Eq (Vector4 a) where
+  (Vector4 a b c d) == (Vector4 e f g h) =  a == e && b == f && c == g && d == h 
+
+
+class Vector v where
+  getX :: (Scalar (v a), Scalar a) => Exp (v a) -> Exp a
+  getY :: (Scalar (v a), Scalar a) => Exp (v a) -> Exp a
+  getZ :: (Scalar (v a), Scalar a) => Exp (v a) -> Exp a
+  getW :: (Scalar (v a), Scalar a) => Exp (v a) -> Exp a
+
+
+instance Vector Vector2 where
+  getX v = UnOp GetX v
+  getY v = UnOp GetY v
+  getZ v = error "getZ not allowed on Vector2"
+  getW v = error "getW not allowed on Vector2" 
 
 
 ---------------------------------------------------------------------------
@@ -243,9 +289,12 @@ data Op a where
   Int32ToWord32 :: Op (Int32 -> Word32)
   Word32ToInt32 :: Op (Word32 -> Int32)
   Word32ToFloat :: Op (Word32 -> Float)
-  Word32ToWord8 :: Op (Word32 -> Word8) 
-  
+  Word32ToWord8 :: Op (Word32 -> Word8)
 
+
+  -- Vector Access
+  GetX :: Vector v => Op (v a -> a) 
+  GetY :: Vector v => Op (v a -> a) 
 ---------------------------------------------------------------------------
 -- helpers 
 
@@ -720,6 +769,11 @@ printOp BitwiseOr  = " | "
 printOp BitwiseXor = " ^ " 
 printOp BitwiseNeg = " ~ "  
 
+printOp GetX = "getX"
+printOp GetY = "getY"
+printOp GetZ = "getZ"
+printOp GetW = "getW"
+
 
 ---------------------------------------------------------------------------
 -- Internal exp (not a GADT) 
@@ -736,6 +790,13 @@ data IExp = IVar Name Type
           | IWord8 Word8 | IWord16 Word16 | IWord32 Word32 | IWord64 Word64
           | IFloat Float | IDouble Double
                            
+-- Vector Types 
+          | IFloat2 Float Float
+          | IFloat3 Float Float Float
+          | IFloat4 Float Float Float Float
+          | IDouble2 Double Double 
+
+-- Operations                            
           | IIndex (IExp,[IExp]) Type
           | ICond IExp IExp IExp Type
           | IBinOp IBinOp IExp IExp Type
@@ -856,8 +917,15 @@ instance ExpToIExp Word64 where
   expToIExp (Literal a) = IWord64 a 
   expToIExp a = expToIExpGeneral a
 
-
+-- Vector Types attempt 2
+instance ExpToIExp (Vector2 Float) where
+  expToIExp (Literal (Vector2 a b)) = IFloat2 a b
+  expToIExp a = expToIExpGeneral a
   
+
+
+---------------------------------------------------------------------------
+-- translation from Exp to IExp in the general case. 
 expToIExpGeneral :: ExpToIExp a  => Exp a -> IExp
 expToIExpGeneral WarpSize      = IVar "warpsize" Word32 
 expToIExpGeneral (BlockIdx d)  = IBlockIdx d
