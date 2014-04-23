@@ -165,12 +165,33 @@ class Vector v where
 
 
 instance Vector Vector2 where
+  getX (Literal (Vector2 x _)) = Literal x 
   getX v = UnOp GetX v
+  getY (Literal (Vector2 _ y)) = Literal y 
   getY v = UnOp GetY v
   getZ v = error "getZ not allowed on Vector2"
-  getW v = error "getW not allowed on Vector2" 
+  getW v = error "getW not allowed on Vector2"
 
+instance Vector Vector3 where
+  getX (Literal (Vector3 x _ _)) = Literal x
+  getX v = UnOp GetX v
+  getY (Literal (Vector3 _ y _)) = Literal y
+  getY v = UnOp GetY v
+  getZ (Literal (Vector3 _ _ z)) = Literal z 
+  getZ v = UnOp GetZ v 
+  getW v = error "getW not allowed on Vector3"
 
+instance Vector Vector4 where
+  getX (Literal (Vector4 x _ _ _)) = Literal x 
+  getX v = UnOp GetX v
+  getY (Literal (Vector4 _ y _ _)) = Literal y 
+  getY v = UnOp GetY v
+  getZ (Literal (Vector4 _ _ z _)) = Literal z 
+  getZ v = UnOp GetZ v
+  getW (Literal (Vector4 _ _ _ w)) = Literal w
+  getW v = UnOp GetW v 
+
+  
 ---------------------------------------------------------------------------
 -- Expressions 
 data Exp a where
