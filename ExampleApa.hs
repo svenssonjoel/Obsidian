@@ -57,6 +57,32 @@ performKern =
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
 
+---------------------------------------------------------------------------
+-- Float4 -> Float
+---------------------------------------------------------------------------
+f4f :: SPull (Exp (Vector4 Float)) -> SPush Block EFloat
+f4f arr = push $ fmap getX arr
+
+
+mapf4f :: DPull (Exp (Vector4 Float)) -> DPush Grid EFloat 
+mapf4f arr = pConcat $ (fmap f4f . splitUp 256)  arr
+
+-- performf4f =
+--   withCUDA $
+--   do
+--     kern <- capture 256 mapf4f
+
+--     useVector (V.fromList [0..1023::Float]) $ \i ->
+--       allocaVector 256 $ \(o :: CUDAVector Float)  ->
+--       do
+--         fill o 0 
+--         o <== (1,kern) <> i
+
+--         r <- peekCUDAVector o
+--         lift $ putStrLn $ show r 
+
+
+
 
 ---------------------------------------------------------------------------
 -- Warp experiment

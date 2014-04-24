@@ -128,7 +128,17 @@ instance Scalar Word64 where
 -- Vector types attempt 2
 instance Scalar (Vector2 Float) where
   sizeOf _ = 2 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV2 
+  typeOf _ = FloatV2
+
+instance Scalar (Vector3 Float) where
+  sizeOf _ = 3 * sizeOf (0 :: Exp Float)
+  typeOf _ = FloatV2
+
+instance Scalar (Vector4 Float) where
+  sizeOf _ = 4 * sizeOf (0 :: Exp Float)
+  typeOf _ = FloatV2
+
+  
 
 ---------------------------------------------------------------------------
 -- Support CUDA Vector types
@@ -950,7 +960,16 @@ instance ExpToIExp Word64 where
 instance ExpToIExp (Vector2 Float) where
   expToIExp (Literal (Vector2 a b)) = IFloat2 a b
   expToIExp a = expToIExpGeneral a
-  
+
+instance ExpToIExp (Vector3 Float) where
+  expToIExp (Literal (Vector3 a b c)) = IFloat3 a b c
+  expToIExp a = expToIExpGeneral a
+
+instance ExpToIExp (Vector4 Float) where
+  expToIExp (Literal (Vector4 a b c d)) = IFloat4 a b c d 
+  expToIExp a = expToIExpGeneral a
+
+
 
 
 ---------------------------------------------------------------------------
