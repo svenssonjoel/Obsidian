@@ -129,6 +129,10 @@ compileExp (IUnOp op e t) = go op
     x = compileExp e
     go IBitwiseNeg = [cexp| ~$x|]
     go INot        = [cexp| !$x|]
+    go IGetX       = [cexp| $x.x|]
+    go IGetY       = [cexp| $x.y|]
+    go IGetZ       = [cexp| $x.z|]
+    go IGetW       = [cexp| $x.w|]
     
 compileExp (IFunCall name es t) = [cexp| $fc |]
   where
@@ -149,8 +153,10 @@ compileType (Word32) = [cty| typename uint32_t |]
 compileType (Word64) = [cty| typename uint64_t |]
 compileType (Float) = [cty| float |]
 compileType (Double) = [cty| double |]
+compileType (FloatV4) = [cty| float4|]
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
-compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|] 
+compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
+compileType t = error $ "compileType: Not implemented " ++ show t
 
 --compileType' (Volatile t) = [cty| volatile $ty:(compileType t)|] 
 --compileType' t = compileType t 

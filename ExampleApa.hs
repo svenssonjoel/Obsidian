@@ -61,25 +61,26 @@ performKern =
 -- Float4 -> Float
 ---------------------------------------------------------------------------
 f4f :: SPull (Exp (Vector4 Float)) -> SPush Block EFloat
-f4f arr = push $ fmap getX arr
+f4f arr = push $ fmap getZ arr
 
 
 mapf4f :: DPull (Exp (Vector4 Float)) -> DPush Grid EFloat 
 mapf4f arr = pConcat $ (fmap f4f . splitUp 256)  arr
 
--- performf4f =
---   withCUDA $
---   do
---     kern <- capture 256 mapf4f
+performf4f =
+  withCUDA $
+  do
+    kern <- capture 256 mapf4f
+    
+            
+    useVector (V.replicate 256 (Vector4 1 2 3 (4 :: Float))) $ \ i -> --  [ Vector4 i i i i    | i <- [0..255::Float]]) $ \(i :: CUDAVector (Vector4 Float)) ->
+      allocaVector 256 $ \(o :: CUDAVector Float)  ->
+      do
+        fill o 0 
+        o <== (1,kern) <> i
 
---     useVector (V.fromList [0..1023::Float]) $ \i ->
---       allocaVector 256 $ \(o :: CUDAVector Float)  ->
---       do
---         fill o 0 
---         o <== (1,kern) <> i
-
---         r <- peekCUDAVector o
---         lift $ putStrLn $ show r 
+        r <- peekCUDAVector o
+        lift $ putStrLn $ show r 
 
 
 

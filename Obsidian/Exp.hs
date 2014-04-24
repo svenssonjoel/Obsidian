@@ -74,11 +74,11 @@ class (Eq a, ExpToIExp a, Show a) => Scalar a where
 
 
 instance Scalar Bool where  
-  sizeOf _ = Storable.sizeOf (undefined :: Int)
+  sizeOf _ = Storable.sizeOf (1 :: Int)
   typeOf _ = Bool 
 
 instance Scalar Int where 
-  sizeOf _ = Storable.sizeOf (undefined :: Int)
+  sizeOf _ = Storable.sizeOf (1 :: Int)
   typeOf _ = Int
 
 instance Scalar Int8 where 
@@ -98,7 +98,7 @@ instance Scalar Int64 where
   typeOf _ = Int64
   
 instance Scalar Float where
-  sizeOf _ = Storable.sizeOf (undefined :: Float)
+  sizeOf _ = Storable.sizeOf (1.0 :: Float)
   typeOf _ = Float
   
 instance Scalar Double where 
@@ -106,7 +106,7 @@ instance Scalar Double where
   typeOf _ = Double
 
 instance Scalar Word where
-  sizeOf _ = Storable.sizeOf (undefined :: Word) 
+  sizeOf _ = Storable.sizeOf (1 :: Word) 
   typeOf _ = Word
   
 instance Scalar Word8 where
@@ -132,11 +132,11 @@ instance Scalar (Vector2 Float) where
 
 instance Scalar (Vector3 Float) where
   sizeOf _ = 3 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV2
+  typeOf _ = FloatV3
 
 instance Scalar (Vector4 Float) where
   sizeOf _ = 4 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV2
+  typeOf _ = FloatV4
 
   
 
@@ -144,9 +144,9 @@ instance Scalar (Vector4 Float) where
 -- Support CUDA Vector types
 ---------------------------------------------------------------------------
 
-data Vector2 a = Vector2 a a
-data Vector3 a = Vector3 a a a
-data Vector4 a = Vector4 a a a a
+data Vector2 a = Vector2 !a !a
+data Vector3 a = Vector3 !a !a !a
+data Vector4 a = Vector4 !a !a !a !a
 
 instance Show a => Show (Vector2 a) where
   show (Vector2 a b) = "Vector2 " ++ show a ++ " " ++ show b 

@@ -22,7 +22,7 @@ import Obsidian.CodeGen.Reify
 import Obsidian.CodeGen.CUDA
 
 import Obsidian.Types -- experimental
-import Obsidian.Exp
+import Obsidian.Exp hiding (sizeOf)
 import Obsidian.Array
 import Obsidian.Program (Grid, GProgram)
 import Obsidian.Mutable
@@ -31,7 +31,10 @@ import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
 import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
 
-import qualified Data.Vector.Storable as V 
+import qualified Data.Vector.Storable as V
+-- import Data.Vector.Storable hiding ((++),modify,mapM)
+import Foreign.Storable
+import Foreign.Ptr
 
 import Data.Word
 import Data.Int
@@ -47,9 +50,32 @@ import System.CPUTime.Rdtsc
 
 import Control.Monad.State
 
-
-
 debug = False
+
+instance V.Storable a => V.Storable (Vector4 a) where
+  sizeOf _ = sizeOf (undefined :: a) * 4
+  alignment _ = alignment (undefined :: a)
+ 
+  {-# INLINE peek #-}
+  peek p = do
+             a <- peekElemOff q 0
+             b <- peekElemOff q 1
+             c <- peekElemOff q 2
+             d <- peekElemOff q 3
+             return (Vector4 a b c d)
+    where
+      q = castPtr p
+  {-# INLINE poke #-}
+  poke p (Vector4 a b c d) = do
+             pokeElemOff q 0 a
+             pokeElemOff q 1 b
+             pokeElemOff q 2 c
+             pokeElemOff q 3 d
+    where
+      q = castPtr p
+
+  
+
 
 ---------------------------------------------------------------------------
 -- Tools 
