@@ -5,8 +5,9 @@
              UndecidableInstances,
              OverlappingInstances,
              RankNTypes #-} 
+{-# LANGUAGE CPP #-} 
 
-{- Joel Svensson 2012 -} 
+{- Joel Svensson 2012, 2013, 2014 -} 
 
 module Obsidian.Exp 
        (module Obsidian.Exp,
@@ -125,18 +126,38 @@ instance Scalar Word64 where
   sizeOf _ = 8 
   typeOf _ = Word64
 
--- Vector types attempt 2
-instance Scalar (Vector2 Float) where
-  sizeOf _ = 2 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV2
 
-instance Scalar (Vector3 Float) where
-  sizeOf _ = 3 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV3
+#define SCALARVEC2(t,vt) instance Scalar (Vector2 t) where \
+  {sizeOf _ = 2 * sizeOf (0 :: Exp t); \
+   typeOf _ = vt}
 
-instance Scalar (Vector4 Float) where
-  sizeOf _ = 4 * sizeOf (0 :: Exp Float)
-  typeOf _ = FloatV4
+#define SCALARVEC3(t,vt) instance Scalar (Vector3 t) where \
+  {sizeOf _ = 3 * sizeOf (0 :: Exp t); \
+   typeOf _ = vt}
+
+#define SCALARVEC4(t,vt) instance Scalar (Vector4 t) where \
+  {sizeOf _ = 4 * sizeOf (0 :: Exp t); \
+   typeOf _ = vt}
+
+
+SCALARVEC2(Double,DoubleV2)
+SCALARVEC2(Float,FloatV2)
+SCALARVEC3(Float,FloatV3)
+SCALARVEC4(Float,FloatV4) 
+
+
+-- -- Vector types attempt 2
+-- instance Scalar (Vector2 Float) where
+--   sizeOf _ = 2 * sizeOf (0 :: Exp Float)
+--   typeOf _ = FloatV2
+
+-- instance Scalar (Vector3 Float) where
+--   sizeOf _ = 3 * sizeOf (0 :: Exp Float)
+--   typeOf _ = FloatV3
+
+-- instance Scalar (Vector4 Float) where
+--   sizeOf _ = 4 * sizeOf (0 :: Exp Float)
+--   typeOf _ = FloatV4
 
   
 
@@ -935,7 +956,7 @@ instance ExpToIExp Double where
   expToIExp (Literal a) = IDouble a 
   expToIExp a = expToIExpGeneral a 
 
--- This is strange. 
+-- This is strange.  (... WHY??? (2014))
 instance ExpToIExp Word where 
   expToIExp (Literal a) = IWord32 (fromIntegral a)
   expToIExp a = expToIExpGeneral a 
@@ -969,7 +990,10 @@ instance ExpToIExp (Vector4 Float) where
   expToIExp (Literal (Vector4 a b c d)) = IFloat4 a b c d 
   expToIExp a = expToIExpGeneral a
 
-
+instance ExpToIExp (Vector2 Double) where
+  expToIExp (Literal (Vector2 a b)) = IDouble2 a b
+  expToIExp a = expToIExpGeneral a
+  
 
 
 ---------------------------------------------------------------------------
