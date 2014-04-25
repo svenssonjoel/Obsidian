@@ -74,6 +74,24 @@ instance V.Storable a => V.Storable (Vector4 a) where
     where
       q = castPtr p
 
+instance V.Storable a => V.Storable (Vector2 a) where
+  sizeOf _ = sizeOf (undefined :: a) * 2
+  alignment _ = alignment (undefined :: a)
+ 
+  {-# INLINE peek #-}
+  peek p = do
+             a <- peekElemOff q 0
+             b <- peekElemOff q 1
+             return (Vector2 a b )
+    where
+      q = castPtr p
+  {-# INLINE poke #-}
+  poke p (Vector2 a b) = do
+             pokeElemOff q 0 a
+             pokeElemOff q 1 b
+    where
+      q = castPtr p
+
   
 
 

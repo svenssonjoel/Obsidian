@@ -153,7 +153,14 @@ compileType (Word32) = [cty| typename uint32_t |]
 compileType (Word64) = [cty| typename uint64_t |]
 compileType (Float) = [cty| float |]
 compileType (Double) = [cty| double |]
+
 compileType (FloatV4) = [cty| float4|]
+compileType (FloatV3) = [cty| float3|]
+compileType (FloatV2) = [cty| float2|]
+
+compileType (DoubleV2) = [cty| double2|]
+
+
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
 compileType t = error $ "compileType: Not implemented " ++ show t

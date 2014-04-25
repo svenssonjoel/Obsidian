@@ -60,12 +60,12 @@ performKern =
 ---------------------------------------------------------------------------
 -- Float4 -> Float
 ---------------------------------------------------------------------------
-f4f :: SPull (Exp (Vector4 Float)) -> SPush Block EFloat
+f4f :: SPull (Exp (Vector2 Double)) -> SPush Block EDouble
 f4f arr = runPush $ do
   imm <- forcePull$ arr
-  return $ push $ fmap (\v -> getW v + getZ v + getY v + getX v) imm
+  return $ push $ fmap (\v -> getY v + getX v) imm
 
-mapf4f :: DPull (Exp (Vector4 Float)) -> DPush Grid EFloat 
+mapf4f :: DPull (Exp (Vector2 Double)) -> DPush Grid EDouble 
 mapf4f arr = pConcat $ (fmap f4f . splitUp 256)  arr
 
 performf4f =
@@ -74,10 +74,10 @@ performf4f =
     kern <- capture 256 mapf4f
     
             
-    useVector (V.replicate 256 (Vector4 1 2 3 (4 :: Float))) $ \ i -> 
-      allocaVector 256 $ \(o :: CUDAVector Float)  ->
+    useVector (V.replicate 256 (Vector2 1.2 (4.3 :: Double))) $ \ i -> 
+      allocaVector 256 $ \(o :: CUDAVector Double)  ->
       do
-        fill o 0 
+        -- fill o 0 
         o <== (1,kern) <> i
 
         r <- peekCUDAVector o
