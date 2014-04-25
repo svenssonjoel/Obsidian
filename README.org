@@ -4,18 +4,15 @@
   
 * Current features 
     + Pull arrays: traditional "arrays as function from index to value" 
-    + Push arrays: a computation that is parameterised on a "write function". 
+    + Push arrays: a computation that is parameterised on a "write
+      function". 
     + Executing kernels from within Haskell is possible on platforms 
       supported by the CUDA bindings (Linux, Mac). 
-      Obsidian.Run.CUDA.Exec provides a very low level interface to running kernels. 
-    + A collection of sequential building blocks for sequential (reg->reg 
-       computations). 
-          + Fold 
-          + Scan 
-          + Sort (todo). How ? Which kind of sort. I want one with known number of iterations and in-place capability. 
-          + Merge (todo) 
-          + Filter (todo, Tricky, whats the lengths?) 
-* In Progress 
+      Obsidian.Run.CUDA.Exec provides a very low level interface to
+      running kernels. 
+
+* In Progress
+    + Support for CUDA Vector types (float4, Double2). 
     + Mutable arrays:
       Mutable arrays in shared memory can be created.
       Global mutable arrays can be passed into a kernel as an argument. 
@@ -23,6 +20,10 @@
 
   
 * TODOs
+  + Interface with cub in some way. 
+    Allow the programmer to call functions from the cub library 
+     - Blockwide operations. 
+    
   + Look at code generation, is there a problem with the memory management ? 
 	    
 
