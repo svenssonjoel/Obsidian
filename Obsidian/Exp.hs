@@ -145,6 +145,11 @@ SCALARVEC2(Float,FloatV2)
 SCALARVEC3(Float,FloatV3)
 SCALARVEC4(Float,FloatV4) 
 
+SCALARVEC2(Int8,Int8V2)
+SCALARVEC3(Int8,Int8V3)
+SCALARVEC4(Int8,Int8V4) 
+
+
 
 -- -- Vector types attempt 2
 -- instance Scalar (Vector2 Float) where
@@ -844,11 +849,15 @@ data IExp = IVar Name Type
           | IWord8 Word8 | IWord16 Word16 | IWord32 Word32 | IWord64 Word64
           | IFloat Float | IDouble Double
                            
--- Vector Types 
+-- Vector Types (Clean this up, somehow)
           | IFloat2 Float Float
           | IFloat3 Float Float Float
           | IFloat4 Float Float Float Float
-          | IDouble2 Double Double 
+          | IDouble2 Double Double
+          | IInt8_2 Int8 Int8
+          | IInt8_3 Int8 Int8 Int8
+          | IInt8_4 Int8 Int8 Int8 Int8 
+
 
 -- Operations                            
           | IIndex (IExp,[IExp]) Type
@@ -994,7 +1003,17 @@ instance ExpToIExp (Vector2 Double) where
   expToIExp (Literal (Vector2 a b)) = IDouble2 a b
   expToIExp a = expToIExpGeneral a
   
+instance ExpToIExp (Vector2 Int8) where
+  expToIExp (Literal (Vector2 a b)) = IInt8_2 a b
+  expToIExp a = expToIExpGeneral a
 
+instance ExpToIExp (Vector3 Int8) where
+  expToIExp (Literal (Vector3 a b c)) = IInt8_3 a b c
+  expToIExp a = expToIExpGeneral a
+
+instance ExpToIExp (Vector4 Int8) where
+  expToIExp (Literal (Vector4 a b c d)) = IInt8_4 a b c d 
+  expToIExp a = expToIExpGeneral a
 
 ---------------------------------------------------------------------------
 -- translation from Exp to IExp in the general case. 

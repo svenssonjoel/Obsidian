@@ -22,8 +22,18 @@ data Type
            
 -- Vector types supported by CUDA (Add more) 
   | FloatV2 | FloatV3 | FloatV4
-  | DoubleV2                       
+  | DoubleV2
     
+  | Int8V2 | Int8V3 | Int8V4
+  | Int16V2 | Int16V3 | Int16V4
+  | Int32V2 | Int32V3 | Int32V4
+  | Int64V2
+    
+  | Word8V2 | Word8V3 | Word8V4
+  | Word16V2 | Word16V3 | Word16V4
+  | Word32V2 | Word32V3 | Word32V4
+  | Word64V2
+
   | Int8 | Int16 | Int32 | Int64 
   | Word8 | Word16 | Word32 | Word64 
   | Float | Double                     

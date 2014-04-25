@@ -95,6 +95,9 @@ compileExp (IWord64 n) = [cexp| $ulint:(toInteger n) |]
 compileExp (IFloat n) = [cexp| $float:(toRational n) |]
 compileExp (IDouble n) = [cexp| $double:(toRational n) |]
 
+-- TODO Add support for Vector types here as well
+
+
 compileExp (IIndex (i1,[e]) t) = [cexp| $(compileExp i1)[$(compileExp e)] |] 
 
 compileExp (ICond e1 e2 e3 t) = [cexp| $(compileExp e1) ? $(compileExp e2) : $(compileExp e3) |]
@@ -159,6 +162,11 @@ compileType (FloatV3) = [cty| float3|]
 compileType (FloatV2) = [cty| float2|]
 
 compileType (DoubleV2) = [cty| double2|]
+
+-- How does this interplay with my use of uint8_t etc. Here it is char!
+compileType Int8V2 = [cty| char2|]
+compileType Int8V3 = [cty| char3|]
+compileType Int8V4 = [cty| char4|]
 
 
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
