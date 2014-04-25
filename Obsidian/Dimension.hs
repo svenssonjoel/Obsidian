@@ -1,6 +1,8 @@
 {-# LANGUAGE GADTs #-} 
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-} 
+{-# LANGUAGE DataKinds #-}
+
+{-# LANGUAGE FlexibleInstances #-}
 
 {- Joel Svensson 2014
 
@@ -21,7 +23,7 @@ import Data.Word
 -- a DataKind.. 
 data Dimensions = ZERO | ONE | TWO | THREE   
 
-data Dynamic s = Dynamic (Dims s EWord32) 
+data Dynamic s = Dynamic (Dims s EWord32)
 data Static s  = Static  (Dims s Word32)
 
 class Shape (d :: Dimensions) where
@@ -31,13 +33,13 @@ instance Shape ZERO where
   dimensions _ = 0
 
 instance Shape ONE where
-  dimensions _ = 0
+  dimensions _ = 1
 
 instance Shape TWO where
-  dimensions _ = 0
+  dimensions _ = 2
 
-instance Shape THREE
-
+instance Shape THREE where
+   dimensions _ = 3
 
 class Dimension d where
   type Elt d 
@@ -45,7 +47,9 @@ class Dimension d where
 
   extents :: d dim -> Dims dim EW32
   
-  modify :: Dims dim2 (Elt d) -> d dim -> d dim2 
+  modify :: Dims dim2 (Elt d) -> d dim -> d dim2
+
+  dynamic :: d dim -> Dynamic dim
 
 instance Dimension Dynamic where
   type Elt Dynamic = EW32
@@ -54,6 +58,8 @@ instance Dimension Dynamic where
   extents (Dynamic s) = s 
 
   modify s1 (Dynamic s) = Dynamic s1
+
+  dynamic = id
 
 instance Dimension Static where
   type Elt Static = Word32
@@ -66,6 +72,8 @@ instance Dimension Static where
   extents (Static (Dims0)) = Dims0
   
   modify s1 (Static s) = Static s1
+
+  dynamic s = Dynamic $ extents s 
   
 data Dims (b :: Dimensions)  a where
   Dims0 :: Dims ZERO a
@@ -79,7 +87,31 @@ size (Dims1 x) = x
 size (Dims2 x y) = x * y
 size (Dims3 x y z) = x * y * z
 
+instance Num a => Num (Dims ONE a) where
+  (Dims1 x1) + (Dims1 x2) = Dims1 $ x1 + x2
+  (Dims1 x1) - (Dims1 x2) = Dims1 $ x1 + x2
+  (Dims1 x1) * (Dims1 x2) = Dims1 $ x1 + x2
+  signum = undefined
+  abs = undefined
+  fromInteger n = Dims1 (fromInteger n) 
 
+instance Num a => Num (Dims TWO a) where
+  (Dims2 x1 y1) + (Dims2 x2 y2) = Dims2 (x1 + x2) (y1 + y2)
+  (Dims2 x1 y1) - (Dims2 x2 y2) = Dims2 (x1 + x2) (y1 + y2) 
+  (Dims2 x1 y1) * (Dims2 x2 y2) = Dims2 (x1 + x2) (y1 + y2) 
+  signum = undefined
+  abs = undefined
+  fromInteger n = Dims2 n' n'
+    where n' = (fromInteger n) 
+
+instance Num a => Num (Dims THREE a) where
+  (Dims3 x1 y1 z1) + (Dims3 x2 y2 z2) = Dims3 (x1 + x2) (y1 + y2) (z1 + z2) 
+  (Dims3 x1 y1 z1) - (Dims3 x2 y2 z2) = Dims3 (x1 + x2) (y1 + y2) (z1 + z2) 
+  (Dims3 x1 y1 z1) * (Dims3 x2 y2 z2) = Dims3 (x1 + x2) (y1 + y2) (z1 + z2) 
+  signum = undefined
+  abs = undefined
+  fromInteger n = Dims3 n' n' n'
+    where n' = (fromInteger n) 
 
 ---------------------------------------------------------------------------
 -- Index
@@ -90,3 +122,24 @@ data Index b where
   Ix1 :: EW32 -> Index ONE
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
+
+
+
+index :: Scalar a => String -> Index b -> Exp a 
+index name Ix0 = Index (name,[])
+index name (Ix1 e1) = Index (name,[e1])
+index name (Ix2 e1 e2) = Index (name,[e1,e2])
+index name (Ix3 e1 e2 e3) = Index (name,[e1,e2,e3]) 
+
+
+fromIndex :: Index d -> Dims d EW32
+fromIndex Ix0 = Dims0  
+fromIndex (Ix1 e1) = Dims1 e1
+fromIndex (Ix2 e1 e2) = Dims2 e1 e2
+fromIndex (Ix3 e1 e2 e3) = Dims3 e1 e2 e3 
+
+toIndex :: Dims d EW32 -> Index d
+toIndex Dims0 = Ix0
+toIndex (Dims1 e1) = Ix1 e1
+toIndex (Dims2 e1 e2) = Ix2 e1 e2
+toIndex (Dims3 e1 e2 e3) = Ix3 e1 e2 e3

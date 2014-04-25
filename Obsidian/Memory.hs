@@ -1,5 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables,
              GADTs #-}
+{-# LANGUAGE FlexibleContexts #-}
+
 
 {- Joel Svensson 2013
 
@@ -29,14 +31,14 @@ import Data.Word
 ---------------------------------------------------------------------------
 -- Local Memory
 ---------------------------------------------------------------------------
-class Storable a where
+class  Storable a where
   -- | Obtain new names for variables / arrays 
   names          :: String -> Program t (Names a) 
 
   -- Array operations 
   assignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
   allocateArray  :: Names a -> Word32 -> Program t ()
-  pullFrom       :: Names a -> Index d -> Pull Static d a
+  pullFrom       :: Names a -> Static d -> Pull Static d a
 
   
 
@@ -53,7 +55,7 @@ class Storable a where
                       -> a
                       -> EWord32
                       -> Program Thread ()
-  warpPullFrom      :: Names a -> EWord32 -> Word32 -> Pull Word32 a
+  warpPullFrom      :: Num (Dims d EW32) => Names a -> Dynamic d -> Static d -> Pull Static d a
   
   -- Extra
   allocateVolatileArray :: Names a -> Word32 -> Program t ()
@@ -87,7 +89,7 @@ instance Scalar a => Storable (Exp a) where
     Assign name [warpID * fromIntegral step + ix] a 
 
   warpPullFrom (Single name) warpID n
-    = mkPull n (\i -> index name (warpID * fromIntegral n + i))
+    = mkPull n (\i -> index name (toIndex (extents warpID * extents n + fromIndex i)))
 
   -- Extra 
   allocateVolatileArray (Single name) n = 

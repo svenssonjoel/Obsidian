@@ -250,7 +250,8 @@ data Op a where
 -- helpers 
 
 variable name = Index (name,[])
-index name ix = Index (name,[ix])
+--index name ix = Index (name,[ix])
+
 
 warpSize :: Exp Word32
 warpSize = WarpSize
