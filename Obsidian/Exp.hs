@@ -857,7 +857,7 @@ data IExp = IVar Name Type
           | IInt8_2 Int8 Int8
           | IInt8_3 Int8 Int8 Int8
           | IInt8_4 Int8 Int8 Int8 Int8 
-
+          -- ... much more to add. 
 
 -- Operations                            
           | IIndex (IExp,[IExp]) Type
