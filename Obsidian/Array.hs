@@ -90,7 +90,7 @@ data Index b where
 -- Pull and Push arrays
 --------------------------------------------------------------------------- 
 data Pull q d a = MkPull (q d) (Index d -> a)
-data Push q d t a = MkPush (q d) ((Index d ->  a -> Program Thread ()) -> Program t ()) 
+data Push t q d a = MkPush (q d) ((Index d ->  a -> Program Thread ()) -> Program t ()) 
 
 mkPull = MkPull
 mkPush = MkPush 
@@ -138,7 +138,7 @@ instance MultiDim THREE where
 ---------------------------------------------------------------------------
 -- Push (Trying to live without a Pushable class) 
 ---------------------------------------------------------------------------
-push :: (Shape d, Dimension q) => Pull q d a -> Push q d t a
+push :: (Shape d, Dimension q) => Pull q d a -> Push t q d a
 push (MkPull n ixf) =
     MkPush n $ \wf ->
       forAll (extents n) $ \i -> wf i (ixf i) 
@@ -184,20 +184,20 @@ mkPull n p = Pull n p
 --   * you can shorten pull arrays safely.  
 setSize :: l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
-
+-} 
 ---------------------------------------------------------------------------
 -- Array Class 
 ---------------------------------------------------------------------------
 class ArrayLength a where
   -- | Get the length of an array.
-  len :: a s e -> s
+  len :: Dimension q => a q d e -> Dims d (Elt q)  
 
 instance ArrayLength Pull where
-  len    (Pull n ixf) = n
+  len    (MkPull n ixf) = dims n
 
 instance ArrayLength (Push t) where
-  len  (Push s p) = s
-
+  len  (MkPush s p) = dims s
+{- 
 class Array a where
   -- | Array of consecutive integers
   iota      :: ASize s => s -> a s EWord32
@@ -312,22 +312,22 @@ instance Pushable Grid where
 --     Push m $ \ wf -> forAll (sizeConv (m `div` fromIntegral n)) $ \bix ->
 --     forAll (fromIntegral n) $ \tix -> wf (ixf (bix * fromIntegral n + tix))
 --                                               (bix * fromIntegral n + tix) 
-
+-} 
 --------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
 
-pushApp (Push _ p) a = p a
+pushApp (MkPush _ p) a = p a
 
 infixl 9 <:
-(<:) :: Push t s a
-        -> (a -> EWord32 -> Program Thread ())
+(<:) :: Push t q d a
+        -> (Index d -> a -> Program Thread ())
         -> Program t ()
 (<:) = pushApp 
 
-infixl 9 ! 
-(!) :: Pull s e -> Exp Word32 -> e 
-(!) arr = pullFun arr 
+-- infixl 9 ! 
+-- (!) :: Pull s e -> Exp Word32 -> e 
+-- (!) arr = pullFun arr 
 
 
--} 
+ 

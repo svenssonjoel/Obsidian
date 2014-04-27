@@ -37,7 +37,7 @@ class  Storable a where
 
   -- Array operations 
   assignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
-  allocateArray  :: Names a -> Word32 -> Program t ()
+  allocateArray  :: Names a -> Dims d Word32 -> Program t ()
   pullFrom       :: Names a -> Static d -> Pull Static d a
 
   

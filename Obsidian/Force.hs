@@ -36,6 +36,8 @@ import Obsidian.Memory
 
 import Obsidian.Names
 
+import Obsidian.Dimension
+
 import Data.Word
 
 import Control.Monad
@@ -44,7 +46,7 @@ import Control.Monad
 ---------------------------------------------------------------------------
 
 class Write t where
-  unsafeWritePush :: Storable a => Bool -> Push t Word32 a -> Program t (Pull Word32 a)
+  unsafeWritePush :: Storable a => Bool -> Push t Static d a -> Program t (Pull Static d a)
   -- unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
   
 instance Write Warp where
@@ -97,21 +99,21 @@ instance Forceable Block
 -- | force turns a @Push@ array to a @Program@ generating a @Pull@ array.
 --   The returned array represents reading from an array manifest in memory.
 force :: (Storable a, Forceable t)
-         => Push t Word32 a -> Program t (Pull Word32 a)      
+         => Push t Static d a -> Program t (Pull Static d a)      
 force arr = do
   rval <- unsafeWritePush False arr
   sync
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Storable a, Forceable t, Pushable t) 
-             => Pull Word32 a -> Program t (Pull Word32 a)  
+forcePull :: (Storable a, Forceable t) 
+             => Pull Static d a -> Program t (Pull Static d a)  
 forcePull = unsafeForce . push 
 
 -- | unsafeForce is dangerous on @Push@ arrays as it does not
 --   insert synchronization primitives. 
 unsafeForce :: (Storable a, Forceable t) =>
-         Push t  Word32 a -> Program t (Pull Word32 a)      
+         Push t Static d a -> Program t (Pull Static d a)      
 unsafeForce arr = 
   if (len arr <= 32)
   then do
