@@ -149,6 +149,14 @@ SCALARVEC2(Int8,Int8V2)
 SCALARVEC3(Int8,Int8V3)
 SCALARVEC4(Int8,Int8V4) 
 
+SCALARVEC2(Int16,Int16V2)
+SCALARVEC3(Int16,Int16V3)
+SCALARVEC4(Int16,Int16V4) 
+
+SCALARVEC2(Int32,Int32V2)
+SCALARVEC3(Int32,Int32V3)
+SCALARVEC4(Int32,Int32V4) 
+
 
 
 -- -- Vector types attempt 2
@@ -857,7 +865,14 @@ data IExp = IVar Name Type
           | IInt8_2 Int8 Int8
           | IInt8_3 Int8 Int8 Int8
           | IInt8_4 Int8 Int8 Int8 Int8 
-          -- ... much more to add. 
+          | IInt16_2 Int16 Int16
+          | IInt16_3 Int16 Int16 Int16
+          | IInt16_4 Int16 Int16 Int16 Int16 
+          | IInt32_2 Int32 Int32
+          | IInt32_3 Int32 Int32 Int32
+          | IInt32_4 Int32 Int32 Int32 Int32 
+       
+            -- ... much more to add. 
 
 -- Operations                            
           | IIndex (IExp,[IExp]) Type
@@ -986,18 +1001,48 @@ instance ExpToIExp Word64 where
   expToIExp (Literal a) = IWord64 a 
   expToIExp a = expToIExpGeneral a
 
--- Vector Types attempt 2
-instance ExpToIExp (Vector2 Float) where
-  expToIExp (Literal (Vector2 a b)) = IFloat2 a b
-  expToIExp a = expToIExpGeneral a
+---------------------------------------------------------------------------
+-- Vector Exp to IExp
+---------------------------------------------------------------------------
+#define ETOIEVEC2(t,ct) instance ExpToIExp (Vector2 t) where \
+  {expToIExp (Literal (Vector2 a b)) = ct a b; \
+   expToIExp a = expToIExpGeneral a}
 
-instance ExpToIExp (Vector3 Float) where
-  expToIExp (Literal (Vector3 a b c)) = IFloat3 a b c
-  expToIExp a = expToIExpGeneral a
+#define ETOIEVEC3(t,ct) instance ExpToIExp (Vector3 t) where \
+  {expToIExp (Literal (Vector3 a b c)) = ct a b c; \
+   expToIExp a = expToIExpGeneral a}
 
-instance ExpToIExp (Vector4 Float) where
-  expToIExp (Literal (Vector4 a b c d)) = IFloat4 a b c d 
-  expToIExp a = expToIExpGeneral a
+#define ETOIEVEC4(t,ct) instance ExpToIExp (Vector4 t) where \
+  {expToIExp (Literal (Vector4 a b c d)) = ct a b c d; \
+   expToIExp a = expToIExpGeneral a}
+
+-- CPP string concatenation seems to not work with GHC CPP. 
+-- So this gets a bit more wordy. 
+
+ETOIEVEC2(Float,IFloat2) 
+ETOIEVEC3(Float,IFloat3)
+ETOIEVEC4(Float,IFloat4) 
+
+ETOIEVEC2(Int16,IInt16_2) 
+ETOIEVEC3(Int16,IInt16_3)
+ETOIEVEC4(Int16,IInt16_4) 
+
+ETOIEVEC2(Int32,IInt32_2) 
+ETOIEVEC3(Int32,IInt32_3)
+ETOIEVEC4(Int32,IInt32_4) 
+
+
+-- instance ExpToIExp (Vector2 Float) where
+--   expToIExp (Literal (Vector2 a b)) = IFloat2 a b
+--   expToIExp a = expToIExpGeneral a
+
+-- instance ExpToIExp (Vector3 Float) where
+--   expToIExp (Literal (Vector3 a b c)) = IFloat3 a b c
+--   expToIExp a = expToIExpGeneral a
+
+-- instance ExpToIExp (Vector4 Float) where
+--   expToIExp (Literal (Vector4 a b c d)) = IFloat4 a b c d 
+--   expToIExp a = expToIExpGeneral a
 
 instance ExpToIExp (Vector2 Double) where
   expToIExp (Literal (Vector2 a b)) = IDouble2 a b

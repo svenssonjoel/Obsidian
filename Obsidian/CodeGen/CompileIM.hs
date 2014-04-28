@@ -168,6 +168,17 @@ compileType Int8V2 = [cty| char2|]
 compileType Int8V3 = [cty| char3|]
 compileType Int8V4 = [cty| char4|]
 
+-- Very skeptic to this. Maybe the programmer level names
+-- should also be "short4", "char4", "int4".
+-- The actual sizes may vary, I guess. 
+compileType Int16V2 = [cty| short2|]
+compileType Int16V3 = [cty| short3|]
+compileType Int16V4 = [cty| short4|]
+
+compileType Int32V2 = [cty| int2|]
+compileType Int32V3 = [cty| int3|]
+compileType Int32V4 = [cty| int4|]
+
 
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
