@@ -801,6 +801,7 @@ data IExp = IVar Name Type
           | IBlockDim  DimSpec
           | IGridDim   DimSpec
 
+-- Break out: Values and Vectors this is too messy. 
           | IBool Bool 
           | IInt8 Int8 | IInt16 Int16 | IInt32 Int32 | IInt64 Int64
           | IWord8 Word8 | IWord16 Word16 | IWord32 Word32 | IWord64 Word64
@@ -820,7 +821,23 @@ data IExp = IVar Name Type
           | IInt32_2 Int32 Int32
           | IInt32_3 Int32 Int32 Int32
           | IInt32_4 Int32 Int32 Int32 Int32 
+          | IInt64_2 Int64 Int64
+          | IInt64_3 Int64 Int64 Int64
+          | IInt64_4 Int64 Int64 Int64 Int64 
+          | IWord8_2 Word8 Word8
+          | IWord8_3 Word8 Word8 Word8
+          | IWord8_4 Word8 Word8 Word8 Word8 
+          | IWord16_2 Word16 Word16
+          | IWord16_3 Word16 Word16 Word16
+          | IWord16_4 Word16 Word16 Word16 Word16 
+          | IWord32_2 Word32 Word32
+          | IWord32_3 Word32 Word32 Word32
+          | IWord32_4 Word32 Word32 Word32 Word32 
+          | IWord64_2 Word64 Word64
+          | IWord64_3 Word64 Word64 Word64
+          | IWord64_4 Word64 Word64 Word64 Word64 
        
+            
             -- ... much more to add. 
 
 -- Operations                            
@@ -972,6 +989,10 @@ ETOIEVEC2(Float,IFloat2)
 ETOIEVEC3(Float,IFloat3)
 ETOIEVEC4(Float,IFloat4) 
 
+ETOIEVEC2(Int8,IInt8_2) 
+ETOIEVEC3(Int8,IInt8_3)
+ETOIEVEC4(Int8,IInt8_4) 
+
 ETOIEVEC2(Int16,IInt16_2) 
 ETOIEVEC3(Int16,IInt16_3)
 ETOIEVEC4(Int16,IInt16_4) 
@@ -980,35 +1001,10 @@ ETOIEVEC2(Int32,IInt32_2)
 ETOIEVEC3(Int32,IInt32_3)
 ETOIEVEC4(Int32,IInt32_4) 
 
-
--- instance ExpToIExp (Vector2 Float) where
---   expToIExp (Literal (Vector2 a b)) = IFloat2 a b
---   expToIExp a = expToIExpGeneral a
-
--- instance ExpToIExp (Vector3 Float) where
---   expToIExp (Literal (Vector3 a b c)) = IFloat3 a b c
---   expToIExp a = expToIExpGeneral a
-
--- instance ExpToIExp (Vector4 Float) where
---   expToIExp (Literal (Vector4 a b c d)) = IFloat4 a b c d 
---   expToIExp a = expToIExpGeneral a
-
 instance ExpToIExp (Vector2 Double) where
   expToIExp (Literal (Vector2 a b)) = IDouble2 a b
   expToIExp a = expToIExpGeneral a
   
-instance ExpToIExp (Vector2 Int8) where
-  expToIExp (Literal (Vector2 a b)) = IInt8_2 a b
-  expToIExp a = expToIExpGeneral a
-
-instance ExpToIExp (Vector3 Int8) where
-  expToIExp (Literal (Vector3 a b c)) = IInt8_3 a b c
-  expToIExp a = expToIExpGeneral a
-
-instance ExpToIExp (Vector4 Int8) where
-  expToIExp (Literal (Vector4 a b c d)) = IInt8_4 a b c d 
-  expToIExp a = expToIExpGeneral a
-
 ---------------------------------------------------------------------------
 -- translation from Exp to IExp in the general case. 
 expToIExpGeneral :: ExpToIExp a  => Exp a -> IExp
