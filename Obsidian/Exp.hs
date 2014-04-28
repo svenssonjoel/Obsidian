@@ -34,9 +34,11 @@ import Obsidian.Globs
 --type Data a = Exp a 
 
 
+-- Sizes of these are platform dependent 
 type EInt    = Exp Int      
 type EWord   = Exp Word
 
+-- Types with platform independent size
 type EInt8   = Exp Int8
 type EInt16  = Exp Int16
 type EInt32  = Exp Int32
@@ -140,22 +142,22 @@ instance Scalar Word64 where
    typeOf _ = vt}
 
 
-SCALARVEC2(Double,DoubleV2)
-SCALARVEC2(Float,FloatV2)
-SCALARVEC3(Float,FloatV3)
-SCALARVEC4(Float,FloatV4) 
+SCALARVEC2(Double,Vec2 Double)
+SCALARVEC2(Float,Vec2 Float)
+SCALARVEC3(Float,Vec3 Float)
+SCALARVEC4(Float,Vec4 Float) 
 
-SCALARVEC2(Int8,Int8V2)
-SCALARVEC3(Int8,Int8V3)
-SCALARVEC4(Int8,Int8V4) 
+SCALARVEC2(Int8,Vec2 Int8)
+SCALARVEC3(Int8,Vec3 Int8)
+SCALARVEC4(Int8,Vec4 Int8) 
 
-SCALARVEC2(Int16,Int16V2)
-SCALARVEC3(Int16,Int16V3)
-SCALARVEC4(Int16,Int16V4) 
+SCALARVEC2(Int16,Vec2 Int16)
+SCALARVEC3(Int16,Vec3 Int16)
+SCALARVEC4(Int16,Vec4 Int16) 
 
-SCALARVEC2(Int32,Int32V2)
-SCALARVEC3(Int32,Int32V3)
-SCALARVEC4(Int32,Int32V4) 
+SCALARVEC2(Int32,Vec2 Int32)
+SCALARVEC3(Int32,Vec3 Int32)
+SCALARVEC4(Int32,Vec4 Int32) 
 
 
 

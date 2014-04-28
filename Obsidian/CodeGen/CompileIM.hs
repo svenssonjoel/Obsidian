@@ -157,27 +157,24 @@ compileType (Word64) = [cty| typename uint64_t |]
 compileType (Float) = [cty| float |]
 compileType (Double) = [cty| double |]
 
-compileType (FloatV4) = [cty| float4|]
-compileType (FloatV3) = [cty| float3|]
-compileType (FloatV2) = [cty| float2|]
+compileType (Vec2 Float) = [cty| float4|]
+compileType (Vec3 Float) = [cty| float3|]
+compileType (Vec4 Float) = [cty| float2|]
 
-compileType (DoubleV2) = [cty| double2|]
+compileType (Vec2 Double) = [cty| double2|]
 
 -- How does this interplay with my use of uint8_t etc. Here it is char!
-compileType Int8V2 = [cty| char2|]
-compileType Int8V3 = [cty| char3|]
-compileType Int8V4 = [cty| char4|]
+compileType (Vec2 Int8) = [cty| char2|]
+compileType (Vec3 Int8) = [cty| char3|]
+compileType (Vec4 Int8) = [cty| char4|]
+ 
+compileType (Vec2 Int16) = [cty| short2|]
+compileType (Vec3 Int16) = [cty| short3|]
+compileType (Vec4 Int16) = [cty| short4|]
 
--- Very skeptic to this. Maybe the programmer level names
--- should also be "short4", "char4", "int4".
--- The actual sizes may vary, I guess. 
-compileType Int16V2 = [cty| short2|]
-compileType Int16V3 = [cty| short3|]
-compileType Int16V4 = [cty| short4|]
-
-compileType Int32V2 = [cty| int2|]
-compileType Int32V3 = [cty| int3|]
-compileType Int32V4 = [cty| int4|]
+compileType (Vec2 Int32) = [cty| int2|]
+compileType (Vec3 Int32) = [cty| int3|]
+compileType (Vec4 Int32) = [cty| int4|]
 
 
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
