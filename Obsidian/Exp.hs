@@ -78,51 +78,19 @@ class (Eq a, ExpToIExp a, Show a) => Scalar a where
 
 SCALAR(Bool,Storable.sizeOf (1 :: Int))
 SCALAR(Int, Storable.sizeOf (1 :: Int)) 
+SCALAR(Int8, 1)
+SCALAR(Int16,2)
+SCALAR(Int32,4)
+SCALAR(Int64,8)
 
-instance Scalar Int8 where 
-  sizeOf _ = 1
-  typeOf _ = Int8
+SCALAR(Float,Storable.sizeOf (1.0 :: Float))
+SCALAR(Double,Storable.sizeOf (1.0 :: Double)) 
 
-instance Scalar Int16 where 
-  sizeOf _ = 2
-  typeOf _ = Int16
-
-instance Scalar Int32 where 
-  sizeOf _ = 4
-  typeOf _ = Int32
-
-instance Scalar Int64 where 
-  sizeOf _ = 8 
-  typeOf _ = Int64
-  
-instance Scalar Float where
-  sizeOf _ = Storable.sizeOf (1.0 :: Float)
-  typeOf _ = Float
-  
-instance Scalar Double where 
-  sizeOf _ = 8 -- Storable.sizeOf (undefined :: Double) 
-  typeOf _ = Double
-
-instance Scalar Word where
-  sizeOf _ = Storable.sizeOf (1 :: Word) 
-  typeOf _ = Word
-  
-instance Scalar Word8 where
-  sizeOf _ = 1
-  typeOf _ = Word8 
-
-instance Scalar Word16 where 
-  sizeOf _ = 2
-  typeOf _ = Word16
-  
-instance Scalar Word32 where 
-  sizeOf _ = 4 
-  typeOf _ = Word32
-  
-instance Scalar Word64 where 
-  sizeOf _ = 8 
-  typeOf _ = Word64
-
+SCALAR(Word,Storable.sizeOf (1 :: Word))
+SCALAR(Word8, 1)
+SCALAR(Word16,2)
+SCALAR(Word32,4)
+SCALAR(Word64,8)
 
 #define SCALARVEC2(t,vt) instance Scalar (Vector2 t) where \
   {sizeOf _ = 2 * sizeOf (0 :: Exp t); \
@@ -154,22 +122,6 @@ SCALARVEC2(Int32,Vec2 Int32)
 SCALARVEC3(Int32,Vec3 Int32)
 SCALARVEC4(Int32,Vec4 Int32) 
 
-
-
--- -- Vector types attempt 2
--- instance Scalar (Vector2 Float) where
---   sizeOf _ = 2 * sizeOf (0 :: Exp Float)
---   typeOf _ = FloatV2
-
--- instance Scalar (Vector3 Float) where
---   sizeOf _ = 3 * sizeOf (0 :: Exp Float)
---   typeOf _ = FloatV3
-
--- instance Scalar (Vector4 Float) where
---   sizeOf _ = 4 * sizeOf (0 :: Exp Float)
---   typeOf _ = FloatV4
-
-  
 
 ---------------------------------------------------------------------------
 -- Support CUDA Vector types
