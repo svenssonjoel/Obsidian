@@ -59,12 +59,9 @@ type EW16  = Exp Word16
 type EW32  = Exp Word32 
 type EW64  = Exp Word64 
 
-
 type EFloat  = Exp Float  
 type EDouble = Exp Double 
 type EBool   = Exp Bool    
-
-
 
 
 
@@ -75,14 +72,12 @@ class (Eq a, ExpToIExp a, Show a) => Scalar a where
   sizeOf :: Exp a -> Int   --  
   typeOf :: Exp a -> Type  --   Good enough for me ... 
 
+#define SCALAR(t,s) instance Scalar t where { \
+  sizeOf _ = s; \
+  typeOf _ = t;} 
 
-instance Scalar Bool where  
-  sizeOf _ = Storable.sizeOf (1 :: Int)
-  typeOf _ = Bool 
-
-instance Scalar Int where 
-  sizeOf _ = Storable.sizeOf (1 :: Int)
-  typeOf _ = Int
+SCALAR(Bool,Storable.sizeOf (1 :: Int))
+SCALAR(Int, Storable.sizeOf (1 :: Int)) 
 
 instance Scalar Int8 where 
   sizeOf _ = 1
