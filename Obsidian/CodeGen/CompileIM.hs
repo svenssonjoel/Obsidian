@@ -176,6 +176,19 @@ compileType (Vec2 Int32) = [cty| int2|]
 compileType (Vec3 Int32) = [cty| int3|]
 compileType (Vec4 Int32) = [cty| int4|]
 
+compileType (Vec2 Word8) = [cty| uchar2|]
+compileType (Vec3 Word8) = [cty| uchar3|]
+compileType (Vec4 Word8) = [cty| uchar4|]
+ 
+compileType (Vec2 Word16) = [cty| ushort2|]
+compileType (Vec3 Word16) = [cty| ushort3|]
+compileType (Vec4 Word16) = [cty| ushort4|]
+
+compileType (Vec2 Word32) = [cty| uint2|]
+compileType (Vec3 Word32) = [cty| uint3|]
+compileType (Vec4 Word32) = [cty| uint4|]
+
+
 
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
