@@ -29,7 +29,7 @@ mapFusion arr =
     return $ push imm1
 
 
-mapFusion' :: (Forceable t, Pushable t)
+mapFusion' :: (Forceable t{-, Pushable t-})
               => SPull EInt32 -> (SPush t EInt32)
 mapFusion' arr =
   runPush $ do
@@ -91,7 +91,7 @@ performf4f =
 ---------------------------------------------------------------------------
 
 
-localReverse :: Pushable t => SPull EInt32 -> SPush t EInt32
+localReverse :: {-Pushable t => -}  SPull EInt32 -> SPush t EInt32
 localReverse arr = push . reverse $ arr
 
 warpLocal :: SPull EInt32 -> SPush Warp EInt32

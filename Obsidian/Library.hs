@@ -450,15 +450,15 @@ runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
 runPush2 f a b = runPush (f a b)  
 
 -- | Converts a program computing a pull Array to a Push array
-runPull :: (Pushable t, ASize s) => Program t (Pull s a) -> Push t s a
+runPull :: ({-Pushable t,-} ASize s) => Program t (Pull s a) -> Push t s a
 runPull = runPush . liftM push 
 
 -- | Lifts @runPull@ to one input functions.
-runPull1 :: (Pushable t, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
+runPull1 :: ({-Pushable t,-} ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
 runPull1 f a = runPull (f a)
 
 -- | Lifts @runPull@ to two input functions.
-runPull2 :: (Pushable t, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
+runPull2 :: ({-Pushable t,-} ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
 runPull2 f a b = runPull (f a b)
 
 ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-{- Joel Svensson 2012,2013
+{- Joel Svensson 2012,2013,2014
 
    Notes:
    2013-04-02: Added a Break statement to the language.
@@ -112,10 +112,11 @@ data Program t a where
 
 
   -- use threads along one level
-  -- Warp, Block, Grid. 
+  -- Warp, Block, Grid.
+  -- Make sure Code generation works when t ~ Thread
   ForAll ::  EWord32 
             -> (EWord32 -> Program Thread ())
-            -> Program t () -- (really atleast Step t) ! 
+            -> Program t () 
 
   
   -- Distribute over Warps yielding a Block

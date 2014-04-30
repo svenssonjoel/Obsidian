@@ -16,7 +16,7 @@
 -}
 
 module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
-                       Pushable, 
+--                        Pushable, 
                        mkPull,
                        mkPush,
                        push,
@@ -118,10 +118,7 @@ class Array a where
   -- | Perform arbitrary permutations (dangerous). 
   ixMap     :: (EWord32 -> EWord32)
                -> a s e -> a s e
-  -- -- | Reduce an array using a provided operator. 
-  -- fold1     :: (e -> e -> e) -> a Word32 e -> a Word32 e  
-
-  -- would require Choice !
+  -- requires Choice !
   -- | Append two arrays. 
   append    :: (ASize s, Choice e) => a s e -> a s e -> a s e 
   
@@ -184,27 +181,32 @@ instance Array arr => Functor (arr w) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-class Pushable t where
-  push :: ASize s => Pull s e -> Push t s e 
+push :: ASize s => Pull s e -> Push t s e 
+push (Pull n ixf) =
+  Push n $ \wf ->
+    forAll (sizeConv n) $ \i -> wf (ixf i) i
 
-instance Pushable Thread where
-  push (Pull n ixf) =
-    Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
+-- class Pushable t where
+--   push :: ASize s => Pull s e -> Push t s e 
 
-instance Pushable Warp where
-  push (Pull n ixf) =
-    Push n $ \wf ->
-      forAll (sizeConv n) $ \i -> wf (ixf i) i
+-- instance Pushable Thread where
+--   push (Pull n ixf) =
+--     Push n $ \wf -> seqFor (sizeConv n) $ \i -> wf (ixf i) i
 
-instance Pushable Block where
-  push (Pull n ixf) =
-    Push n $ \wf ->
-      forAll (sizeConv n) $ \i -> wf (ixf i) i
+-- instance Pushable Warp where
+--   push (Pull n ixf) =
+--     Push n $ \wf ->
+--       forAll (sizeConv n) $ \i -> wf (ixf i) i
 
-instance Pushable Grid where
-  push (Pull n ixf) =
-    Push n $ \wf ->
-      forAll (sizeConv n) $ \i -> wf (ixf i) i 
+-- instance Pushable Block where
+--   push (Pull n ixf) =
+--     Push n $ \wf ->
+--       forAll (sizeConv n) $ \i -> wf (ixf i) i
+
+-- instance Pushable Grid where
+--   push (Pull n ixf) =
+--     Push n $ \wf ->
+--       forAll (sizeConv n) $ \i -> wf (ixf i) i 
   
 -- class PushableN t where
 --   pushN :: ASize s => Word32 -> Pull s e -> Push t s e
