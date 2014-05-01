@@ -62,7 +62,7 @@ mapSumUpT arr = pConcat (fmap body arr)
 --
 ---------------------------------------------------------------------------
 
-reduceLocal :: (Forceable t, Storable a, Pushable t )
+reduceLocal :: (Forceable t, Storable a)
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -74,7 +74,7 @@ reduceLocal f arr
       arr' <- force $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
-reduceLocal' :: (Forceable t, Storable a, Pushable t )
+reduceLocal' :: (Forceable t, Storable a)
                => (a -> a -> a)
                -> SPull a
                -> Program t a
