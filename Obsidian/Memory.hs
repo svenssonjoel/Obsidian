@@ -58,7 +58,7 @@ class  Storable a where
   warpPullFrom      :: Num (Dims d EW32) => Names a -> Dynamic d -> Static d -> Pull Static d a
   
   -- Extra
-  allocateVolatileArray :: Names a -> Word32 -> Program t ()
+  allocateVolatileArray :: Names a -> Dims d Word32 -> Program t ()
 
 
 
@@ -73,7 +73,7 @@ instance Scalar a => Storable (Exp a) where
 
   --Array ops 
   allocateArray (Single name) n = 
-    Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+    Allocate name (size n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Pointer (typeOf (undefined :: Exp a)))
   assignArray  (Single name) a ix = Assign name [ix] a
   pullFrom (Single name) n = mkPull n (\i -> index name i)
@@ -93,7 +93,7 @@ instance Scalar a => Storable (Exp a) where
 
   -- Extra 
   allocateVolatileArray (Single name) n = 
-    Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+    Allocate name (size n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Volatile (Pointer (typeOf (undefined :: Exp a))))
   
 

@@ -123,13 +123,17 @@ data Index b where
   Ix2 :: EW32 -> EW32 -> Index TWO
   Ix3 :: EW32 -> EW32 -> EW32 -> Index THREE 
 
-
+indexToList :: Index b -> [EW32]
+indexToList Ix0 = [] 
+indexToList (Ix1 e1) = [e1] 
+indexToList (Ix2 e1 e2) = [e1,e2] 
+indexToList (Ix3 e1 e2 e3) = [e1,e2,e3] 
 
 index :: Scalar a => String -> Index b -> Exp a 
-index name Ix0 = Index (name,[])
-index name (Ix1 e1) = Index (name,[e1])
-index name (Ix2 e1 e2) = Index (name,[e1,e2])
-index name (Ix3 e1 e2 e3) = Index (name,[e1,e2,e3]) 
+index name i@Ix0 = Index (name,indexToList i)
+index name i@(Ix1 _) = Index (name,indexToList i)
+index name i@(Ix2 _ _) = Index (name,indexToList i)
+index name i@(Ix3 _ _ _) = Index (name,indexToList i) 
 
 
 fromIndex :: Index d -> Dims d EW32
