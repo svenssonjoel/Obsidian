@@ -9,6 +9,7 @@ which -a cabal
 cabal sandbox init 
 cabal sandbox hc-pkg list
 
+cabal update
 cabal install . 
 
 

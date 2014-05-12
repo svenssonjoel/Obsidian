@@ -42,7 +42,7 @@ performInc =
   withCUDA $
   do
     -- kern <- capture 256 (increment . splitUp 256)
-    kern <- capture 8 (increment' . (fmap (splitUp 32)) . splitUp 256)
+    kern <- capture 32 (increment' . (fmap (splitUp 8)) . splitUp 256)
     
 
     useVector (V.fromList [0..511]) $ \i ->
@@ -50,7 +50,7 @@ performInc =
       do
         fill o 0
 
-        o <== (2,kern) <> i
+        o <== (1,kern) <> i
 
         r <- copyOut o
         lift $ putStrLn $ show r
