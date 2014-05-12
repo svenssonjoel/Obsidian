@@ -67,7 +67,7 @@ main = do
   let k = args P.!! 0 
       t = read $ args P.!! 1
       e = read $ args P.!! 2
-      blcks = 2
+      blcks = 8192
 
   let eLog = fromIntegral $ imLog 2 (fromIntegral e) 
   
@@ -108,6 +108,6 @@ main = do
         lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
         lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-        lift $ putStrLn "Done: ... Comparing to CPU result"         
-        when (r /= cpuresult) $ 
-           lift $ putStrLn "WARNING: GPU and CPU results don't match " 
+        -- lift $ putStrLn "Done: ... Comparing to CPU result"         
+        -- when (r /= cpuresult) $ 
+        --   lift $ putStrLn "WARNING: GPU and CPU results don't match " 

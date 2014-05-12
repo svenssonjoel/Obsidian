@@ -107,11 +107,16 @@ compose :: Storable a
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
 compose [f] arr = return (f arr)
-compose (f:fs) arr = 
-  do
-    let arr1 = f arr
-    arr2 <- force arr1
-    compose fs arr2
+compose (f:fs) arr = compose fs =<< force (f arr)
+ -- do
+ --   let arr1 = f arr
+ --   arr2 <- force arr1
+ --   compose fs arr2
+-- compose (f:fs) arr = 
+--   do
+--     let arr1 = f arr
+--     arr2 <- force arr1
+--     compose fs arr2
 
 insertZero :: Int -> Exp Word32 -> Exp Word32
 insertZero 0 a = a `shiftL` 1
