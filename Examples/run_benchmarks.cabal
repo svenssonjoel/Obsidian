@@ -10,7 +10,8 @@ cabal-version:       >=1.18
 Executable run_benchmarks
     Main-is: run_benchmarks.hs
     Build-depends: base >= 4.6, containers >= 0.5, 
-                   process >= 1.2, filepath >= 1.3, directory >= 1.2, bytestring >= 0.10,
+                   process >= 1.1.0.2
+                 , filepath >= 1.3, directory >= 1.2, bytestring >= 0.10,
                    GenericPretty >= 1.2.1,
                    hsbencher >= 1.6.1,
                    Obsidian >= 0.0.1.6
