@@ -25,7 +25,7 @@ import HSBencher.Types
 import HSBencher.Methods (makeMethod)
 import HSBencher.Logging (log)
 import HSBencher.MeasureProcess
-import HSBencher.Utils (runLogged, defaultTimeout)
+import HSBencher.Internal.Utils (runLogged, defaultTimeout)
 import Prelude hiding (log)
 --------------------------------------------------------------------------------
 
