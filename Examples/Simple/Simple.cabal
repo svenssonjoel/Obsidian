@@ -46,9 +46,9 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 
-executable FractalExec.exe
+executable FractalsExec.exe
   -- .hs or .lhs file containing the Main module.
-  main-is:             FractalExec.hs
+  main-is:             FractalsExec.hs
  
   other-extensions: ScopedTypeVariables
                   , FlexibleContexts
