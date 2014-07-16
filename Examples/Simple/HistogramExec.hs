@@ -46,3 +46,5 @@ performLarge =
           r <- peekCUDAVector m
           lift $ putStrLn $ show r 
 
+
+main = performLarge

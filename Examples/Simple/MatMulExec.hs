@@ -39,4 +39,4 @@ perform =
         lift $ putStrLn $ show r 
 
 
-
+main = perform

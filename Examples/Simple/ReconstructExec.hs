@@ -35,4 +35,4 @@ perform =
     input = undefinedGlobal (variable "X")
 
 
-
+main  = perform 
