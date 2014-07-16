@@ -61,7 +61,7 @@ executable FractalExec.exe
   -- Other library packages from which modules are imported.
   build-depends: base >=4.6 && <4.7
                , vector >=0.10 && <0.11
-               , mtl >=2.2 && <2.3
+               , mtl >=2.1 && <2.3
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.1 
@@ -85,7 +85,7 @@ executable HistogramExec.exe
   -- Other library packages from which modules are imported.
   build-depends: base >=4.6 && <4.7
                , vector >=0.10 && <0.11
-               , mtl >=2.2 && <2.3
+               , mtl >=2.1 && <2.3
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.1 
@@ -108,7 +108,7 @@ executable MatMulExec.exe
   -- Other library packages from which modules are imported.
   build-depends: base >=4.6 && <4.7
                , vector >=0.10 && <0.11
-               , mtl >=2.2 && <2.3
+               , mtl >=2.1 && <2.3
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.1 
@@ -132,7 +132,7 @@ executable ReductionExec.exe
   -- Other library packages from which modules are imported.
   build-depends: base >=4.6 && <4.7
                , vector >=0.10 && <0.11
-               , mtl >=2.2 && <2.3
+               , mtl >=2.1 && <2.3
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.1 
@@ -155,7 +155,7 @@ executable ScanExec.exe
   -- Other library packages from which modules are imported.
   build-depends: base >=4.6 && <4.7
                , vector >=0.10 && <0.11
-               , mtl >=2.2 && <2.3
+               , mtl >=2.1 && <2.3
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.1 
