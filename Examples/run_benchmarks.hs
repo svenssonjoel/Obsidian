@@ -21,6 +21,9 @@ import System.IO.Unsafe (unsafePerformIO)
 import Debug.Trace
 
 import HSBencher (defaultMainModifyConfig)
+import HSBencher.Backend.Fusion  (defaultFusionPlugin)
+import HSBencher.Backend.Dribble (defaultDribblePlugin)
+
 import HSBencher.Types
 import HSBencher.Internal.Logging (log)
 import HSBencher.Internal.MeasureProcess
@@ -66,4 +69,6 @@ myconf :: Config -> Config
 myconf conf =
   conf
    { benchlist = all_benchmarks
+   , plugIns   = [ SomePlugin defaultFusionPlugin,
+                   SomePlugin defaultDribblePlugin ]
    }
