@@ -14,6 +14,8 @@ cabal sandbox hc-pkg list
 # ----------------------------------------
 # Need to know what dir this is. and if we 
 # are using cabal sandbox. 
+
+echo Pull HSBencher from Github
 git clone git@github.com:rrnewton/HsBencher 
 cabal install ./HsBencher/hsbencher/ 
 cabal install ./HsBencher/hsbnecher-fusion/ 
