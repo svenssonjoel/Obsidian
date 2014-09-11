@@ -9,8 +9,21 @@ which -a cabal
 cabal sandbox init 
 cabal sandbox hc-pkg list
 
+
+# Need to pull down HsBencher
+# ----------------------------------------
+# Need to know what dir this is. and if we 
+# are using cabal sandbox. 
+git clone git@github.com:rrnewton/HsBencher 
+cabal install ./HsBencher/hsbencher/ 
+cabal install ./HsBencher/hsbnecher-fusion/ 
+
+
+
 cabal update
 cabal install . 
+
+
 
 
 #cd Examples/Simple 
