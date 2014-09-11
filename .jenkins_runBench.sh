@@ -38,6 +38,7 @@ set -e
 # and install HSBencher into them. 
 DIR=`pwd`  
 echo $DIR 
+git clone git@github.com:rrnewton/HSBencher
 
 # Switch to where the benchmarks are
 # ----------------------------------------

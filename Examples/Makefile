@@ -8,7 +8,7 @@ bench: build_bench
 # Build the benchmarking script itself:
 build_bench: run_benchmarks.exe 
 run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
-	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher/hsbencher/ -j --reinstall
+	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher/hsbencher/ ../HSBencher/hsbencher-fusion -j --reinstall
 
 	cabal install --bindir=. --program-suffix=.exe
 
