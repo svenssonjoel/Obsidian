@@ -37,7 +37,7 @@ set -e
 # Maybe set up sandboxes here! 
 # and install HSBencher into them. 
 DIR=`pwd`  
-echo $(DIR)
+echo $DIR 
 
 # Switch to where the benchmarks are
 # ----------------------------------------
