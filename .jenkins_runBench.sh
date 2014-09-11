@@ -39,6 +39,7 @@ set -e
 DIR=`pwd`  
 echo $DIR 
 git clone git@github.com:rrnewton/HSBencher
+(cd HSBencher; git submodule init; git submodule update) 
 
 # Switch to where the benchmarks are
 # ----------------------------------------
