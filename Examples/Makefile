@@ -4,7 +4,7 @@ default: bench
 
 bench: build_bench 
 	./run_benchmarks.exe
-
+# Gah, Need to get HSBencher installed too! 
 # Build the benchmarking script itself:
 build_bench: run_benchmarks.exe 
 run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand

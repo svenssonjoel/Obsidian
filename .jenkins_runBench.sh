@@ -34,6 +34,11 @@ unset CABAL
 
 set -e
 
+# Maybe set up sandboxes here! 
+# and install HSBencher into them. 
+DIR=$(shell pwd) 
+echo $(DIR)
+
 # Switch to where the benchmarks are
 # ----------------------------------------
 cd "$CHECKOUT"/Examples
