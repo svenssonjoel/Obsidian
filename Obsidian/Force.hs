@@ -104,7 +104,7 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Storable a, Forceable t) -- , Pushable t) 
+forcePull :: (Storable a, Forceable t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 

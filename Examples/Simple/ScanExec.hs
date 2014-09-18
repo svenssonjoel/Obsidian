@@ -31,6 +31,20 @@ perform =
         lift $ putStrLn $ show r 
 
 
+performKS =
+  withCUDA $
+  do
+    kern <- capture 256  (ks 10 (+) . splitUp 1024) 
+
+    useVector (V.fromList [0..1023 :: Word32]) $ \i -> 
+      allocaVector 1024 $ \ (o :: CUDAVector Word32) ->
+      do
+        fill o 0
+        o <== (1,kern) <> i 
+        r <- peekCUDAVector o
+        lift $ putStrLn $ show r 
+
+
 -- Does not perform a "large" scan, but many small ones. 
 performLarge =
   withCUDA $

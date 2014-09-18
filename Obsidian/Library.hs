@@ -153,6 +153,9 @@ fold1  f arr = replicate 1
 ---------------------------------------------------------------------------
 -- Shift arrays
 ---------------------------------------------------------------------------
+shiftLeft :: ASize l =>  Word32 -> Pull l a -> Pull l a
+shiftLeft dist arr = setSize (len arr - (fromIntegral dist))
+                      $ ixMap (\ix -> ix + (fromIntegral dist)) arr
 -- shiftRight :: (ASize l, Choice a) => Word32 -> a -> Pull l a -> Pull l a
 -- shiftRight dist elt arr = setSize (len arr)
 --                           $ replicate (fromIntegral dist) elt `conc` arr

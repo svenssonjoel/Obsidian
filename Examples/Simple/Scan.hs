@@ -1,11 +1,14 @@
-
+{-# LANGUAGE GADTs #-} 
 module Scan where
 
 import Obsidian
 
 import Prelude hiding (take, drop, zipWith)
+import Data.Word
 
-
+---------------------------------------------------------------------------
+-- Sklansky Scan
+--------------------------------------------------------------------------- 
 sklanskyLocal
   :: (Choice a, Storable a) =>
      Int
@@ -30,3 +33,39 @@ sklansky n op arr = pConcatMap body arr
     body arr = runPush (sklanskyLocal n op arr)
 
 
+
+
+
+---------------------------------------------------------------------------
+--Kogge-Stone
+--------------------------------------------------------------------------- 
+-- 0th element is done,
+-- stage i: combine element j with element 2^i away:
+-- stage 0: combine j with j-1 (j > 0) 
+-- stage 1: combine j with j-2 (j > 1)
+-- stage 2: combine j wiht j-4 (j > 3) 
+ksLocal :: (Choice a, Storable a) 
+        => Int -- Stages (log n) 
+        -> (a -> a -> a) -- opertor
+        -> SPull a -- input data
+        -> BProgram (SPush Block a) -- output computation
+ksLocal 0 op arr = return $ push arr
+ksLocal n op arr = do
+  arr2 <- force =<< ksLocal (n-1) op arr
+  let a1   = shiftLeft (2^(n-1)) arr2
+      oped = zipWith op arr2 a1 
+      copy = take (2^(n-1)) arr2
+      all  = copy `append` oped
+  return $push all
+-- Little bit ugly... 
+  
+             
+ks n op arr = pConcatMap body arr
+  where
+    body arr = runPush (ksLocal n op arr)
+                   
+                   
+
+    
+        
+           
