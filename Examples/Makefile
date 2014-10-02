@@ -15,6 +15,7 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
 DIR=$(shell pwd)
 
 sand:
+	echo "creating sandboxes under"$(DIR) 
 #	(cd ..; cabal sandbox init)
 #	cabal sandbox init --sandbox=../.cabal-sandbox/
 	cabal sandbox init
@@ -22,3 +23,4 @@ sand:
 	(cd ScanBench;         cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/) 
 	(cd FractalBench;      cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/)
 	(cd Simple;            cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/)
+
