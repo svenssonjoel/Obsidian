@@ -42,9 +42,10 @@ git clone git@github.com:rrnewton/HSBencher
 (cd HSBencher; git submodule init; git submodule update) 
 
 # Sandbox for benchmarks ?
+# -- Is created in the Makefile
 # ----------------------------------------
-cd "$CHECKOUT"/Examples/ReductionTutorial
-cabal sandbox init --sandbox=../.cabal-sandbox
+# cd "$CHECKOUT"/Examples/ReductionTutorial
+# cabal sandbox init --sandbox=../.cabal-sandbox
 
 
 # Switch to where the benchmarks are
