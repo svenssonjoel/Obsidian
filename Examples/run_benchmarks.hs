@@ -60,7 +60,7 @@ all_benchmarks =
 --   This is a combination of And/Or boolean operations, with the ability
 --   to set various environment and compile options.
 defautCfgSpc = And []
-  were
+--  where
 --   gpu = And [ Set (Variant "GPU") (RuntimeEnv "HARLAN_DEVICE" "gpu") ]
 
 
