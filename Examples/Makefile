@@ -1,18 +1,20 @@
-.phony: default bench build_bench sand
+.phony: sand 
+#default bench build_bench sand
 
-default: bench
+# default: bench
 
-bench: build_bench 
-	./run_benchmarks.exe
+# bench: build_bench 
+# 	./run_benchmarks.exe
 # Gah, Need to get HSBencher installed too! 
 # Build the benchmarking script itself:
-build_bench: run_benchmarks.exe 
+# build_bench: run_benchmarks.exe 
+
 run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
 	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher/hsbencher/ ../HSBencher/hsbencher-fusion ../HSBencher/hgdata/ -j --reinstall
 
 	cabal install --bindir=. --program-suffix=.exe
 
-DIR=$(shell pwd)
+#DIR=$(shell pwd)
 
 sand:
 	echo "creating sandboxes under"$(DIR) 
