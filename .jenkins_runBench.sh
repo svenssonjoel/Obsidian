@@ -66,4 +66,5 @@ TABID=1TsG043VYLu9YuU58EaIBdQiqLDUYcAXxBww44EG3
 
 # Enable upload of benchmarking data to a Google Fusion Table:
 # ./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload=$TABID --clientid=$CID --clientsecret=$SEC $*
+echo "Running Benchmarks"
 ./run_benchmarks.exe --keepgoing --trials=$TRIALS --fusion-upload --name=Obsidian_bench_data --clientid=$CID --clientsecret=$SEC $*
