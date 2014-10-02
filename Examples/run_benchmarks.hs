@@ -36,22 +36,22 @@ main = defaultMainModifyConfig myconf
 
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
-  [  mkBenchmark "./ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
+  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
   | variant     <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ] ++
-  [  mkBenchmark "./ReductionTutorial/Reduce.cabal" [variant,kernel,cudaThreads] defaultCfgSpc
+  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,kernel,cudaThreads] defaultCfgSpc
   | variant     <- ["large" ]
   , kernel      <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   ] ++ 
-  [  mkBenchmark "./ScanBench/Scan.cabal" [variant,cudaThreads,elems] defaultCfgSpc
+  [  mkBenchmark "ScanBench/Scan.cabal" [variant,cudaThreads,elems] defaultCfgSpc
   | variant     <- ["s1", "s2", "s3" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ] ++
-  [  mkBenchmark "./FractalBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
+  [  mkBenchmark "FractalBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
   | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192
   ]
@@ -59,8 +59,8 @@ all_benchmarks =
 -- | Default configuration space over which to vary settings:
 --   This is a combination of And/Or boolean operations, with the ability
 --   to set various environment and compile options.
-defaultCfgSpc = And []
-  where
+defautCfgSpc = And []
+  were
 --   gpu = And [ Set (Variant "GPU") (RuntimeEnv "HARLAN_DEVICE" "gpu") ]
 
 
