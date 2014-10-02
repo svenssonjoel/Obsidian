@@ -14,7 +14,7 @@ run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
 
 	cabal install --bindir=. --program-suffix=.exe
 
-#DIR=$(shell pwd)
+DIR=$(shell pwd)
 
 sand:
 	echo "creating sandboxes under"$(DIR) 
