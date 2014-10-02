@@ -4,16 +4,13 @@ echo "Begin running jenkins benchmark script for Obsidian..."
 set -x
 
 # CONVENTION: The working directory is passed as the first argument.
-#CHECKOUT=$1
-#shift
+CHECKOUT=$1
+shift
 
-#if [ "$CHECKOUT" == "" ]; then
-#  CHECKOUT=`pwd`
-#fi
-
-# Experimenting, to understand and make work
-CHECKOUT=`pwd`
-echo $CHECKOUT 
+if [ "$CHECKOUT" == "" ]; then
+ echo "Replacing CHECKOUT with pwd" 
+ CHECKOUT=`pwd`
+fi
 
 if [ "$JENKINS_GHC" == "" ]; then
   export JENKINS_GHC=7.6.3
