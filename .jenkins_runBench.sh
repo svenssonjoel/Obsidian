@@ -41,6 +41,12 @@ echo $DIR
 git clone git@github.com:rrnewton/HSBencher
 (cd HSBencher; git submodule init; git submodule update) 
 
+# Sandbox for benchmarks ?
+# ----------------------------------------
+cd "$CHECKOUT"/Examples/ReductionTutorial
+cabal sandbox init --sandbox=../.cabal-sandbox
+
+
 # Switch to where the benchmarks are
 # ----------------------------------------
 cd "$CHECKOUT"/Examples

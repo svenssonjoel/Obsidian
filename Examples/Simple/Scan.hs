@@ -64,7 +64,6 @@ ks n op arr = pConcatMap body arr
   where
     body arr = runPush (ksLocal n op arr)
                    
-                   
 
     
         
