@@ -59,7 +59,7 @@ all_benchmarks =
 -- | Default configuration space over which to vary settings:
 --   This is a combination of And/Or boolean operations, with the ability
 --   to set various environment and compile options.
-defautCfgSpc = And []
+defaultCfgSpc = And []
 --  where
 --   gpu = And [ Set (Variant "GPU") (RuntimeEnv "HARLAN_DEVICE" "gpu") ]
 
