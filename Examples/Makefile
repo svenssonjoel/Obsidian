@@ -19,8 +19,8 @@ sand:
 #	(cd ..; cabal sandbox init)
 #	cabal sandbox init --sandbox=../.cabal-sandbox/
 	cabal sandbox init
-	(cd ReductionTutorial; cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/)
-	(cd ScanBench;         cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/) 
-	(cd FractalBench;      cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/)
-	(cd Simple;            cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox/)
+	(cd ReductionTutorial; cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox)
+	(cd ScanBench;         cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox) 
+	(cd FractalBench;      cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox)
+	(cd Simple;            cabal sandbox init --sandbox=$(DIR)/.cabal-sandbox)
 
