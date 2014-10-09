@@ -50,6 +50,10 @@ git clone git@github.com:rrnewton/HSBencher
 # cabal sandbox init --sandbox=../.cabal-sandbox
 
 
+# Actually install Obsidian into the sandbox 
+# cabal install ./ 
+
+
 # Switch to where the benchmarks are
 # ----------------------------------------
 cd "$CHECKOUT"/Examples
