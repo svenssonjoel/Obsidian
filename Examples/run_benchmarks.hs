@@ -47,7 +47,7 @@ all_benchmarks =
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   ] ++ 
   [  mkBenchmark "ScanBench/Scan.cabal" [variant,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["s1", "s2", "s3" ]
+  | variant     <- ["s1", "s2", "s3", "ks1" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ] ++

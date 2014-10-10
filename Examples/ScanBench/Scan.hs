@@ -165,3 +165,32 @@ mapScan3 n f arr = pConcat (fmap body arr)
 
 --getScan3 n = namedPrint ("scanC" ++ show (2^n))  (mapScan3 n (+) . splitUp (2^n)) (input :- ())
  
+
+
+----------------------------------------------------------------------------
+-- KS based Scans
+----------------------------------------------------------------------------
+ksLocal :: (Choice a, Storable a) 
+        => Int -- Stages (log n) 
+        -> (a -> a -> a) -- opertor
+        -> SPull a -- input data
+        -> BProgram (SPush Block a) -- output computation
+ksLocal 0 op arr = return $ push arr
+ksLocal n op arr = do
+  arr2 <- force =<< ksLocal (n-1) op arr
+  let a1   = shiftLeft (2^(n-1)) arr2
+      oped = zipWith op arr2 a1 
+      copy = take (2^(n-1)) arr2
+      all  = copy `append` oped
+  return $push all
+-- Little bit ugly... 
+  
+             
+ks n op arr = pConcatMap body arr
+  where
+    body arr = runPush (ksLocal n op arr)
+    
+mapScan4 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan4 n f arr = pConcat (fmap body arr)
+  where
+    body arr = runPush (ksLocal n f arr)
