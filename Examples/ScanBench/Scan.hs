@@ -194,3 +194,36 @@ mapScan4 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) ->
 mapScan4 n f arr = pConcat (fmap body arr)
   where
     body arr = runPush (ksLocal n f arr)
+
+
+-- An alternative to ksLocal
+-- that uses concP for push array concatenation rather
+-- than append for pull array concat. 
+ksLocalP :: (Choice a, Storable a) 
+        => Int -- Stages (log n) 
+        -> (a -> a -> a) -- opertor
+        -> SPull a -- input data
+        -> BProgram (SPush Block a) -- output computation
+ksLocalP 0 op arr = return $ push arr
+ksLocalP n op arr = do
+  arr2 <- force =<< ksLocalP (n-1) op arr
+  let a1   = shiftLeft (2^(n-1)) arr2
+      oped = push $ zipWith op arr2 a1 
+      copy = push $ take (2^(n-1)) arr2
+  return $ copy `concP` oped
+
+
+ksP n op arr = pConcatMap body arr
+  where
+    body arr = runPush (ksLocalP n op arr)
+    
+mapScan5 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan5 n f arr = pConcat (fmap body arr)
+  where
+    body arr = runPush (ksLocalP n f arr)
+
+
+
+
+
+  

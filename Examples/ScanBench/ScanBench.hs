@@ -53,7 +53,8 @@ segmentedScan segSize vec = V.scanl1 (+) (V.take segSize vec) V.++
 kernels = [("s1", mapScan1)
           ,("s2", mapScan2)
           ,("s3", mapScan3)
-          ,("k1", mapScan4)] 
+          ,("k1", mapScan4)
+          ,("k2", mapScan5)] 
 
        
 -- ######################################################################
