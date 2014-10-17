@@ -249,13 +249,6 @@ mapScan5 n f arr = pConcat (fmap body arr)
 --           b = drop 1 arr
 --       in h `append` b
          
-
-sklanskyCin n op cins arr =
-  pConcat $
-  zipWith (body) cins arr 
-    where
-      body arr1 arr2 = runPush (sklanskyCInLocal n op arr1 arr2) 
-
 wrapCIn :: (Storable a, Forceable t, Choice a)
            => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
            -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
@@ -276,3 +269,19 @@ sklanskyCInLocal :: (Choice a, Storable a)
                     -> SPull a
                     -> BProgram (SPush Block a)
 sklanskyCInLocal = wrapCIn sklansky
+
+
+mapScanCIn1 :: (Storable a, Choice a, ASize l)
+               => Int
+               -> (a -> a -> a)
+               -> Pull l a
+               -> Pull l (SPull a)
+               -> Push (Step Block) l a
+
+mapScanCIn1 n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush (sklanskyCInLocal n op arr1 arr2) 
+
+

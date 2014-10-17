@@ -4,6 +4,8 @@
 module Main where
 
 import Scan
+-- for Large scans import Reduce.
+impor Reduce.hs
 
 import Prelude hiding (replicate)
 import Prelude as P
@@ -115,3 +117,18 @@ main = do
 
 
 
+---------------------------------------------------------------------------
+-- Perform large scan benches
+---------------------------------------------------------------------------
+
+reductionsKernels = [("r1", mapRed1 (+))
+                    ,("r2", mapRed2 (+))
+                    ,("r3", mapRed3 (+))
+                    ,("r4", mapRed4 (+))
+                    ,("r5", mapRed5 (+))
+                    ,("r6", mapRed6 (+))
+                    ,("r7", mapRed7 (+))]
+
+scanKernels = [("cin1", mapScanCIn1)]  -- hardcoded at (+) 
+
+large = undefined 
