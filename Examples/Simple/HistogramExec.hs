@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module HistogramExec where
+module Main where
 
 import Histogram
 
