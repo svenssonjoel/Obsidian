@@ -39,7 +39,6 @@ imLog b x
       in
        doDiv (x`div`(b^l)) l
 
-
 segmentedScan segSize vec | V.length vec == segSize = V.scanl1 (+) vec
                           | V.length vec < segSize = error "Incorrect vector size"
 segmentedScan segSize vec = V.scanl1 (+) (V.take segSize vec) V.++
@@ -113,3 +112,6 @@ main = do
         -- lift $ putStrLn "Done: ... Comparing to CPU result"         
         -- when (r /= cpuresult) $ 
         --   lift $ putStrLn "WARNING: GPU and CPU results don't match " 
+
+
+

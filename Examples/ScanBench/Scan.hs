@@ -227,3 +227,52 @@ mapScan5 n f arr = pConcat (fmap body arr)
 
 
   
+---------------------------------------------------------------------------
+-- Variants of Local Scans that accept a carry in.
+---------------------------------------------------------------------------
+
+-- come up with a carryIn wrapper for the scans
+
+-- sklanskyLocalCin :: (Choice a, Storable a)
+--                     => Int
+--                     -> (a -> a -> a)
+--                     -> a
+--                     -> SPull a
+--                     -> BProgram (SPush Block a)
+-- sklanskyLocalCin n op cin arr =
+--   do
+--     arr' <- force $ push $ applyToHead op cin arr
+--     sklansky n op arr'
+--   where
+--     applyToHead op cin arr =
+--       let h = fmap (op cin ) $ take 1 arr
+--           b = drop 1 arr
+--       in h `append` b
+         
+
+sklanskyCin n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush (sklanskyCInLocal n op arr1 arr2) 
+
+wrapCIn :: (Storable a, Forceable t, Choice a)
+           => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
+           -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
+wrapCIn scan n op cin arr =
+  do
+    arr' <- force $ push $ applyToHead op cin arr
+    scan n op arr'
+  where
+    applyToHead op cin arr =
+      let h = fmap (op cin ) $ take 1 arr
+          b = drop 1 arr
+      in h `append` b
+
+sklanskyCInLocal :: (Choice a, Storable a)
+                    => Int
+                    -> (a -> a -> a)
+                    -> a
+                    -> SPull a
+                    -> BProgram (SPush Block a)
+sklanskyCInLocal = wrapCIn sklansky
