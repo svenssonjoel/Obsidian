@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module ReconstructExec where
+module Main where
 
 import Reconstruct
 
