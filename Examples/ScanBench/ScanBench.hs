@@ -176,14 +176,26 @@ large reducer scan threads elements = do
           allocaVector 1 $ \ (zero :: CUDAVector Word32) ->
         
           do
-            fill zero 0 
-            reds <== (t,captRed) <> i
-            reds <== (1,captIScan) <> (0 :: Word32) <> reds
-            o <== (t,captScan) <> reds <> i
+            t0   <- lift getCurrentTime
+            cnt0 <- lift rdtsc
+
+            forM_ [0..999] $ \_ -> do
+              fill zero 0 
+              reds <== (t,captRed) <> i
+              reds <== (1,captIScan) <> (0 :: Word32) <> reds
+              o <== (t,captScan) <> reds <> i
+              syncAll
+            
+            cnt1 <- lift rdtsc
+            t1   <- lift getCurrentTime
 
             r <- peekCUDAVector o
             lift $ putStrLn $ show (P.take 512 r)
-            
+
+
+            lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+            lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
             
 
 
