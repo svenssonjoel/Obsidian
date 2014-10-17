@@ -5,7 +5,7 @@ module Main where
 
 import Scan
 -- for Large scans import Reduce.
-impor Reduce.hs
+import Reduce
 
 import Prelude hiding (replicate)
 import Prelude as P
@@ -120,15 +120,108 @@ main = do
 ---------------------------------------------------------------------------
 -- Perform large scan benches
 ---------------------------------------------------------------------------
+reductionKernels :: [(String, DPull (SPull (Exp Word32)) -> DPush Grid (Exp Word32))]
+reductionKernels = [("r1", mapRed1 (+))
+                   ,("r2", mapRed2 (+))
+                   ,("r3", mapRed3 (+))
+                   ,("r4", mapRed4 (+))
+                   ,("r5", mapRed5 (+))
+                   ,("r6", mapRed6 (+))
+                   ,("r7", mapRed7 (+))]
+scanKernels :: [(String,
+                       Int
+                       -> (Exp Word32 -> Exp Word32 -> Exp Word32)
+                       -> DPull (Exp Word32)
+                       -> DPull (SPull (Exp Word32))
+                       -> DPush (Step Block) (Exp Word32))]
+scanKernels = [("cin1", mapScanCIn1)]  -- hardcoded at (+)
 
-reductionsKernels = [("r1", mapRed1 (+))
-                    ,("r2", mapRed2 (+))
-                    ,("r3", mapRed3 (+))
-                    ,("r4", mapRed4 (+))
-                    ,("r5", mapRed5 (+))
-                    ,("r6", mapRed6 (+))
-                    ,("r7", mapRed7 (+))]
+-- iscan kernels is the iscan version matching the cin kernel
+-- hence same identifier
+iScanKernels :: [(String,
+                        Int
+                        -> (Exp Word32 -> Exp Word32 -> Exp Word32) -> Exp Word32 -> DPull (SPull (Exp Word32)) -> DPush Grid (Exp Word32))]
+iScanKernels = [("cin1", mapIScan1)] 
 
-scanKernels = [("cin1", mapScanCIn1)]  -- hardcoded at (+) 
+large reducer scan threads elements = do 
+  putStrLn "Running scan benchmark..."
+  let rk = reducer -- args P.!! 0
+      sk = scan 
+      t = threads -- read $ args P.!! 1
+      e = elements -- read $ args P.!! 2
+      blcks = 4096
 
-large = undefined 
+  let eLog = fromIntegral $ imLog 2 (fromIntegral e) 
+  
+  withCUDA $ do
+    captRed <- case (lookup rk reductionKernels) of 
+      Nothing -> error "incorrect reduce kernel" 
+      Just kern -> capture t (kern . splitUp e)
+
+    captScan <- case (lookup sk scanKernels) of
+      Nothing -> error "incorrect scan kernel"
+      Just kern -> capture t (\a b -> kern eLog (+) a (splitUp e b))
+
+    captIScan <- case (lookup sk iScanKernels) of
+      Nothing -> error "incorrect scan kernel"
+      Just kern -> capture t (\a b -> kern eLog (+) a (splitUp e b))
+      
+
+    --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
+    let inputs = V.fromList $ P.take (fromIntegral (e*blcks)) (P.repeat 1) 
+
+    useVector inputs $ \i ->
+      allocaVector (fromIntegral blcks) $ \ (reds :: CUDAVector Word32) ->
+        allocaVector (fromIntegral (e * blcks)) $ \ (o :: CUDAVector Word32) ->
+          allocaVector 1 $ \ (zero :: CUDAVector Word32) ->
+        
+          do
+            fill zero 0 
+            reds <== (t,captRed) <> i
+            reds <== (1,captIScan) <> (0 :: Word32) <> reds
+            o <== (t,captScan) <> reds <> i
+
+            r <- peekCUDAVector o
+            lift $ putStrLn $ show (P.take 512 r)
+            
+            
+
+
+    -- capt <- case (lookup k kernels) of
+    --   Nothing -> error "Incorrect kernel"
+    --   Just kern -> capture t (kern eLog (+) . splitUp e)
+    -- -- capt <- 
+
+    -- (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
+    -- let cpuresult = segmentedScan (fromIntegral e) (V.map (`mod` 32) inputs)
+    --       -- V.scanl1 (+) (V.map (`mod` 32) inputs)
+    
+    -- useVector (V.map (`mod` 32) inputs) $ \i -> -- (V.fromList (P.replicate (fromIntegral e) 1))  $ \i ->
+    --   allocaVector (fromIntegral (e*blcks))  $ \(o :: CUDAVector Word32) -> do 
+    --     fill o 0
+
+
+    --     t0   <- lift getCurrentTime
+    --     cnt0 <- lift rdtsc
+    --     forM_ [0..999] $ \_ -> do
+    --       o <== (blcks,capt) <> i
+    --       syncAll
+    --     cnt1 <- lift rdtsc
+    --     t1   <- lift getCurrentTime
+
+
+        
+    --     r <- copyOut o 
+        
+    --     --lift $ putStrLn $ show r
+    --     --lift $ putStrLn $ show cpuresult
+    --     --lift $ putStrLn $ show (r == cpuresult)
+
+    --     -- Computing the cpuresults take a long time!
+    --     -- I implemented a bad cpu segmented scan (uses V.++)         
+    --     lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+    --     lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+    --     -- lift $ putStrLn "Done: ... Comparing to CPU result"         
+    --     -- when (r /= cpuresult) $ 
+    --     --   lift $ putStrLn "WARNING: GPU and CPU results don't match " 

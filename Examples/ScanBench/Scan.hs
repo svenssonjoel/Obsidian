@@ -271,17 +271,43 @@ sklanskyCInLocal :: (Choice a, Storable a)
 sklanskyCInLocal = wrapCIn sklansky
 
 
-mapScanCIn1 :: (Storable a, Choice a, ASize l)
+mapScanCIn1 :: (Storable a, Choice a)
                => Int
                -> (a -> a -> a)
-               -> Pull l a
-               -> Pull l (SPull a)
-               -> Push (Step Block) l a
+               -> DPull a
+               -> DPull (SPull a)
+               -> DPush (Step Block) a
 
 mapScanCIn1 n op cins arr =
   pConcat $
-  zipWith (body) cins arr 
+  zipWith' (body) cins arr 
     where
       body arr1 arr2 = runPush (sklanskyCInLocal n op arr1 arr2) 
 
+zipWith' :: (ASize l1, ASize l2)
+            => (a -> b -> c) -> Pull l1 a -> Pull l2 b -> DPull c
+zipWith' op a1 a2 =  
+  mkPull (min (sizeConv (len a1)) (sizeConv (len a2)))
+  (\ix -> (a1 ! ix) `op` (a2 ! ix))
 
+
+
+
+---------------------------------------------------------------------------
+-- Variants of Local Scans that are "inclusive" 
+---------------------------------------------------------------------------
+
+-- wrapI :: (Storable a, Forceable t, Choice a)
+--            => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
+--            -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
+wrapI scan n op a arr =
+  do
+    arr' <- scan n op arr
+    let i = singletonPush (return a)
+    return $ i `concP` arr'
+    -- Output array is one element longer than input. 
+
+mapIScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan1 n f a arr = pConcat (fmap body arr)
+  where
+    body arr = runPush ((wrapI sklansky n f a) arr)
