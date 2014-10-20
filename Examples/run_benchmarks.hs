@@ -56,6 +56,13 @@ all_benchmarks =
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..12] ] -- 256 to 4096    -- 32768
   ] ++
+  [  mkBenchmark "ScanBench/Scan.cabal" [variant,reducer,scaner,cudaThreads,elems] defaultCfgSpc
+  | variant     <- ["large" ]
+  , reducer     <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7"]
+  , scaner      <- ["cin1", "cin2", "cin3", "cin4", "cin5"]
+  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
+  , elems       <- [ show (2^n) | n <- [8..12] ] -- 256 to 4096    -- 32768
+  ] ++
   [  mkBenchmark "FractalBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
   | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192

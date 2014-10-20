@@ -278,18 +278,36 @@ mapScanCIn1 :: (Storable a, Choice a)
                -> DPull (SPull a)
                -> DPush (Step Block) a
 
+-- Horrible code duplication (refactor) 
 mapScanCIn1 n op cins arr =
   pConcat $
-  zipWith' (body) cins arr 
+  zipWith (body) cins arr 
     where
-      body arr1 arr2 = runPush (sklanskyCInLocal n op arr1 arr2) 
+      body arr1 arr2 = runPush ((wrapCIn sklansky) n op arr1 arr2) 
 
-zipWith' :: (ASize l1, ASize l2)
-            => (a -> b -> c) -> Pull l1 a -> Pull l2 b -> DPull c
-zipWith' op a1 a2 =  
-  mkPull (min (sizeConv (len a1)) (sizeConv (len a2)))
-  (\ix -> (a1 ! ix) `op` (a2 ! ix))
+mapScanCIn2 n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush ((wrapCIn sklansky2) n op arr1 arr2) 
 
+mapScanCIn3 n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush ((wrapCIn sklansky3) n op arr1 arr2) 
+
+mapScanCIn4 n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush ((wrapCIn ksLocal) n op arr1 arr2) 
+
+mapScanCIn5 n op cins arr =
+  pConcat $
+  zipWith (body) cins arr 
+    where
+      body arr1 arr2 = runPush ((wrapCIn ksLocalP) n op arr1 arr2) 
 
 
 
@@ -307,7 +325,31 @@ wrapI scan n op a arr =
     return $ i `concP` arr'
     -- Output array is one element longer than input. 
 
+
+-- Horrible code duplication!!! 
 mapIScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
 mapIScan1 n f a arr = pConcat (fmap body arr)
   where
     body arr = runPush ((wrapI sklansky n f a) arr)
+
+
+mapIScan2 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan2 n f a arr = pConcat (fmap body arr)
+  where
+    body arr = runPush ((wrapI sklansky2 n f a) arr)
+
+mapIScan3 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan3 n f a arr = pConcat (fmap body arr)
+  where
+    body arr = runPush ((wrapI sklansky3 n f a) arr)
+
+
+mapIScan4 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan4 n f a arr = pConcat (fmap body arr)
+  where
+    body arr = runPush ((wrapI ksLocal n f a) arr)
+
+mapIScan5 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan5 n f a arr = pConcat (fmap body arr)
+  where
+    body arr = runPush ((wrapI ksLocalP n f a) arr)
