@@ -58,7 +58,7 @@ all_benchmarks =
   ] ++
   [  mkBenchmark "ScanBench/Scan.cabal" [variant,reducer,scaner,cudaThreads,elems] defaultCfgSpc
   | variant     <- ["bigscan" ]
-  , reducer     <- ["bs_r1", "bs_r2", "bs_r3", "bs_r4", "bs_r5", "bs_r6", "bs_r7"]
+  , reducer     <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]
   , scaner      <- ["cin1", "cin2", "cin3", "cin4", "cin5"]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..12] ] -- 256 to 4096    -- 32768
