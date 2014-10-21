@@ -177,8 +177,13 @@ large reducer scan threads elements = do
       t = threads -- read $ args P.!! 1
       e = elements -- read $ args P.!! 2
       blcks = 4096
-
-  let eLog = fromIntegral $ imLog 2 (fromIntegral e) 
+  -- blcks
+  -- The number of blocks sets the size of the innermost scan.
+  -- We can vary number of threads in the innermost scan as t.
+  -- But number of elements needs to be fixed at blcks 
+  
+  let eLog = fromIntegral $ imLog 2 (fromIntegral e)
+      blocksLog = fromIntegral $ imLog 2 (fromIntegral blcks)
   
   withCUDA $ do
     captRed <- case (lookup rk reductionKernels) of 
@@ -189,9 +194,11 @@ large reducer scan threads elements = do
       Nothing -> error "incorrect scan kernel"
       Just kern -> capture t (\a b -> kern eLog (+) a (splitUp e b))
 
+    -- Needs to be splitting up in blcks batches
+    -- and use t threads 
     captIScan <- case (lookup sk iScanKernels) of
       Nothing -> error "incorrect scan kernel"
-      Just kern -> capture t (\a b -> kern eLog (+) a (splitUp e b))
+      Just kern -> capture t (\a b -> kern blocksLog (+) a (splitUp (fromIntegral blcks) b))
       
 
     --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
