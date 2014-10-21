@@ -22,7 +22,7 @@ import Debug.Trace
 
 import Data.Monoid (mappend)
 
-import HSBencher (defaultMainModifyConfig)
+import HSBencher
 import HSBencher.Backend.Fusion  (defaultFusionPlugin)
 import HSBencher.Backend.Dribble (defaultDribblePlugin)
 
