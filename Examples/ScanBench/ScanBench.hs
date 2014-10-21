@@ -226,7 +226,7 @@ large reducer scan threads elements = do
             r <- peekCUDAVector o
             lift $ putStrLn $ show (P.take 512 r)
 
-
+            lift $ putStrLn $ "ELEMENTS_PROCESSED:" ++ show ( fromIntegral blcks * fromIntegral e) 
             lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
             lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
