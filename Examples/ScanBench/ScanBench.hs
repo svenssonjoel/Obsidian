@@ -139,13 +139,13 @@ small k t e = do
 
         -- RENAME cin to actuall scan kernel name s1 - s3 k1,k2 
 reductionKernels :: [(String, DPull (SPull (Exp Word32)) -> DPush Grid (Exp Word32))]
-reductionKernels = [("r1", mapRed1 (+))
-                   ,("r2", mapRed2 (+))
-                   ,("r3", mapRed3 (+))
-                   ,("r4", mapRed4 (+))
-                   ,("r5", mapRed5 (+))
-                   ,("r6", mapRed6 (+))
-                   ,("r7", mapRed7 (+))]
+reductionKernels = [("bs_r1", mapRed1 (+))
+                   ,("bs_r2", mapRed2 (+))
+                   ,("bs_r3", mapRed3 (+))
+                   ,("bs_r4", mapRed4 (+))
+                   ,("bs_r5", mapRed5 (+))
+                   ,("bs_r6", mapRed6 (+))
+                   ,("bs_r7", mapRed7 (+))]
 scanKernels :: [(String,
                        Int
                        -> (Exp Word32 -> Exp Word32 -> Exp Word32)
