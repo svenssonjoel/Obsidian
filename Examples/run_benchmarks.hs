@@ -83,7 +83,7 @@ myconf conf =
    { benchlist = all_benchmarks
    , plugIns   = [ SomePlugin defaultFusionPlugin,
                    SomePlugin defaultDribblePlugin ]
-   , harversters =
+   , harvesters =
        customTagHarvesterInt "ELEMENTS_PROCESSED" `mappend` 
        harvesters conf
    }
