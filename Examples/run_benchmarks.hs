@@ -20,6 +20,8 @@ import GHC.Conc (getNumProcessors)
 import System.IO.Unsafe (unsafePerformIO)
 import Debug.Trace
 
+import Data.Monoid (mappend)
+
 import HSBencher (defaultMainModifyConfig)
 import HSBencher.Backend.Fusion  (defaultFusionPlugin)
 import HSBencher.Backend.Dribble (defaultDribblePlugin)
