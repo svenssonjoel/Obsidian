@@ -71,14 +71,10 @@ type Warp   = Step Thread
 type Block  = Step Warp
 type Grid   = Step Block
 
-
-
-
-
 ---------------------------------------------------------------------------
 
 type Identifier = Int
-                  
+
 ---------------------------------------------------------------------------
 -- Program datatype
 --------------------------------------------------------------------------
@@ -129,6 +125,9 @@ data Program t a where
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
             -> Program t ()
 
+  --          count          body 
+  --Iterate :: EWord32 -> (a -> EWord32 -> Program t a) 
+  --           -> a -> Program t ()  
                            
  
   --        #w          warpId     
@@ -220,7 +219,7 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 -- forAll 
 ---------------------------------------------------------------------------
 forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program t ()
-forAll n f = ForAll n $ \ix -> f ix
+forAll n f = ForAll n f
   
 -- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 -- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
@@ -253,7 +252,16 @@ distrPar b f = DistrPar b $ \bs -> f bs
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
 seqFor (Literal 1) f = f 0
-seqFor n f = SeqFor n $ \ix -> f ix
+seqFor n f = SeqFor n f 
+
+---------------------------------------------------------------------------
+-- iterate 
+---------------------------------------------------------------------------
+
+-- iterate :: EWord32 -> (a -> EWord32 -> Program t a) -> a -> Program t ()
+-- iterate (Literal 1) f a = f a 0 >>= \x -> return () 
+-- iterate n f a = Iterate n f a 
+
 
 ---------------------------------------------------------------------------
 -- seqWhile
