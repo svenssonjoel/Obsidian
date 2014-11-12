@@ -119,6 +119,7 @@ class Array a where
   ixMap     :: (EWord32 -> EWord32)
                -> a s e -> a s e
   -- requires Choice !
+  -- Simply because the pull array implementation of it does. 
   -- | Append two arrays. 
   append    :: (ASize s, Choice e) => a s e -> a s e -> a s e 
   
@@ -175,8 +176,12 @@ instance Array (Push t) where
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
-instance Array arr => Functor (arr w) where 
+instance Functor (Push t s) where 
   fmap = aMap
+
+instance Functor (Pull s) where
+  fmap = aMap 
+
 
 ---------------------------------------------------------------------------
 -- Pushable
