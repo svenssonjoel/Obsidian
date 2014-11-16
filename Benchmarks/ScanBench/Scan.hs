@@ -86,7 +86,7 @@ phase i f arr =
   do
     let ix1 = insertZero i tid
         ix2 = flipBit i ix1
-        ix3 = zeroBits i ix2 - 1
+        ix3 = zeroOutBits i ix2 - 1
     wf (arr ! ix1) ix1
     wf (f (arr ! ix3) (arr ! ix2) ) ix2))
   where
@@ -120,10 +120,10 @@ compose (f:fs) arr = compose fs =<< force (f arr)
 
 insertZero :: Int -> Exp Word32 -> Exp Word32
 insertZero 0 a = a `shiftL` 1
-insertZero i a = a + zeroBits i a
+insertZero i a = a + zeroOutBits i a
 
-zeroBits :: Int -> EWord32 -> EWord32
-zeroBits i a = a .&. fromIntegral (complement (oneBits i :: Word32))
+zeroOutBits :: Int -> EWord32 -> EWord32
+zeroOutBits i a = a .&. fromIntegral (complement (oneBits i :: Word32))
 
 flipBit :: (Num a, Bits a) => Int -> a -> a
 flipBit i = (`xor` (1 `shiftL` i))
