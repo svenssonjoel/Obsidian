@@ -532,7 +532,7 @@ compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 ---------------------------------------------------------------------------
 -- Generate entire Kernel 
 ---------------------------------------------------------------------------
-type Parameters = [(String,Obsidian.Types.Type)]
+type Parameters = [(String,T.Type)]
 
 compile :: Platform -> Config -> String -> (Parameters,IMList a) -> Definition
 compile pform config kname (params,im)
