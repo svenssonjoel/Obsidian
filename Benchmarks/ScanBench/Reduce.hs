@@ -1,1 +1,1 @@
-../ReductionTutorial/Reduce.hs
+../ReductionBench/Reduce.hs
