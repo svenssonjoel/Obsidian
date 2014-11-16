@@ -60,9 +60,9 @@ executable ScanBench.exe
                   , FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends: base >=4.6 && <5 
-               , vector >=0.10 && <0.11
-               , mtl >=2.1 && <2.2
+  build-depends: base >= 4 && <5 
+               , vector >= 0.10.9.1
+               , mtl >= 2.0
                , random
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.1.0.2
