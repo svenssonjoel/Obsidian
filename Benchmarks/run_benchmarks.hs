@@ -38,17 +38,17 @@ main = defaultMainModifyConfig myconf
 
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
-  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
+  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
   | variant     <- ["r1", "r2", "r3" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..14] ] -- 256 to 32768
   ] ++
-  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
+  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
   | variant     <- ["r4", "r5", "r6", "r7" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
   ] ++
-  [  mkBenchmark "ReductionTutorial/Reduce.cabal" [variant,kernel,cudaThreads] defaultCfgSpc
+  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,kernel,cudaThreads] defaultCfgSpc
   | variant     <- ["large" ]
   , kernel      <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]
   , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024

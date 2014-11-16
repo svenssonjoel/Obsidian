@@ -56,7 +56,7 @@ git clone git@github.com:rrnewton/HSBencher
 
 # Switch to where the benchmarks are
 # ----------------------------------------
-cd "$CHECKOUT"/Examples
+cd "$CHECKOUT"/Benchmarks
 rm -f run_benchmarks.exe
 make run_benchmarks.exe
 

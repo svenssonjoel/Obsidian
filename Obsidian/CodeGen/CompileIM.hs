@@ -20,7 +20,7 @@ import qualified Language.C.Quote.OpenCL as CL
 import qualified "language-c-quote" Language.C.Syntax as C 
 
 import Obsidian.Exp (IExp(..),IBinOp(..),IUnOp(..))
-import Obsidian.Types
+import Obsidian.Types as T
 import Obsidian.DimSpec 
 import Obsidian.CodeGen.Program
 
@@ -145,7 +145,8 @@ compileExp (IFunCall name es t) = [cexp| $fc |]
 compileExp (ICast e t) = [cexp| ($ty:(compileType t)) $e' |]
   where
     e' = compileExp e
-   
+
+compileType :: T.Type -> C.Type
 compileType (Int8) = [cty| typename int8_t |]
 compileType (Int16) = [cty| typename int16_t |]
 compileType (Int32) = [cty| typename int32_t |]
