@@ -9,7 +9,7 @@
 # Build the benchmarking script itself:
 # build_bench: run_benchmarks.exe 
 
-#NOTE! ALSO INSTALL OBSIDIAN HERE 
+#NOTE! ALSO INSTALL OBSIDIAN HERE (easier to please cabal that way) 
 run_benchmarks.exe: run_benchmarks.cabal run_benchmarks.hs sand
 	cabal install --disable-documentation --disable-library-profiling ../ ../HSBencher/hsbencher/ ../HSBencher/hsbencher-fusion ../HSBencher/hgdata/ ../Obsidian.cabal -j --reinstall
 
@@ -25,5 +25,4 @@ sand:
 	(cd ReductionBench; cabal sandbox init --sandbox=../.cabal-sandbox)
 	(cd ScanBench;      cabal sandbox init --sandbox=../.cabal-sandbox) 
 	(cd FractalBench;   cabal sandbox init --sandbox=../.cabal-sandbox)
-	(cd Simple;         cabal sandbox init --sandbox=../.cabal-sandbox)
 # $(DIR)
