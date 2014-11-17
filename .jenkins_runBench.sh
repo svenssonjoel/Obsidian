@@ -40,7 +40,10 @@ set -e
 #this makefile also install Obsidian+hsbencher as a single cabal install line
 DIR=`pwd`  
 echo $DIR 
-git clone git@github.com:rrnewton/HSBencher
+if [! -d "HSBencher"]; then 
+    git clone git@github.com:rrnewton/HSBencher
+fi 
+
 (cd HSBencher; git submodule init; git submodule update) 
 
 # Sandbox for benchmarks ?
