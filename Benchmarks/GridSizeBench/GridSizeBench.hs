@@ -75,8 +75,8 @@ mapNonsense blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) a
 
 
 kernels :: [(String, Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32)]
-kernels = [("REDUCTION", (\b s -> mapRed3 b s (+)))
-          ,("NONSENSE", mapNonsense)]
+kernels = [("REDUCTION", (16384,(\b s -> mapRed3 b s (+))))
+          ,("NONSENSE", (8388608,mapNonsense)]
           
 
 
@@ -86,7 +86,7 @@ kernels = [("REDUCTION", (\b s -> mapRed3 b s (+)))
 
 -- these remain constant over benchspace
 data_size = 8388608
-results_size = 16384 
+--results_size = 16384 
 
 -- This varies (this is the benchspace) 
 -- grid_size -> (elementsperblock,seq depth mapping)
@@ -126,7 +126,7 @@ main = do
     _ -> exitError 
 
   where
-    performBench k g_size (blocksize,seq_depth) = 
+    performBench (k,results_size) g_size (blocksize,seq_depth) = 
       withCUDA $
       do lift $ putStrLn $ "  grid: " P.++ show g_size P.++ "\n  elt/block: " P.++ show blocksize P.++
                            "\n  seq_depth: " P.++ show seq_depth
@@ -154,4 +154,5 @@ main = do
               lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
               lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-              lift $ putStrLn $ show $ P.take results_size  r 
+              lift $ putStrLn $ show $ P.take 1024 results_size  r 
+
