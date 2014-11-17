@@ -74,9 +74,9 @@ mapNonsense blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) a
 -- ######################################################################
 
 
-kernels :: [(String, Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32)]
+kernels :: [(String, (Word32,Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32))]
 kernels = [("REDUCTION", (16384,(\b s -> mapRed3 b s (+))))
-          ,("NONSENSE", (8388608,mapNonsense)]
+          ,("NONSENSE", (8388608,mapNonsense))]
           
 
 
