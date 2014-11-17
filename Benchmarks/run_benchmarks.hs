@@ -69,8 +69,9 @@ all_benchmarks =
   | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192
   ] ++
-  [  mkBenchmark "GridSizeBench/GridSizeBench.cabal" [show num_blocks] defaultCfgSpc
-  | num_blocks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1] 
+  [  mkBenchmark "GridSizeBench/GridSizeBench.cabal" [variant,show num_blocks] defaultCfgSpc
+  | num_blocks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
+  , variant <- ["REDUCTION", "NONSENSE"] 
   ]
 
 -- | Default configuration space over which to vary settings:

@@ -28,8 +28,6 @@ import Data.Time.Clock
 -- ######################################################################
 -- Reduction Kernel 
 -- ######################################################################
-
-
 red3 :: Storable a
            => Word32 
            -> (a -> a -> a)
@@ -50,7 +48,37 @@ mapRed3 blocksize seq_depth f arr = pConcat $ fmap sConcat (fmap (fmap body) arr
   where
     body arr = singletonPush (red3 2 f arr)
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
-     
+
+
+-- ######################################################################
+-- Nonsense Kernel 
+-- ######################################################################
+nonsense :: (Storable a, Num a) => 
+            Pull Word32 a
+           -> BProgram (Push Block Word32 a)
+nonsense arr = do 
+  arr1 <- forcePull $ fmap (+1) arr
+  arr2 <- forcePull $ fmap (*2) arr1
+  arr3 <- forcePull $ fmap (*4) arr2
+  return $ push arr3 
+
+
+mapNonsense :: (Storable a, Num a)  => Word32 -> Word32 -> DPull a -> DPush Grid a
+mapNonsense blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+  where
+    body = runPush . nonsense 
+    arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
+
+-- ######################################################################
+-- Nonsense Kernel 
+-- ######################################################################
+
+
+kernels :: [(String, Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32)]
+kernels = [("REDUCTION", (\b s -> mapRed3 b s (+)))
+          ,("NONSENSE", mapNonsense)]
+          
+
 
 -- ######################################################################
 -- Main
@@ -80,30 +108,32 @@ grid_sizes = [(16384,(512,1))
 
 
 exitError = do
-  error $ "Provide 1 arg: Grid size (one of: "  ++ show (map fst grid_sizes) ++ ")"
+  error $ "Provide 2 args: Benchmark [\"REDUCTION\",\"NONSENSE\"] and Grid size (one of: "  ++ show (map fst grid_sizes) ++ ")"
 
 main :: IO ()
 main = do
   putStrLn "Running GridSize benchmark.."
   args <- getArgs
   case length args of
-    1 -> do
-      let g_size = read $ args P.!! 0
+    2 -> do
+      let g_size = read $ args P.!! 1
       case P.lookup g_size grid_sizes of
         Nothing -> exitError 
-        Just seq_depth -> performBench g_size seq_depth 
-          
+        Just seq_depth ->
+          case P.lookup (args P.!! 0) kernels of
+            Just k -> performBench k g_size seq_depth 
+            Nothing -> exitError
     _ -> exitError 
 
   where
-    performBench g_size (blocksize,seq_depth) = 
+    performBench k g_size (blocksize,seq_depth) = 
       withCUDA $
       do lift $ putStrLn $ "  grid: " P.++ show g_size P.++ "\n  elt/block: " P.++ show blocksize P.++
                            "\n  seq_depth: " P.++ show seq_depth
           
 
          capt <-
-           capture 512 (mapRed3 blocksize seq_depth (+))
+           capture 512 (k blocksize seq_depth) -- (mapRed3 blocksize seq_depth (+))
                           
          --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (data_size))
          let (inputs :: V.Vector Word32) = V.fromList (P.replicate data_size 1 )
