@@ -126,7 +126,7 @@ main = do
     _ -> exitError 
 
   where
-    performBench (k,results_size) g_size (blocksize,seq_depth) = 
+    performBench (results_size,k) g_size (blocksize,seq_depth) = 
       withCUDA $
       do lift $ putStrLn $ "  grid: " P.++ show g_size P.++ "\n  elt/block: " P.++ show blocksize P.++
                            "\n  seq_depth: " P.++ show seq_depth
