@@ -70,13 +70,45 @@ mapNonsense blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) a
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 -- ######################################################################
--- Nonsense Kernel 
+-- Sklansky Kernel 
 -- ######################################################################
+sklansky :: (Choice a, Storable a)
+            => Int
+            -> (a -> a -> a)
+            -> Pull Word32 a
+            -> BProgram (Push Block Word32 a)
+sklansky 0 op arr = return (push arr)
+sklansky n op arr =
+  do 
+    let arr1 = binSplit (n-1) (fan op) arr
+    arr2 <- forcePull arr1
+    sklansky (n-1) op arr2
+
+
+fan :: Choice a
+       => (a -> a -> a)
+       -> SPull a
+       -> SPull a
+fan op arr =  a1 `append` fmap (op c) a2 
+    where 
+      (a1,a2) = halve arr
+      c = a1 ! fromIntegral (len a1 - 1)
+
+-- pushM = liftM push
+
+mapScan1 :: (Choice a, Storable a) => Word32 -> Word32 -> Int -> (a -> a -> a) -> DPull a -> DPush Grid a
+mapScan1 blocksize seq_depth n f arr = pConcat $ fmap sConcat (fmap (fmap body) arr') 
+  where
+    body arr = runPush (sklansky n f arr)
+    arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
+
+
 
 
 kernels :: [(String, (Word32,Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32))]
-kernels = [("REDUCTION", (16384,(\b s -> mapRed3 b s (+))))
-          ,("NONSENSE", (8388608,mapNonsense))]
+kernels = [("REDUCTION", (16384,\b s -> mapRed3 b s (+)))
+          ,("NONSENSE", (8388608,mapNonsense))
+          ,("SKLANSKY", (8388608,\b s -> mapScan1 b s 9 (+)))]
           
 
 

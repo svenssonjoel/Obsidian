@@ -66,7 +66,7 @@ fan op arr =  a1 `append` fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! fromIntegral (len a1 - 1)
 
-pushM = liftM push
+-- pushM = liftM push
 
 mapScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
 mapScan1 n f arr = pConcat (fmap body arr)
