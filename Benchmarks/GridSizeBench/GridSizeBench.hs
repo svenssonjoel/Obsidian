@@ -154,5 +154,5 @@ main = do
               lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
               lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-              lift $ putStrLn $ show $ P.take 1024 results_size  r 
+              lift $ putStrLn $ show $ P.take 1024 r 
 
