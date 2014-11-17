@@ -68,6 +68,9 @@ all_benchmarks =
   [  mkBenchmark "FractalBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
   | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
   , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192
+  ] ++
+  [  mkBenchmark "GridSizeBench/GridSizeBench.cabal" [show num_blocks] defaultCfgSpc
+  | num_blocks <- [16384, 1024, 4096, 2048, 1024, 512, 256, 128, 64, 32] -- 32 to 1024
   ]
 
 -- | Default configuration space over which to vary settings:
