@@ -40,7 +40,7 @@ set -e
 #this makefile also install Obsidian+hsbencher as a single cabal install line
 DIR=`pwd`  
 echo $DIR 
-if [! -d "HSBencher"]; then 
+if [ ! -d "HSBencher" ]; then 
     git clone git@github.com:rrnewton/HSBencher
 fi 
 
