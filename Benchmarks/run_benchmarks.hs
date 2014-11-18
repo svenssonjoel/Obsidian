@@ -1,7 +1,7 @@
 #!/usr/bin/env runghc
 {-# LANGUAGE NamedFieldPuns #-}
 
--- | This script runs all Harlan benchmarks.  It is based on a Haskell
+-- | This script runs all Obsidian benchmarks.  It is based on a Haskell
 -- benchmarking framework called HSBencher.  Its main advantage is
 -- that it supports uploading of benchmark timings to a Google Fusion
 -- Table.
@@ -72,7 +72,13 @@ all_benchmarks =
   [  mkBenchmark "GridSizeBench/GridSizeBench.cabal" [variant,show num_blocks] defaultCfgSpc
   | num_blocks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
   , variant <- ["REDUCTION", "NONSENSE", "SKLANSKY"] 
+  ]  ++
+  [  mkBenchmark "SyncCostBench/SyncCostBench.cabal" [variant,show num_syncs] defaultCfgSpc
+  | num_syncs <- [0..1024]
+  , variant <- ["SyncKern1"] 
   ]
+  
+  
 
 -- | Default configuration space over which to vary settings:
 --   This is a combination of And/Or boolean operations, with the ability

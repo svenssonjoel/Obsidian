@@ -23,7 +23,7 @@
 
 -}
 
-module Obsidian.Force (Forceable, force, forcePull, unsafeForce) where
+module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull) where
 -- Write, force, forcePull, unsafeForce, unsafeWritePush) where 
 
 
@@ -81,6 +81,13 @@ instance Write Thread where
       p <: assignArray snames 
       
       return $ pullFrom snames n
+
+
+---------------------------------------------------------------------------
+-- unsafe!
+---------------------------------------------------------------------------
+unsafeWritePull :: (Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
+unsafeWritePull t = unsafeWritePush t . push
 
 ---------------------------------------------------------------------------
 -- Force functions 
