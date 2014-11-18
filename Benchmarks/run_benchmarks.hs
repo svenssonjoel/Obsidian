@@ -96,6 +96,12 @@ myconf conf =
    , plugIns   = [ SomePlugin defaultFusionPlugin,
                    SomePlugin defaultDribblePlugin ]
    , harvesters =
-       customTagHarvesterInt "ELEMENTS_PROCESSED" `mappend` 
+       customTagHarvesterInt "ELEMENTS_PROCESSED" `mappend`
+       customTagHarvesterDouble  "COMPILATION_TIME" `mappend`
+       customTagHarvesterDouble  "TRANSFER_TO_DEVICE" `mappend`
+       customTagHarvesterDouble  "TRANSFER_FROM_DEVICE" `mappend`
+       customTagHarvesterInt "BYTES_TO_DEVICE" `mappend`
+       customTagHarvesterInt "BYTES_FROM_DEVICE" `mappend`
+       customTagHarvesterInt "CYCLES" `mappend`
        harvesters conf
    }
