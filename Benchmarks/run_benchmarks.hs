@@ -77,7 +77,7 @@ all_benchmarks =
   | num_syncs <- [0..32]
   , variant <- ["SyncKern1"] 
   ] ++
-  [  mkBenchmark "SyncCostBench/SyncCostNumWarpsBench.cabal" [variant,show num_warps] defaultCfgSpc
+  [  mkBenchmark "SyncCostNumWarpsBench/SyncCostNumWarpsBench.cabal" [variant,show num_warps] defaultCfgSpc
   | num_warps <- [1..32]
   , variant <- ["SYNC","NOSYNC"] 
   ]
