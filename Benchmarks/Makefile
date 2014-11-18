@@ -27,4 +27,5 @@ sand:
 	(cd FractalBench;   cabal sandbox init --sandbox=../.cabal-sandbox)
 	(cd GridSizeBench;  cabal sandbox init --sandbox=../.cabal-sandbox)
 	(cd SyncCostBench;  cabal sandbox init --sandbox=../.cabal-sandbox)
+	(cd SyncCostNumWarpsBench;  cabal sandbox init --sandbox=../.cabal-sandbox)
 # $(DIR)

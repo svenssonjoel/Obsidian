@@ -76,7 +76,12 @@ all_benchmarks =
   [  mkBenchmark "SyncCostBench/SyncCostBench.cabal" [variant,show num_syncs] defaultCfgSpc
   | num_syncs <- [0..1024]
   , variant <- ["SyncKern1"] 
+  ] ++
+  [  mkBenchmark "SyncCostBench/SyncCostNumWarpsBench.cabal" [variant,show num_warps] defaultCfgSpc
+  | num_warps <- [1..32]
+  , variant <- ["SYNC","NOSYNC"] 
   ]
+  
   
   
 
