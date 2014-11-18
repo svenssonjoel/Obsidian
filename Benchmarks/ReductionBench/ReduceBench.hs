@@ -26,7 +26,7 @@ import Data.Time.Clock (getCurrentTime, diffUTCTime)
 import Data.IORef
 
 import Data.Time.Clock
-
+import Control.DeepSeq
 
 -- ######################################################################
 -- Main
@@ -75,42 +75,57 @@ runBenchmark :: (Pull EWord32 (SPull (Exp Word32)) -> DPush Grid (Exp Word32)) -
 runBenchmark origkern t elts =
   withCUDA $
   do
+    compile_t0 <- lift getCurrentTime 
     capt <- capture t (origkern . splitUp elts)
+    compile_t1 <- lift getCurrentTime
     
+    let blcks = 8192
+
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (blcks * elts))
-    
     let cpuresult = V.sum inputs 
-    
+
+    _ <- cpuresult `deepseq` return () 
+
+    transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
-      allocaVector (fromIntegral blcks)  $ \(o :: CUDAVector Word32) ->
-        body cpuresult capt i o
+      allocaVector (fromIntegral blcks)  $ \(o :: CUDAVector Word32) -> do
+        transfer_done <- lift getCurrentTime 
+        --body cpuresult capt i o
         --allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
-                                                        
-  where
-    blcks = 8192
-    body cpuresult kern i o = 
-        do
-          fill o 0
+        fill o 0
         
 
-          t0   <- lift getCurrentTime
-          cnt0 <- lift rdtsc
-          forM_ [0..999] $ \_ -> do 
-            o <== (blcks,kern) <> i
-            syncAll
-          cnt1 <- lift rdtsc
-          t1   <- lift getCurrentTime
+        t0   <- lift getCurrentTime
+        cnt0 <- lift rdtsc
+        forM_ [0..999] $ \_ -> do 
+          o <== (blcks,capt) <> i
+          syncAll
+        cnt1 <- lift rdtsc
+        t1   <- lift getCurrentTime
 
-          r <- peekCUDAVector o
-          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
-          lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+        r <- copyOut o 
+        t_end <- lift getCurrentTime
+        
+        lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+        lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-          when (sum r /= cpuresult) $ lift $
-            putStrLn "WARNING: CPU and GPU results not equal!!"
+        lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+    
+        lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show (fromIntegral (blcks * elts)  * sizeOf (undefined :: EWord32))
+        lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral blcks * sizeOf (undefined :: EWord32))
+        lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+        lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+        when (sum (V.toList r) /= cpuresult) $ lift $
+          putStrLn "WARNING: CPU and GPU results not equal!!"
 
 
 
+  
 
+
+---------------------------------------------------------------------------
+-- LARGE
+---------------------------------------------------------------------------
 runLargeBenchmark :: (Pull EWord32 (SPull (Exp Word32)) -> DPush Grid (Exp Word32)) -> Word32 -> IO ()
 runLargeBenchmark origkern t = 
   withCUDA $
