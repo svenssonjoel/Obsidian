@@ -24,6 +24,7 @@ import Data.Time.Clock (getCurrentTime, diffUTCTime)
 import Data.IORef
 
 import Data.Time.Clock
+import Control.DeepSeq 
 
 -- ######################################################################
 -- Nonsense Kernel 
@@ -70,11 +71,11 @@ exitError = do
 
 main :: IO ()
 main = do
-  putStrLn "Running GridSize benchmark.."
+  putStrLn "Running SyncCost benchmark.."
   args <- getArgs
   case length args of
     2 -> do
-      let n_syncs = read (args P.!! 0)
+      let n_syncs = read (args P.!! 1)
       case P.lookup (args P.!! 0) kernels of
         Nothing -> exitError 
         Just k ->  performBench k n_syncs
@@ -84,16 +85,22 @@ main = do
     performBench (results_size,k) n_syncs = 
       withCUDA $
       do  
-
+         compile_t0 <- lift getCurrentTime 
          capt <-
            capture block_size (k block_size n_syncs) 
-                          
+         compile_t1 <- lift getCurrentTime
+           
          --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (data_size))
-         let (inputs :: V.Vector Word32) = V.fromList (P.replicate data_size 1 )
-         
+         let (inputs :: V.Vector Word32) = V.fromList (P.replicate data_size 0 )
+
+         _ <- inputs `deepseq` return () 
+
+         transfer_start <- lift getCurrentTime
          useVector inputs $ \i ->
            allocaVector (fromIntegral results_size)  $ \(o :: CUDAVector Word32) ->
-           do fill o 0
+           do transfer_done <- lift getCurrentTime 
+  
+              fill o 0
 
               t0 <- lift getCurrentTime
               cnt0 <- lift rdtsc
@@ -103,9 +110,18 @@ main = do
               cnt1 <- lift rdtsc
               t1 <- lift getCurrentTime
 
-              r <- peekCUDAVector o
+              --r <- peekCUDAVector o
+              r <- copyOut o
+              t_end <- lift getCurrentTime
+
+              
               lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
               lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-              lift $ putStrLn $ show $ P.take 1024 r 
+              lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+    
+              lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show (data_size * sizeOf (undefined :: EWord32))
+              lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+              lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+              lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
