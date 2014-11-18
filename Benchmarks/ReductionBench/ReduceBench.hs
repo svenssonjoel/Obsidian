@@ -16,14 +16,11 @@ import Obsidian.Run.CUDA.Exec
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
 
-import Data.Int
 import Data.Word
 
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
 import Data.Time.Clock (getCurrentTime, diffUTCTime)
-
-import Data.IORef
 
 import Data.Time.Clock
 import Control.DeepSeq
@@ -131,38 +128,49 @@ runLargeBenchmark origkern t =
   withCUDA $
   do
     let elts = 4096
-        
+        blcks = 4096
+                 
+    compile_t0 <- lift getCurrentTime 
     capt <- capture t (origkern . splitUp elts)
+    compile_t1 <- lift getCurrentTime
     
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (blcks * elts))
     
-    let cpuresult = V.sum inputs 
-    
+    let cpuresult = V.sum inputs
+
+    _ <- cpuresult `deepseq` return () 
+
+    transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
       allocaVector (fromIntegral blcks)  $ \(o :: CUDAVector Word32) ->
         allocaVector 1 $ \out -> 
-          body cpuresult capt i o out
-        --allocaVector 1  $ \(o2 :: CUDAVector Word32) -> do 
-                                                        
-  where
-    blcks = 4096
-    body cpuresult kern i o out = 
-        do
-          fill o 0
+          do transfer_done <- lift getCurrentTime 
+             fill o 0
         
-          t0   <- lift getCurrentTime
-          cnt0 <- lift rdtsc
-          -- Scale up the benchmark 1000 times to make it take long enough.
-          forM_ [0..999 :: Int] $ \_ -> do 
-            o <== (blcks,kern) <> i
-            out <== (1,kern) <> o 
-            syncAll
-          cnt1 <- lift rdtsc
-          t1   <- lift getCurrentTime
+             t0   <- lift getCurrentTime
+             cnt0 <- lift rdtsc
+             -- Scale up the benchmark 1000 times to make it take long enough.
+             forM_ [0..999 :: Int] $ \_ -> do 
+               o <== (blcks,capt) <> i
+               out <== (1,capt) <> o 
+               syncAll
+             cnt1 <- lift rdtsc
+             t1   <- lift getCurrentTime
 
-          r <- peekCUDAVector out
-          lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
-          lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-          when (r P.!! 0 /= cpuresult) $ lift $ do 
-            putStrLn "WARNING: CPU and GPU results not equal!!" 
+             r <- copyOut out 
+             t_end <- lift getCurrentTime
+                    
+             lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
+             lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+             lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+          
+             lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show (fromIntegral (blcks * elts)  * sizeOf (undefined :: EWord32))
+             lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral blcks * sizeOf (undefined :: EWord32))
+             lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+             lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+         
+             when ((V.toList r) P.!! 0 /= cpuresult) $ lift $ do 
+               putStrLn "WARNING: CPU and GPU results not equal!!" 
+
