@@ -25,7 +25,7 @@ cabal sandbox hc-pkg list
 cabal update
 cabal install Obsidian.cabal 
 
-cabal install ./ ./Examples/ReductionTutorial/ ./Examples/FractalBench/ ./Examples/Simple ./Examples/ScanBench/ 
+cabal install ./ ./Examples/Simple 
 
 
 #cd Examples/Simple 
