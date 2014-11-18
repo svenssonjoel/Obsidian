@@ -33,7 +33,7 @@ nonsense :: (Storable a, Num a) =>
             Word32
             -> Pull Word32 a
             -> BProgram (Push Block Word32 a)
-nonsense n_syncs arr = loopit 1024 arr  
+nonsense n_syncs arr = loopit 32 arr  
   where loopit 0 arr = return $ push arr
         loopit n arr | n <= n_syncs = do
           arr' <- forcePull $ fmap (+1) arr
