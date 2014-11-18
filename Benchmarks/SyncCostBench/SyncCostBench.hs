@@ -88,7 +88,7 @@ main = do
          compile_t0 <- lift getCurrentTime 
          capt <-
            capture block_size (k block_size n_syncs) 
-         compile_t1 <- lift getCurrentTime
+         compile_t1 <- lift getCurrentTime 
            
          --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (data_size))
          let (inputs :: V.Vector Word32) = V.fromList (P.replicate data_size 0 )

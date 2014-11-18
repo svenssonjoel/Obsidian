@@ -24,6 +24,7 @@ import System.CPUTime.Rdtsc
 import System.Exit
 
 import Data.Time.Clock
+import Control.DeepSeq
 
 -- Vary number of threads/block and image size  
 main = do
@@ -39,11 +40,15 @@ main = do
     
   withCUDA $
     do
+      compile_t0 <- lift getCurrentTime 
       kern <- capture t (mandel s) 
-    
+      compile_t1 <- lift getCurrentTime
+
+      transfer_start <- lift getCurrentTime
       allocaVector (fromIntegral (s*s)) $ \o -> 
         do
-
+          transfer_done <- lift getCurrentTime 
+          
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
           forM_ [0..999] $ \_ -> do
@@ -53,12 +58,18 @@ main = do
           t1   <- lift getCurrentTime
           
           r <- copyOut o 
-
+          t_end <- lift getCurrentTime
+  
           -- Still going via list !!! 
           lift $ BS.writeFile "fractal.out" (pack (V.toList r))
 
           lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
           lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
-
+          lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+    
+          lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show 0
+          lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral (s*s))
+          lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+          lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
 
