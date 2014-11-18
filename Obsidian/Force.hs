@@ -30,15 +30,13 @@ module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Array
-import Obsidian.Types
-import Obsidian.Globs
 import Obsidian.Memory 
 
 import Obsidian.Names
 
 import Data.Word
 
-import Control.Monad
+
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 ---------------------------------------------------------------------------
@@ -48,29 +46,31 @@ class Write t where
   -- unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
   
 instance Write Warp where
-  unsafeWritePush volatile p  =
+  unsafeWritePush _ p  =
     do
       let n = len p
-      names <- names "arr"
-      allocateVolatileArray names n
+      noms <- names "arr"
+      allocateVolatileArray noms n
      
-      p <: warpAssignArray names (variable "warpID") n 
-      return $ warpPullFrom names (variable "warpID") n
+      p <: warpAssignArray noms (variable "warpID") n 
+      return $ warpPullFrom noms (variable "warpID") n
 
 instance Write Block where
   unsafeWritePush volatile p =
     do
       let  n = len p
-      names <- names "arr"
+      noms <- names "arr"
       if (volatile)
-        then allocateVolatileArray names n
-        else allocateArray names n
+        then allocateVolatileArray noms n
+        else allocateArray noms n
              
-      p <: assignArray names 
-      return $ pullFrom names n
+      p <: assignArray noms 
+      return $ pullFrom noms n
 
+-- What to do about volatile here?
+-- Ignoring that parameter for now. 
 instance Write Thread where
-  unsafeWritePush volatile p =
+  unsafeWritePush _ p =
     do
       (snames :: Names a)  <- names "arr" 
 
