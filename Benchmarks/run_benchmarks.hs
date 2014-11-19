@@ -8,29 +8,13 @@
 
 -- Requires hsbencher >= 0.2
 
-import Control.Monad
-import Data.Maybe
-import qualified Data.ByteString.Char8 as B
-import System.Directory
-import System.FilePath
-import System.Exit
-import System.Environment (getArgs)
-import System.Process
-import GHC.Conc (getNumProcessors)
-import System.IO.Unsafe (unsafePerformIO)
-import Debug.Trace
-
 import Data.Monoid (mappend)
 
 import HSBencher
 import HSBencher.Backend.Fusion  (defaultFusionPlugin)
 import HSBencher.Backend.Dribble (defaultDribblePlugin)
 
-import HSBencher.Types
-import HSBencher.Internal.Logging (log)
-import HSBencher.Internal.MeasureProcess
-import HSBencher.Internal.Utils (runLogged, defaultTimeout)
-import Prelude hiding (log)
+import Prelude
 --------------------------------------------------------------------------------
 
 main :: IO ()
