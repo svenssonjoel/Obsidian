@@ -14,14 +14,11 @@ import Obsidian.Run.CUDA.Exec
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
 
-import Data.Int
 import Data.Word
 
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
-import Data.Time.Clock (getCurrentTime, diffUTCTime)
 
-import Data.IORef
 
 import Data.Time.Clock
 import Control.DeepSeq 
