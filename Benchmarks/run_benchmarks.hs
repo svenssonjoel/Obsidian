@@ -1,10 +1,7 @@
 #!/usr/bin/env runghc
 {-# LANGUAGE NamedFieldPuns #-}
 
--- | This script runs all Obsidian benchmarks.  It is based on a Haskell
--- benchmarking framework called HSBencher.  Its main advantage is
--- that it supports uploading of benchmark timings to a Google Fusion
--- Table.
+-- | This script runs all Obsidian benchmarks.
 
 -- Requires hsbencher >= 0.2
 
@@ -20,51 +17,58 @@ import Prelude
 main :: IO ()
 main = defaultMainModifyConfig myconf
 
+reduceConf1 = Or [And [ Set (Variant $ "r" ++ show v) (RuntimeArg  $ "r" ++ show v)
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]  -- CUDA Threads 
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..14]]] -- Number of Elements  
+                 | v <- [1,2,3]] 
+
+reduceConf2 = Or [And [ Set (Variant $ "r" ++ show v) (RuntimeArg  $ "r" ++ show v)
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]  -- CUDA Threads 
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..15]]] -- Number of Elements  
+                 | v <- [4,5,6,7]] 
+
+largeReduceConf = And [ Set (Variant "large") (RuntimeArg "large")
+                      , Or [ Set NoMeaning (RuntimeArg kern) | kern <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]]
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]]
+
+scanConf = Or [ And [ Set (Variant v) (RuntimeArg v) 
+                    , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
+                    , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..12]]
+                    ] | v <- ["s1", "s2", "s3", "k1", "k2" ]] 
+
+largeScanConf = And [ Set (Variant "largeScan") (RuntimeArg "bigscan")
+                    , Or [ Set NoMeaning (RuntimeArg reducer) | reducer <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]]
+                    , Or [ Set NoMeaning (RuntimeArg scaner)  | scaner  <- ["cin1", "cin2", "cin3", "cin4", "cin5"]]
+                    , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
+                    , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..12]]]
+
+fractalConf = And [ Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
+                  , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..13]]]
+
+gridSizeConf = Or [ And [ Set (Variant v) (RuntimeArg v)
+                        , Or [Set NoMeaning (RuntimeArg (show blcks)) | blcks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]]
+                        ]| v <- ["REDUCTION", "NONSENSE", "SKLANSKY"] ]
+
+syncCostConf = And [ Set (Variant "SyncKern1") (RuntimeArg "SyncKern1")
+                   , Or [ Set NoMeaning (RuntimeArg (show n_syncs)) | n_syncs <- [0..32]]
+                   ]
+                   
+syncCostNWConf = Or [ And [ Set (Variant v) (RuntimeArg v)
+                          , Or [Set NoMeaning (RuntimeArg (show num_warps)) | num_warps <- [1..32]]
+                          ]| v <- ["SYNC","NOSYNC"]]
+
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
-  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["r1", "r2", "r3" ]
-  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  , elems       <- [ show (2^n) | n <- [8..14] ] -- 256 to 32768
-  ] ++
-  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["r4", "r5", "r6", "r7" ]
-  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  , elems       <- [ show (2^n) | n <- [8..15] ] -- 256 to 32768
-  ] ++
-  [  mkBenchmark "ReductionBench/Reduce.cabal" [variant,kernel,cudaThreads] defaultCfgSpc
-  | variant     <- ["large" ]
-  , kernel      <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]
-  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  ] ++ 
-  [  mkBenchmark "ScanBench/Scan.cabal" [variant,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["s1", "s2", "s3", "k1", "k2" ]
-  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  , elems       <- [ show (2^n) | n <- [8..12] ] -- 256 to 4096    -- 32768
-  ] ++
-  [  mkBenchmark "ScanBench/Scan.cabal" [variant,reducer,scaner,cudaThreads,elems] defaultCfgSpc
-  | variant     <- ["bigscan" ]
-  , reducer     <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]
-  , scaner      <- ["cin1", "cin2", "cin3", "cin4", "cin5"]
-  , cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  , elems       <- [ show (2^n) | n <- [8..12] ] -- 256 to 4096    -- 32768
-  ] ++
-  [  mkBenchmark "FractalBench/Fractals.cabal" [cudaThreads,size] defaultCfgSpc
-  | cudaThreads <- [ show (2^n) | n <- [5..10] ] -- 32 to 1024
-  , size       <- [ show (2^n) | n <- [8..13] ] -- 256x256 to 8192x8192
-  ] ++
-  [  mkBenchmark "GridSizeBench/GridSizeBench.cabal" [variant,show num_blocks] defaultCfgSpc
-  | num_blocks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]
-  , variant <- ["REDUCTION", "NONSENSE", "SKLANSKY"] 
-  ]  ++
-  [  mkBenchmark "SyncCostBench/SyncCostBench.cabal" [variant,show num_syncs] defaultCfgSpc
-  | num_syncs <- [0..32]
-  , variant <- ["SyncKern1"] 
-  ] ++
-  [  mkBenchmark "SyncCostNumWarpsBench/SyncCostNumWarpsBench.cabal" [variant,show num_warps] defaultCfgSpc
-  | num_warps <- [1..32]
-  , variant <- ["SYNC","NOSYNC"] 
-  ]
+  [ mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf1
+  , mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf2
+  , mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf
+  , mkBenchmark "ScanBench/Scan.cabal" [] scanConf
+  , mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf
+  , mkBenchmark "FractalBench/Fractals.cabal" [] fractalConf
+  , mkBenchmark "GridSizeBench/GridSizeBench.cabal" [] gridSizeConf
+  , mkBenchmark "SyncCostBench/SyncCostBench.cabal" [] syncCostConf
+  , mkBenchmark "SyncCostNumWarpsBench/SyncCostNumWarpsBench.cabal" [] syncCostNWConf
+  ] 
   
   
   
