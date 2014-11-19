@@ -172,7 +172,7 @@ main = do
          --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (data_size))
          let (inputs :: V.Vector Word32) = V.fromList (P.replicate data_size 1 )
 
-         - <- inputs `deepseq` return () 
+         _ <- inputs `deepseq` return () 
          
          transfer_start <- lift getCurrentTime
          useVector inputs $ \i ->
