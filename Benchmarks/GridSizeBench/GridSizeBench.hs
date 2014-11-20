@@ -55,7 +55,7 @@ mapRed3 blocksize seq_depth f arr = pConcat $ fmap sConcat (fmap (fmap body) arr
 -- Nonsense Kernel 
 -- ######################################################################
 nonsense :: (Storable a, Num a) =>
-            -> Int
+            Int
             -> Bool 
             -> Pull Word32 a
             -> BProgram (Push Block Word32 a)
