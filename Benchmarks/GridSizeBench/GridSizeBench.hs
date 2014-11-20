@@ -54,20 +54,27 @@ mapRed3 blocksize seq_depth f arr = pConcat $ fmap sConcat (fmap (fmap body) arr
 -- ######################################################################
 -- Nonsense Kernel 
 -- ######################################################################
-nonsense :: (Storable a, Num a) => 
-            Pull Word32 a
+nonsense :: (Storable a, Num a) =>
+            Bool 
+           -> Pull Word32 a
            -> BProgram (Push Block Word32 a)
-nonsense arr = do 
-  arr1 <- forcePull $ fmap (+1) arr
-  arr2 <- forcePull $ fmap (*2) arr1
-  arr3 <- forcePull $ fmap (*4) arr2
-  return $ push arr3 
-
-
-mapNonsense :: (Storable a, Num a)  => Word32 -> Word32 -> DPull a -> DPush Grid a
-mapNonsense blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+nonsense sync arr = do
+  arr' <- loop 9 arr    -- same depth complexity as scan (Maybe vary this!) 
+  return $ push arr
   where
-    body = runPush . nonsense 
+    loop :: (Storable a, Num a) => Int -> Pull Word32 a -> BProgram (Pull Word32 a)
+    loop 0 ain = return ain
+    loop n ain = do
+      a' <- force' $ fmap (+1) ain
+      loop (n-1) a' 
+
+    force' arr | sync = forcePull arr
+               | otherwise = unsafeWritePull False arr
+
+mapNonsense :: (Storable a, Num a)  => Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
+mapNonsense sync blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+  where
+    body = runPush . (nonsense  sync) 
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 -- ######################################################################
@@ -108,7 +115,8 @@ mapScan1 blocksize seq_depth n f arr = pConcat $ fmap sConcat (fmap (fmap body) 
 
 kernels :: [(String, (Word32,Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32))]
 kernels = [("REDUCTION", (16384,\b s -> mapRed3 b s (+)))
-          ,("NONSENSE", (8388608,mapNonsense))
+          ,("MAPCHAIN_NOSYNC", (8388608, (mapNonsense False)))
+          ,("MAPCHAIN_SYNC"  , (8388608, (mapNonsense True)))
           ,("SKLANSKY", (8388608,\b s -> mapScan1 b s 9 (+)))]
           
 
