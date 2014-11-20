@@ -47,14 +47,18 @@ fractalConf = And [ Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
 
 gridSizeConf = Or [ And [ Set (Variant v) (RuntimeArg v)
                         , Or [Set NoMeaning (RuntimeArg (show blcks)) | blcks <- [16384, 8192, 4096, 2048, 1024, 512, 256, 128, 64, 32, 16, 8, 4, 2, 1]]
-                        ]| v <- [ "REDUCTION"
+                        ]| v <- [ "ITER_10"
+                                , "ITER_100"                                  
+                                , "ITER_1000"
+                                , "ITER_10000"                                 
+                                , "REDUCTION"
                                 , "MAPCHAIN_NOSYNC_10"
                                 , "MAPCHAIN_SYNC_10"
                                 , "MAPCHAIN_NOSYNC_100"
                                 , "MAPCHAIN_SYNC_100"
                                 , "MAPCHAIN_NOSYNC_1000"
                                 , "MAPCHAIN_SYNC_1000"
-                                ,  "SKLANSKY"] ]
+                                , "SKLANSKY"] ]
 
 syncCostConf = And [ Set (Variant "SyncKern1") (RuntimeArg "SyncKern1")
                    , Or [ Set NoMeaning (RuntimeArg (show n_syncs)) | n_syncs <- [0..32]]

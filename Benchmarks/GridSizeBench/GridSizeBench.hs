@@ -79,6 +79,30 @@ mapNonsense depth sync blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (f
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 -- ######################################################################
+-- arith intensive Kernel 
+-- ######################################################################
+
+arith :: (Storable a, Num a) =>
+            Int 
+            -> Pull Word32 a
+            -> Push Block Word32 a
+arith iters arr = tConcat $ fmap tf arr 
+  where
+    tf :: (Storable a, Num a) => a -> Push Thread Word32 a 
+    tf a = singletonPush 
+          $ seqIterate (fromIntegral iters) 
+                       (\_ val -> val + 1)
+                       a 
+  
+  
+mapArith :: (Storable a, Num a)  => Int  -> Word32 -> Word32 -> DPull a -> DPush Grid a
+mapArith depth blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+  where
+    body = arith depth
+    arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
+
+
+-- ######################################################################
 -- Sklansky Kernel 
 -- ######################################################################
 sklansky :: (Choice a, Storable a)
@@ -116,12 +140,16 @@ mapScan1 blocksize seq_depth n f arr = pConcat $ fmap sConcat (fmap (fmap body) 
 
 kernels :: [(String, (Word32,Word32 -> Word32 -> DPull EWord32 -> DPush Grid EWord32))]
 kernels = [("REDUCTION", (16384,\b s -> mapRed3 b s (+)))
-          ,("MAPCHAIN_NOSYNC_10", (8388608, (mapNonsense 10 False)))
-          ,("MAPCHAIN_SYNC_10"  , (8388608, (mapNonsense 10 True)))
-          ,("MAPCHAIN_NOSYNC_100", (8388608, (mapNonsense 100 False)))
-          ,("MAPCHAIN_SYNC_100"  , (8388608, (mapNonsense 100 True)))
+          ,("MAPCHAIN_NOSYNC_10"  , (8388608, (mapNonsense 10 False)))
+          ,("MAPCHAIN_SYNC_10"    , (8388608, (mapNonsense 10 True)))
+          ,("MAPCHAIN_NOSYNC_100" , (8388608, (mapNonsense 100 False)))
+          ,("MAPCHAIN_SYNC_100"   , (8388608, (mapNonsense 100 True)))
           ,("MAPCHAIN_NOSYNC_1000", (8388608, (mapNonsense 1000 False)))
           ,("MAPCHAIN_SYNC_1000"  , (8388608, (mapNonsense 1000 True)))
+          ,("ITER_10"             , (8388608, (mapArith    10)))
+          ,("ITER_100"            , (8388608, (mapArith    10)))
+          ,("ITER_1000"           , (8388608, (mapArith    10)))
+          ,("ITER_10000"          , (8388608, (mapArith    10)))
           ,("SKLANSKY", (8388608,\b s -> mapScan1 b s 9 (+)))]
           
 
