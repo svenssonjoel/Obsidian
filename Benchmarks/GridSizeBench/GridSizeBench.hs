@@ -60,7 +60,7 @@ nonsense :: (Storable a, Num a) =>
            -> BProgram (Push Block Word32 a)
 nonsense sync arr = do
   arr' <- loop 9 arr    -- same depth complexity as scan (Maybe vary this!) 
-  return $ push arr
+  return $ push arr'
   where
     loop :: (Storable a, Num a) => Int -> Pull Word32 a -> BProgram (Pull Word32 a)
     loop 0 ain = return ain
