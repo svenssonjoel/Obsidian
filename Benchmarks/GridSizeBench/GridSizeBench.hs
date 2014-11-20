@@ -243,6 +243,6 @@ main = do
               lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral results_size * sizeOf (undefined :: EWord32))
               lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
               lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
-              lift $ putStrLn $ show $ P.take 1024 (V.toList r) 
+              lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
 
