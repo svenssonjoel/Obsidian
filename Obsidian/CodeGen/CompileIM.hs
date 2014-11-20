@@ -588,9 +588,6 @@ declares (SSeqWhile _ im,_) = concatMap declares im
 declares (SForAll _ _ im,_) = concatMap declares im
 declares (SDistrPar _ _ im,_) = concatMap declares im
 declares (SSeqFor _ _  im,_) = concatMap declares im
--- declares (SForAllBlocks _ im,_) = concatMap declares im
--- declares (SNWarps _ im,_) = concatMap declares im
--- declares (SWarpForAll _ im,_) = concatMap declares im 
 declares _ = []
 
 
