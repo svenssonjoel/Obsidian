@@ -36,7 +36,7 @@ scanConf = Or [ And [ Set (Variant v) (RuntimeArg v)
                     , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..12]]
                     ] | v <- ["s1", "s2", "s3", "k1", "k2" ]] 
 
-largeScanConf = And [ Set (Variant "largeScan") (RuntimeArg "bigscan")
+largeScanConf = And [ Set (Variant "bigscan") (RuntimeArg "bigscan")
                     , Or [ Set NoMeaning (RuntimeArg reducer) | reducer <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]]
                     , Or [ Set NoMeaning (RuntimeArg scaner)  | scaner  <- ["cin1", "cin2", "cin3", "cin4", "cin5"]]
                     , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
