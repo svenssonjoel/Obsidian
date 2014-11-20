@@ -70,15 +70,15 @@ syncCostNWConf = Or [ And [ Set (Variant v) (RuntimeArg v)
 
 all_benchmarks :: [Benchmark DefaultParamMeaning]
 all_benchmarks =
-  [ mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf1
-  , mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf2
-  , mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf
-  , mkBenchmark "ScanBench/Scan.cabal" [] scanConf
-  , mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf
-  , mkBenchmark "FractalBench/Fractals.cabal" [] fractalConf
-  , mkBenchmark "GridSizeBench/GridSizeBench.cabal" [] gridSizeConf
-  , mkBenchmark "SyncCostBench/SyncCostBench.cabal" [] syncCostConf
-  , mkBenchmark "SyncCostNumWarpsBench/SyncCostNumWarpsBench.cabal" [] syncCostNWConf
+  [ (mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf1)  { progname = Just "Reduce" }
+  , (mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf2)  { progname = Just "Reduce" } 
+  , (mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf)  { progname = Just "Reduce" }
+  , (mkBenchmark "ScanBench/Scan.cabal" [] scanConf) {progname = Just "Scan" }
+  , (mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf) {progname = Just "LargeScan"} 
+  , (mkBenchmark "FractalBench/Fractals.cabal" [] fractalConf) {progname = Just "Fractals"}
+  , (mkBenchmark "GridSizeBench/GridSizeBench.cabal" [] gridSizeConf) {progname = Just "GridSize"} 
+  , (mkBenchmark "SyncCostBench/SyncCostBench.cabal" [] syncCostConf) {progname = Just "SyncCost"} 
+  , (mkBenchmark "SyncCostNumWarpsBench/SyncCostNumWarpsBench.cabal" [] syncCostNWConf) {progname = Just "SyncCostNumWarps"}
   ] 
   
   
