@@ -131,6 +131,7 @@ usesTid = any (go . fst)
   where
     go (SDistrPar _ _ im) = usesTid im 
     go (SForAll Block _ _) = True
+    go (SSeqFor _ _ im) = usesTid im 
     go _ = False
 usesBid :: IMList t -> Bool
 usesBid = any (go . fst)

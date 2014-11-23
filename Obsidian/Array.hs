@@ -30,12 +30,10 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
                        undefinedGlobal) where
 
 import Obsidian.Exp 
-import Obsidian.Types
-import Obsidian.Globs
 import Obsidian.Program
+import Obsidian.Globs
 
 import Prelude hiding (replicate) 
-import Data.List hiding (replicate) 
 import Data.Word
 
 ---------------------------------------------------------------------------
@@ -50,8 +48,10 @@ type DPush t a = Push t EWord32 a
 -- Create arrays
 ---------------------------------------------------------------------------
 -- | An undefined array. Use as placeholder when generating code
-undefinedGlobal n = Pull n $ \gix -> undefined
--- | A named global array. 
+undefinedGlobal :: ASize s => s -> Pull s a
+undefinedGlobal n = Pull n $ \_ -> undefined
+-- | A named global array.
+namedGlobal :: (ASize s, Scalar a) => Name -> s -> Pull s (Exp a) 
 namedGlobal name n = Pull n $ \gix -> index name gix
 -- namedPull name n = Pull n $ \gix -> index name gix
 
@@ -85,27 +85,28 @@ mkPush :: s
        -> Push t s a
 mkPush n p = Push n p 
 
--- | Create a pull array. 
+-- | Create a pull array.
+mkPull :: ASize s => s -> (EWord32 -> a) -> Pull s a
 mkPull n p = Pull n p 
 
 -- Fix this.
 --   * you cannot safely resize either push or pull arrays
 --   * you can shorten pull arrays safely.  
-setSize :: l -> Pull l a -> Pull l a
+setSize :: ASize l => l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
 
 ---------------------------------------------------------------------------
 -- Array Class 
----------------------------------------------------------------------------
+---------------------------------------------------------------------------x
 class ArrayLength a where
   -- | Get the length of an array.
   len :: a s e -> s
 
 instance ArrayLength Pull where
-  len    (Pull n ixf) = n
+  len    arr  = pullLen arr
 
 instance ArrayLength (Push t) where
-  len  (Push s p) = s
+  len  (Push s _) = s
 
 class Array a where
   -- | Array of consecutive integers
@@ -119,6 +120,7 @@ class Array a where
   ixMap     :: (EWord32 -> EWord32)
                -> a s e -> a s e
   -- requires Choice !
+  -- Simply because the pull array implementation of it does. 
   -- | Append two arrays. 
   append    :: (ASize s, Choice e) => a s e -> a s e -> a s e 
   
@@ -175,8 +177,12 @@ instance Array (Push t) where
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
-instance Array arr => Functor (arr w) where 
+instance Functor (Push t s) where 
   fmap = aMap
+
+instance Functor (Pull s) where
+  fmap = aMap 
+
 
 ---------------------------------------------------------------------------
 -- Pushable
@@ -227,7 +233,7 @@ push (Pull n ixf) =
 --------------------------------------------------------------------------
 -- Indexing, array creation.
 ---------------------------------------------------------------------------
-
+pushApp :: Push t s a -> (a -> EWord32 -> TProgram ()) -> Program t () 
 pushApp (Push _ p) a = p a
 
 infixl 9 <:

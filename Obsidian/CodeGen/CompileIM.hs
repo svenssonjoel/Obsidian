@@ -20,7 +20,7 @@ import qualified Language.C.Quote.OpenCL as CL
 import qualified "language-c-quote" Language.C.Syntax as C 
 
 import Obsidian.Exp (IExp(..),IBinOp(..),IUnOp(..))
-import Obsidian.Types
+import Obsidian.Types as T
 import Obsidian.DimSpec 
 import Obsidian.CodeGen.Program
 
@@ -145,7 +145,8 @@ compileExp (IFunCall name es t) = [cexp| $fc |]
 compileExp (ICast e t) = [cexp| ($ty:(compileType t)) $e' |]
   where
     e' = compileExp e
-   
+
+compileType :: T.Type -> C.Type
 compileType (Int8) = [cty| typename int8_t |]
 compileType (Int16) = [cty| typename int16_t |]
 compileType (Int32) = [cty| typename int32_t |]
@@ -531,7 +532,7 @@ compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 ---------------------------------------------------------------------------
 -- Generate entire Kernel 
 ---------------------------------------------------------------------------
-type Parameters = [(String,Obsidian.Types.Type)]
+type Parameters = [(String,T.Type)]
 
 compile :: Platform -> Config -> String -> (Parameters,IMList a) -> Definition
 compile pform config kname (params,im)
@@ -580,14 +581,13 @@ compile pform config kname (params,im)
             map BlockStm stms
 
 -- Declare variables. 
+declares :: (Statement t,t) -> [BlockItem]
 declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
 declares (SCond _ im,_) = concatMap declares im 
 declares (SSeqWhile _ im,_) = concatMap declares im
 declares (SForAll _ _ im,_) = concatMap declares im
-declares (SDistrPar _ _ im,_) = concatMap declares im 
--- declares (SForAllBlocks _ im,_) = concatMap declares im
--- declares (SNWarps _ im,_) = concatMap declares im
--- declares (SWarpForAll _ im,_) = concatMap declares im 
+declares (SDistrPar _ _ im,_) = concatMap declares im
+declares (SSeqFor _ _  im,_) = concatMap declares im
 declares _ = []
 
 

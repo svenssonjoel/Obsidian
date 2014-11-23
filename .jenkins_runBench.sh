@@ -36,11 +36,14 @@ unset CABAL
 
 set -e
 
-# Maybe set up sandboxes here! 
-# and install HSBencher into them. 
+#sandboxes are created by the Makefile for run_benchmarks.hs
+#this makefile also install Obsidian+hsbencher as a single cabal install line
 DIR=`pwd`  
 echo $DIR 
-git clone git@github.com:rrnewton/HSBencher
+if [ ! -d "HSBencher" ]; then 
+    git clone git@github.com:rrnewton/HSBencher
+fi 
+
 (cd HSBencher; git submodule init; git submodule update) 
 
 # Sandbox for benchmarks ?
@@ -56,7 +59,7 @@ git clone git@github.com:rrnewton/HSBencher
 
 # Switch to where the benchmarks are
 # ----------------------------------------
-cd "$CHECKOUT"/Examples
+cd "$CHECKOUT"/Benchmarks
 rm -f run_benchmarks.exe
 make run_benchmarks.exe
 

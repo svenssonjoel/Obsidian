@@ -1,0 +1,56 @@
+
+* Ultimate grid_size setting
+ * Try kernels at that limited by either registers/arithmetic or bandwidth
+
+ * It might also be good to check/calculate what the expected &
+   achieved bandwidth of the kernels you had are; might explain the
+   long flat section Although, I can't remember off hand how many
+   load/store instructions can be issued per cycle.  Throw some
+   non-coalesced access pattern kernels might help change the flat
+   section a bit as well (just some ideas, obviously you don't have to
+   try them right now (: )
+  
+
+ * Yeah, I think the long flat region just indicates that under ideal
+   circumstances thread block size doesn't matter too much, but he
+   interesting case, where it matters, is at the extreme ends when the
+   kernel is constrained by something (arithmetic/bandwidth) (just
+   random thoughts as I wait for dinner to arrive...)
+
+ * I see. I should try nonsense kernel with high arith intensity
+   memory bandwidth would be pushed by having each tread do a lot of
+   loads.  and by accessing data with strides between consecutive
+   threads could make access pattern bad
+
+
+
+  * Yes, or just make sure each thread i indexes into
+    i*{32,64,128,256} words size block. Although that might not be
+    quite the same as lots of coalesced accesses... not sure.
+
+
+  * I think the maximum coalesced read size is 256 bytes (one double
+    per thread in the warp), but maybe that is split into 2x128 byte
+    requests, depending on the card. I.e. Just stride enough so that
+    each thread requires it's own request
+
+
+  * So a 256 (or 128) byte stride is the worst possible scenario ?
+    but I can try a bunch of those too and see where it gets worse
+
+  * I should also mention that I think there are different read
+    amounts, it _might_ not always grab the full line, hence try the
+    smaller sizes as well
+
+  * right. but at some stride a full warp memory access turns into 32
+    separate memory transactions right ?
+
+  * Yep. We just want to make sure we get 32x the maximum read size,
+    not 32x reads of a smaller size.
+ 
+  * Later, we can do some latency tests as well (;
+
+  * Actually, I would like to pin down some properties of the L2 cache
+    as well, like associativity. I'm not sure how you would do that
+    though...
+

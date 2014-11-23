@@ -26,6 +26,7 @@ import System.Environment
 import System.CPUTime.Rdtsc
 
 import Data.Time.Clock
+import Control.DeepSeq 
 
 -- ######################################################################
 -- Tools
@@ -92,17 +93,21 @@ small k t e = do
       blcks = 8192 
   withCUDA $ do
 
+    compile_t0 <- lift getCurrentTime 
     capt <- case (lookup k kernels) of
       Nothing -> error "Incorrect kernel"
       Just kern -> capture t (kern eLog (+) . splitUp e)
-    -- capt <- 
+    
+    compile_t1 <- lift getCurrentTime
 
     (inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
     let cpuresult = segmentedScan (fromIntegral e) (V.map (`mod` 32) inputs)
           -- V.scanl1 (+) (V.map (`mod` 32) inputs)
-    
+
+    transfer_start <- lift getCurrentTime
     useVector (V.map (`mod` 32) inputs) $ \i -> -- (V.fromList (P.replicate (fromIntegral e) 1))  $ \i ->
-      allocaVector (fromIntegral (e*blcks))  $ \(o :: CUDAVector Word32) -> do 
+      allocaVector (fromIntegral (e*blcks))  $ \(o :: CUDAVector Word32) -> do
+        transfer_done <- lift getCurrentTime
         fill o 0
 
 
@@ -116,7 +121,8 @@ small k t e = do
 
 
         
-        r <- copyOut o 
+        r <- copyOut o
+        t_end <- lift getCurrentTime
         
         --lift $ putStrLn $ show r
         --lift $ putStrLn $ show cpuresult
@@ -126,6 +132,14 @@ small k t e = do
         -- I implemented a bad cpu segmented scan (uses V.++)         
         lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
         lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
+
+        lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+    
+        lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
+        lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
+        lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+        lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+        lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
         -- lift $ putStrLn "Done: ... Comparing to CPU result"         
         -- when (r /= cpuresult) $ 
@@ -186,6 +200,7 @@ large reducer scan threads elements = do
       blocksLog = fromIntegral $ imLog 2 (fromIntegral blcks)
   
   withCUDA $ do
+    compile_t0 <- lift getCurrentTime 
     captRed <- case (lookup rk reductionKernels) of 
       Nothing -> error "incorrect reduce kernel" 
       Just kern -> capture t (kern . splitUp e)
@@ -199,17 +214,20 @@ large reducer scan threads elements = do
     captIScan <- case (lookup sk iScanKernels) of
       Nothing -> error "incorrect scan kernel"
       Just kern -> capture t (\a b -> kern blocksLog (+) a (splitUp (fromIntegral blcks) b))
-      
+    compile_t1 <- lift getCurrentTime  
 
     --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
     let inputs = V.fromList $ P.take (fromIntegral (e*blcks)) (P.repeat 1) 
 
+    transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
       allocaVector (fromIntegral blcks) $ \ (reds :: CUDAVector Word32) ->
         allocaVector (fromIntegral (e * blcks)) $ \ (o :: CUDAVector Word32) ->
           allocaVector 1 $ \ (zero :: CUDAVector Word32) ->
         
           do
+            transfer_done <- lift getCurrentTime
+            
             t0   <- lift getCurrentTime
             cnt0 <- lift rdtsc
 
@@ -223,14 +241,24 @@ large reducer scan threads elements = do
             cnt1 <- lift rdtsc
             t1   <- lift getCurrentTime
 
-            r <- peekCUDAVector o
-            lift $ putStrLn $ show (P.take 512 r)
 
-            lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show ( fromIntegral blcks * fromIntegral e) 
+            r <- copyOut o 
+            t_end <- lift getCurrentTime
+            
+
+            lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show ( fromIntegral (blcks * e))
             lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
             lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
             
+            lift $ putStrLn $ "COMPILATION_TIME: " ++ show (diffUTCTime compile_t1 compile_t0)
+    
+            lift $ putStrLn $ "BYTES_TO_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
+            lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
+            lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
+            lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+            lift $ putStrLn $ show $ P.take 10 (V.toList r)
+
 
 
   

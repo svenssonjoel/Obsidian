@@ -1,0 +1,13 @@
+
+
+* Experiment with varying number of blocks while keeping the amount of work fixed. 
+
+  + Base on reductions 
+  + fix number of threads (for example 512) 
+  + Vary number of blocks (1 to thousands) 
+  + fix input data size (16M elements for example)
+
+
+  + Same experiment with scan, pretend we have carry stringing capability. 
+
+    
