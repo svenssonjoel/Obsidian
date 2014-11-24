@@ -447,7 +447,25 @@ pUnCoalesce arr =
 ---------------------------------------------------------------------------
 -- RunPush 
 ---------------------------------------------------------------------------
-  
+
+execThread :: Program Thread (Push Thread s a) -> Push Thread s a
+execThread = runPush
+
+execThread' :: Program Thread a -> SPush Thread a
+execThread' = singletonPush 
+
+execWarp :: Program Warp (Push Warp s a) -> Push Warp s a
+execWarp = runPush
+
+execWarp' :: Program Warp a -> SPush Warp a
+execWarp' = singletonPush
+
+execBlock :: Program Block (Push Block s a) -> Push Block s a
+execBlock = runPush
+
+execBlock' :: Program Block a -> SPush Block a
+execBlock' = singletonPush 
+
 -- | Fuses the program that computes a Push array into the Push array. 
 runPush :: Program t (Push t s a) -> Push t s a
 runPush prg =

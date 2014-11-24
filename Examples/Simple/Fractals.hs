@@ -10,23 +10,20 @@ module Fractals where
 import Obsidian
 
 import Data.Word
-import Data.Int
-import Data.Bits
 
 import Control.Monad.State
 
 import Prelude hiding (zipWith,sum,replicate,take,drop,iterate)
-import qualified Prelude as P
-
 
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
 -- Mandel
-xmax =  1.2 :: EFloat
-xmin = -2.0 :: EFloat
-ymax =  1.2 :: EFloat
-ymin = -1.2 :: EFloat
+xmin, xmax, ymin, ymax :: EFloat
+xmax =  1.2 
+xmin = -2.0 
+ymax =  1.2 
+ymin = -1.2 
 
 -- plate1
 -- xmax =  -0.690906 :: EFloat
@@ -48,10 +45,14 @@ ymin = -1.2 :: EFloat
 
 
 -- For generating a 512x512 image
+deltaP, deltaQ :: EFloat 
 deltaP = (xmax - xmin) / 512.0
 deltaQ = (ymax - ymin) / 512.0
 
-
+f ::  EFloat
+     -> EFloat
+     -> (EFloat, EFloat, EWord32)
+     -> (EFloat, EFloat, EWord32) 
 f b t (x,y,iter) =
   (xsq - ysq + (xmin + t * deltaP),
    2*x*y + (ymax - b * deltaQ),
@@ -60,6 +61,7 @@ f b t (x,y,iter) =
     xsq = x*x
     ysq = y*y
 
+cond :: (EFloat, EFloat, EWord32) -> EBool
 cond (x,y,iter) = ((xsq + ysq) <* 4) &&* iter <* 512  
   where
     xsq = x*x
@@ -79,14 +81,16 @@ genRect :: EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
-genRect bs ts p = pConcat (mkPull bs 
-                  (\bid -> (tConcat (mkPull ts (p bid)))))
+genRect bs ts p = asGrid 
+                $ mkPull bs 
+                $ \bid -> asBlock $ mkPull ts (p bid)
 
-
+mandel :: DPush Grid EW8
 mandel = genRect 512 512 body 
   where 
-    body i j = singletonPush (iters i j) 
-        
+    body i j = execThread' (iters i j) 
+
+getMandel :: IO ()
 getMandel = putStrLn $
             genKernel 512 "mandel" mandel
   

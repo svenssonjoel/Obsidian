@@ -63,7 +63,6 @@ mapSumUpT arr = asGrid (fmap body arr)
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
-
 reduceLocal :: (Thread :<=: t, Forceable t, Storable a)
                => (a -> a -> a)
                -> SPull a
@@ -73,7 +72,7 @@ reduceLocal f arr
   | otherwise    =
     do
       let (a1,a2) = halve arr
-      arr' <- force $ push $ zipWith f a1 a2
+      arr' <- compute $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
 reduceLocal' :: (Thread :<=: t, Forceable t, Storable a)
@@ -85,54 +84,32 @@ reduceLocal' f arr
   | otherwise    =
     do
       let (a1,a2) = halve arr
-      arr' <- force $ push $ zipWith f a1 a2
+      arr' <- compute $ push $ zipWith f a1 a2
       reduceLocal' f arr'
 
--- local = pJoin
-
-reduceBlocks :: forall a . Storable a
+reduceBlock :: forall a. Storable a 
           => (a -> a -> a)
-          -> SPull a -> Program Block a
-reduceBlocks f arr =
-    do
-      imm <- compute $ asBlock (fmap body (splitUp 32 arr))
-      reduceLocal' f imm
+          -> SPull a -> Program Block (SPush Block a)
+reduceBlock f arr =
+  do imm <- compute $ asBlock (fmap body (splitUp 32 arr))
+     reduceLocal f imm
   where
-    body a = singletonPush (reduceLocal' f a) :: SPush Warp a 
-    
-reduceGrid :: forall a. Storable a
+    body a = execWarp (reduceLocal f a)
+
+reduceGrid :: forall a. Storable a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduceGrid f arr = asGrid $ fmap body (splitUp 4096 arr) 
     where
-      body a = singletonPush (reduceBlocks f a) :: SPush Block a 
+      body a = execBlock (reduceBlock f a)
 
 
-reduce :: Storable a
+reduce :: Storable a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduce = reduceGrid
 
--- reduce :: MemoryOps a
---           => (a -> a -> a)
---           -> DPull a -> DPush Grid a
--- -- reduce f = pConcatMap $ pJoin . liftM push . reduceLocal f 
--- reduce f arr = pConcat (fmap (reduceLocal f) (splitUp 256 arr))
-
--- reduceExperiment :: MemoryOps a
---                     => (a -> a -> a)
---                     -> DPull a -> DPush Grid a
--- reduceExperiment f arr =
---     pJoin $ do
---       imm <-  force <- pConcat $ fmap (reduceWarps f) (splitUp 256 arr)
---         -- imm :: SPull (SPush a) 
---       undefined -- pConcat (fmap (reduceLocal f) imm )
-
-
 
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
-
-
--- getReduce = putStrLn $ genKernel "reduce" (reduce (+) . splitUp 256) (input :- ())
 
