@@ -1,6 +1,7 @@
 {- Joel Svensson 2012,2013,2014
 
    Notes:
+   2014      : starting a big overhauling
    2013-04-02: Added a Break statement to the language.
                Use it to break out of sequential loops.
    2013-01-08: removed number-of-blocks field from ForAllBlocks
@@ -13,46 +14,43 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-} 
 
 
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Step, Zero, Warp, 
+  Thread, Block, Grid, Warp, Below, 
+  --  Step, Zero,
   -- Program type
   -- CoreProgram(..),
   Program(..), -- all exported.. for now
-  TProgram, BProgram, GProgram, WProgram(..), 
+  TProgram, BProgram, GProgram, WProgram, 
 
   -- Class
-  Sync, 
+  Sync, (:<=:)  , 
+  
   
   -- helpers
   printPrg,
   runPrg,
   uniqueNamed, uniqueNamed_,  
 
-  assign, allocate, declare,
+  allocate, declare,
   atomicOp, 
   -- Programming interface
-  seqFor, forAll, forAll2, seqWhile, sync, distrPar,
+  seqFor, forAll, seqWhile, sync, distrPar, forAll2
   ) where 
  
 import Data.Word
-import Data.Monoid
 
 import Obsidian.Exp
 import Obsidian.Types
 import Obsidian.Globs
 import Obsidian.Atomic
-import Obsidian.Names
 
--- Package value-supply
-import Data.Supply
-import System.IO.Unsafe
-
-import Control.Monad
 import Control.Applicative
 
 
@@ -60,16 +58,28 @@ import Control.Applicative
 -- Thread/Block/Grid 
 ---------------------------------------------------------------------------
 
+data Thread
+data Warp 
+data Block
+data Grid
 
-
--- A hierarchy! 
-data Step a -- A step in the hierarchy
-data Zero 
+type family Below a where
+  Below Warp  = Thread
+  Below Block = Warp
+  Below Grid  = Block
   
-type Thread = Zero
-type Warp   = Step Thread
-type Block  = Step Warp
-type Grid   = Step Block
+
+class a :<=: b  -- below or equal level
+
+instance Thread :<=: Thread
+instance Thread :<=: Warp 
+instance Thread :<=: Block
+instance Thread :<=: Grid
+instance Warp   :<=: Warp
+instance Warp   :<=: Block
+instance Warp   :<=: Grid 
+instance Block  :<=: Block
+instance Block  :<=: Grid
 
 ---------------------------------------------------------------------------
 
@@ -106,37 +116,22 @@ data Program t a where
               
   Break  :: Program Thread () 
 
-
   -- use threads along one level
   -- Warp, Block, Grid.
   -- Make sure Code generation works when t ~ Thread
-  ForAll ::  EWord32 
+  ForAll :: (Thread :<=: t) => EWord32 
             -> (EWord32 -> Program Thread ())
             -> Program t () 
 
-  
   -- Distribute over Warps yielding a Block
   -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
-           -> (EWord32 -> Program t ())
-           -> Program (Step t) ()
-           -- (really Step t -> Step (Step t) ) 
-                           
+           -> (EWord32 -> Program (Below t) ())
+           -> Program t ()
+  
+  
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
             -> Program t ()
-
-  --          count          body 
-  --Iterate :: EWord32 -> (a -> EWord32 -> Program t a) 
-  --           -> a -> Program t ()  
-                           
- 
-  --        #w          warpId     
-  --NWarps :: EWord32 -> (EWord32 -> Program Warp ()) -> Program Block () 
-
-  --WarpForAll :: EWord32 
-  --              -> (EWord32 -> Program Thread ()) 
-  --              -> Program Warp ()
-  -- WarpAllocate :: Name -> Word32 -> Type -> Program Warp ()  -- For now. 
 
   -- Allocate shared memory in each MP
   Allocate :: Name -> Word32 -> Type -> Program t () 
@@ -164,20 +159,6 @@ type WProgram = Program Warp
 type BProgram = Program Block
 type GProgram = Program Grid 
 
--- -- Programs are a reader monad 
--- newtype Program t a = Program (EWord32 -> CoreProgram t a)
-
--- instance Monad (Program t )where
---     return x = Program $ \ _ -> return x
---     -- :: WProgram a -> (a -> WProgram b) -> WProgram b
---     (Program h) >>= f = Program
---                          $ \w ->
---                          do
---                            a <- h w
---                            let (Program g) = f a
---                            g w
-
-
 -- core :: Program t a -> EWord32 ->  CoreProgram t a
 -- core (Program f) id = f id 
 ---------------------------------------------------------------------------
@@ -196,8 +177,8 @@ uniqueNamed_ pre = do id <- Identifier
 ---------------------------------------------------------------------------
 -- Memory 
 ---------------------------------------------------------------------------
-assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
-assign nom ix e = Assign nom ix e 
+-- assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
+-- assign nom ix e = Assign nom ix e 
 
 allocate :: Name -> Word32 -> Type -> Program t () 
 allocate nom l t = Allocate nom l t 
@@ -218,17 +199,22 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program t ()
+forAll :: (Thread :<=: t)
+          => EWord32
+          -> (EWord32 -> Program Thread ())
+          -> Program t ()
 forAll n f = ForAll n f
   
 -- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
 -- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
 
-forAll2 :: EWord32
+forAll2 :: (Thread :<=: Below t) => EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
-           -> Program (Step (Step t)) ()
-forAll2 b n f =  DistrPar b $ \bs -> ForAll n $ \ix -> f bs ix 
+           -> Program t ()
+forAll2 b n f =
+  DistrPar b $ \bs ->
+    ForAll n $ \ix -> f bs ix 
 
 -- forAll2 :: EWord32
 --            -> EWord32
@@ -237,8 +223,8 @@ forAll2 b n f =  DistrPar b $ \bs -> ForAll n $ \ix -> f bs ix
 -- forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
 
 distrPar :: EWord32
-           -> (EWord32 -> Program t ())
-           -> Program (Step t) ()
+           -> (EWord32 -> Program (Below t) ())
+           -> Program t ()
 distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------

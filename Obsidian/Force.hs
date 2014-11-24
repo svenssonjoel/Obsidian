@@ -2,9 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-
+{-# LANGUAGE TypeOperators #-} 
 
 
 {- Joel Svensson 2012, 2013 
@@ -23,7 +22,7 @@
 
 -}
 
-module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull) where
+module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull,compute ) where
 -- Write, force, forcePull, unsafeForce, unsafeWritePush) where 
 
 
@@ -36,6 +35,9 @@ import Obsidian.Names
 
 import Data.Word
 
+compute :: (Storable a, Forceable t)
+          => Push t Word32 a -> Program t (Pull Word32 a)      
+compute = force 
 
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
@@ -86,7 +88,7 @@ instance Write Thread where
 ---------------------------------------------------------------------------
 -- unsafe!
 ---------------------------------------------------------------------------
-unsafeWritePull :: (Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
+unsafeWritePull :: (Thread :<=: t, Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
 unsafeWritePull t = unsafeWritePush t . push
 
 ---------------------------------------------------------------------------
@@ -111,7 +113,7 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Storable a, Forceable t)
+forcePull :: (Thread :<=: t, Storable a, Forceable t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 

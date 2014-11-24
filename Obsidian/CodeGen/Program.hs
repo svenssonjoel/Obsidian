@@ -21,7 +21,7 @@ import Obsidian.Types
 import Obsidian.Atomic
 
 import qualified Obsidian.Program as P
-import Obsidian.Program (Step,Zero)
+-- import Obsidian.Program (Step,Zero)
 
 import Data.Word
 import Data.Supply

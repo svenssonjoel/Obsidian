@@ -11,9 +11,9 @@ module Obsidian.Mutable ( Mutable(Mutable)
                         , newS
                         , forceTo
                         , writeTo
+                        , assign 
                         , pullFrom
                         , atomicInc
---                         , mutlen -- hack
                         , namedMutable
                         , undefinedMutable
                         )  where 
@@ -21,8 +21,6 @@ module Obsidian.Mutable ( Mutable(Mutable)
 
 
 import Obsidian.Exp
-import Obsidian.Types
-import Obsidian.Globs
 import Obsidian.Program
 import Obsidian.Memory
 import Obsidian.Names
@@ -107,7 +105,17 @@ forceTo :: Storable a
 forceTo m arr =
   do
     writeTo m arr
-    Sync 
+    Sync
+
+---------------------------------------------------------------------------
+-- Low level operations
+---------------------------------------------------------------------------
+
+-- | Write a value into a storable array. 
+assign :: Storable a => Mutable loc l a -> EWord32 ->  a -> Program Thread ()
+assign  (Mutable _ snames) ix a = assignArray snames a ix 
+
+    
 ---------------------------------------------------------------------------
 -- pullFrom 
 ---------------------------------------------------------------------------

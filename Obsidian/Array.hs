@@ -1,6 +1,10 @@
 {-# LANGUAGE MultiParamTypeClasses,
              FlexibleInstances,
-             GADTs  #-} 
+             GADTs  #-}
+{-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE FlexibleContexts #-}
+-- Scary addition..
+{-# LANGUAGE UndecidableInstances #-} 
 
 {- Joel Svensson 2012
 
@@ -150,7 +154,7 @@ instance Array Pull where
   fromDyn n (Pull _ ixf) = Pull n ixf 
    
   
-instance Array (Push t) where
+instance (Thread :<=: t) => Array (Push t) where
   iota s = Push s $ \wf ->
     do
       forAll (sizeConv s) $ \ix -> wf ix ix 
@@ -177,7 +181,7 @@ instance Array (Push t) where
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
-instance Functor (Push t s) where 
+instance (Thread :<=: t) => Functor (Push t s) where 
   fmap = aMap
 
 instance Functor (Pull s) where
@@ -187,7 +191,7 @@ instance Functor (Pull s) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-push :: ASize s => Pull s e -> Push t s e 
+push :: (Thread :<=: t) => ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
   Push n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i

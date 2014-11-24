@@ -408,9 +408,14 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
 
-compileForAll PlatformCUDA c (SForAll Grid n im) = cim
+compileForAll PlatformCUDA c (SForAll Grid n im) = error "compileForAll: Grid" -- cim
   -- The grid case is special. May need more thought
-  --error "compileForAll: Grid"
+  -- 
+  -- The problem with this case is that
+  -- I need to come up with a blocksize (but without any guidance)
+  -- from the programmer.
+  -- Though! There is no way the programmer could provide any
+  -- such info ... 
   where
     cim = compileIM PlatformCUDA c im
 
