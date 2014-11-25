@@ -23,20 +23,13 @@ import Obsidian.Array
 import Obsidian.Mutable 
 
 import Obsidian.Types
-import Obsidian.Globs 
 import Obsidian.Program
-import Obsidian.Force
-import Obsidian.Memory
-
-import Obsidian.Names
 import Obsidian.Library
 
 import qualified Obsidian.CodeGen.Program as CG
 import Obsidian.CodeGen.CompileIM
 
 import Data.Word
-import Data.Int
-import qualified Data.Map as M 
       
 ---------------------------------------------------------------------------
 -- New approach (hopefully)

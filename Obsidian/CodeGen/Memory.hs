@@ -31,6 +31,19 @@ import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.Liveness
 
 import qualified Data.Map as Map 
+---------------------------------------------------------------------------
+-- Planned improvements
+---------------------------------------------------------------------------
+-- # Always start a shared memory array at a "bank-aligned" address
+--      + So that programmer can really effect access patterns. 
+-- # Do not rename with pointers
+--      instead output a list of (type ,name,address) quadruples
+--      that can be used to create an alias (at top scope of program)
+--      + Prettier code -> easier debugging 
+--      + Potential efficiency issues, from less casting etc
+-- # (LONG-TERM) Clever memory allocation
+--      + The future is known! So encode the optimal memory
+--        allocation schema
 
 ---------------------------------------------------------------------------
 -- Memory layout
@@ -60,10 +73,10 @@ updateMax mem = let m = maximum [a+b|(a,b) <- allocated mem]
 allocate :: Memory -> Bytes -> (Memory,Address)
 allocate m b = 
   let adress = filter (\(x,y) -> y >= b) (freeList m) -- get a list of candidates
-      getTop mem = let (a,b)  = case null (allocated m) of 
-                         False -> maximum $ List.sort (allocated m) 
-                         True  -> (0,0)
-                   in a+b
+      -- getTop mem = let (a,b)  = case null (allocated m) of 
+      --                    False -> maximum $ List.sort (allocated m) 
+      --                    True  -> (0,0)
+      --              in a+b
   in case adress of 
     -- use the first candidate (try better approaches 
     -- such as searching for best match, so that not to waste memory)

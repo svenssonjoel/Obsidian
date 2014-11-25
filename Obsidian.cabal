@@ -62,7 +62,7 @@ Library
                ,  Obsidian.Types 
                ,  Obsidian.CodeGen.CompileIM
                ,  Obsidian.CodeGen.Liveness
-               ,  Obsidian.CodeGen.Memory
+               ,  Obsidian.CodeGen.Memory2
                ,  Obsidian.CodeGen.Program
                ,  Obsidian.CodeGen.Reify 
               

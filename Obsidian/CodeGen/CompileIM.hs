@@ -534,3 +534,69 @@ compileParams _ = map go
   where
     go (name,t) = [cparam| $ty:(compileType t) $id:name |]
  
+
+---------------------------------------------------------------------------
+-- Compile with shared memory arrays declared at top
+---------------------------------------------------------------------------
+-- CODE DUPLICATION FOR NOW
+
+compileDeclsTop :: Platform -> Config -> [(String,((Word32,Word32),T.Type))] -> String -> (Parameters,IMList a) -> Definition
+compileDeclsTop pform config toplevelarrs kname (params,im)
+  = go pform 
+  where
+    stms = compileIM pform config im
+    
+    ps = compileParams pform params
+    go PlatformCUDA
+      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
+    go PlatformOpenCL
+      = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
+    go PlatformC
+      = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
+
+    cudabody = (if (configSharedMem config > 0)
+                -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
+                then [BlockDecl [cdecl| __shared__  typename uint8_t sbase[$uint:(configSharedMem config)]; |]] 
+                else []) ++
+                --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
+                --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
+--                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
+               (if (usesGid im) 
+                then [BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
+                else []) ++ 
+               (if (usesBid im) 
+                then [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
+                else []) ++ 
+               (if (usesTid im) 
+                then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
+                else []) ++
+               (if (usesWarps im) 
+                then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
+                else []) ++
+                -- declare all arrays used
+                concatMap declareArr toplevelarrs ++
+                -- All variables used will be unique and can be declared 
+                -- at the top level 
+                concatMap declares im ++ 
+                -- Not sure if I am using language.C correctly. 
+                -- Maybe compileSTM should create BlockStms ?
+                -- TODO: look how Nikola does it. 
+                map BlockStm stms
+
+    cbody = -- add memory allocation 
+            map BlockStm stms
+
+
+declareArr :: (String, ((Word32,Word32),T.Type)) -> [BlockItem]
+declareArr (arr,((_,addr),t)) =
+  [BlockDecl [cdecl| $ty:(compileType t) $id:arr = ($ty:(compileType t))(sbase + $int:addr);|]]
+
+-- (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
+-- declares (SCond _ im,_) = concatMap declares im 
+-- declares (SSeqWhile _ im,_) = concatMap declares im
+-- declares (SForAll _ _ im,_) = concatMap declares im
+-- declares (SDistrPar _ _ im,_) = concatMap declares im
+-- declares (SSeqFor _ _  im,_) = concatMap declares im
+-- declares _ = []
