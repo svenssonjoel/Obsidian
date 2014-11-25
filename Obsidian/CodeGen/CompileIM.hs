@@ -91,6 +91,8 @@ compileExp (IWord64 n) = [cexp| $ulint:(toInteger n) |]
 compileExp (IFloat n) = [cexp| $float:(toRational n) |]
 compileExp (IDouble n) = [cexp| $double:(toRational n) |]
 
+-- Implementing these may be a bit awkward
+-- given there are no vector literals in cuda. 
 compileExp (IFloat2 n m) = error "IFloat2 unhandled"
 compileExp (IFloat3 n m l) = error "IFloat3 unhandled"
 compileExp (IFloat4 n m l k) = error "IFloat4 unhandled"
@@ -119,10 +121,6 @@ compileExp (IWord32_4 n m k l) = error "FIXME"
 compileExp (IWord64_2 n m) = error "FIXME"
 compileExp (IWord64_3 n m k) = error "FIXME"
 compileExp (IWord64_4 n m k l) = error "FIXME"
-
-
-
--- TODO Add support for Vector types here as well
 
 
 compileExp (IIndex (i1,[e]) t) = [cexp| $(compileExp i1)[$(compileExp e)] |]
@@ -454,114 +452,11 @@ compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
     go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
       
 
----------------------------------------------------------------------------
--- compileWarp (needs fixing so that warpIx and warpID are always correct) 
----------------------------------------------------------------------------
--- compileWarp :: Platform -> Config -> IExp -> IMList t -> [Stm]
--- compileWarp PlatformCUDA c (IWord32 warps) im = 
---     concatMap (go . fst)  im
---   where
---     go (SAllocate nom n t) = []  -- Skip allocations at this point. Been handled earlier. 
---     go (SForAll Warp (IWord32 n) im) =
---         {-
---            warps : number of warps that should execute this code
---            n     : number of threads per each of these warps
-
---            warps may be a larger number than there are actual warps
---            n map be a larger number than 32 (the actual number of threads per warp)
-
---            c : is the configuration. It knows the actual number of threads
---                we are generating code for. 
---         -} 
---         if (wholeRealWarps <= 0)
---         then error "compileWarp: Atleast one full warp of real threads needed!"
---         else 
---           case (wholeRealWarps `compare` warps) of
---             {-
---                3 potential outcomes.
---                #1 we have more real warps than we need
---                #2 we have exactly the amount of warps that we need
---                #3 we have fewer real warps than requested.
---             -} 
---             GT -> [[cstm| if (threadIdx.x < $int:(warps*32)) {
---                            $stms:(goQ ++ goR) } |]]   
---             EQ -> goQR
---             LT -> wQ ++ wR 
-             
---        where
---         cim = compileIM PlatformCUDA c im
- 
---         nt = configThreadsPerBlock c
---         wholeRealWarps = nt `quot` 32
---         threadsPartialWarp = nt `rem` 32 -- Do not use partial warps! 
-       
---         -- Maybe something else than s for goR
---         -- It will depend on how 
---         goQR = goQ  ++ goR 
-  
---         threadQ = n `quot` 32   -- Set up virtual threads within warp
---         threadR = n `rem`  32   -- 
-
-
--- ###################################################################### 
--- CLEAN THIS MESS UP ! !!! ! ! ! !! ! !!!! ! !! ! ! ! ! !  ! !!! ! ! ! !
--- ######################################################################
-
-
-        -- -- Compile for warps, potentially with virtual threads  
-        -- goQ :: [Stm]
-        -- goQ = case threadQ of 
-        --         0 -> [] 
-        --         1 -> cim 
-        --         n -> [[cstm| for (int i = 0; i < $int:threadQ; ++i) {
-        --                                 $stms:body } |],
-        --                          [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
-        --             where 
-        --               body = [cstm| $id:("warpIx") = i*32 + threadIdx.x % 32; |] : cim
-        -- goR :: [Stm] 
-        -- goR = case threadR of 
-        --         0 -> [] 
-        --         _ -> [[cstm| if ( threadIdx.x % 32 < $int:threadR) { 
-        --                        $id:("warpIx") = $int:(threadQ*32) + (threadIdx.x % 32);
-        --                        $stms:cim } |],
-        --                 [cstm| $id:("warpIx") = threadIdx.x % 32;|]]
-
-        -- -- Compile for virtual warps 
-        -- warpQ = warps `quot` wholeRealWarps -- wholeRealWarps may be zero! 
-        -- warpR = warps `rem`  wholeRealWarps
-        -- -- each warp will pretend to be warpQ number of warps.        
-         
-        -- -- warp jump size 
-        -- -- warpQ is the number of virtual warps that EACH real warp 
-        -- -- will pretend to be. 
-        
-        -- -- warpR is a number of leftover warps (less than wholeRealWarps) 
-        -- -- that need to be processed afterwards. 
-        
-        -- wQ = case warpQ of 
-        --        0 -> [] 
-        --        1 -> goQR  
-        --        n -> [[cstm| for (int vw = 0; vw < $int:warpQ; ++vw) { $stms:body } |],
-        --              [cstm| $id:("warpID") = threadIdx.x / 32; |]]
-        --            where 
-        --              --- vw * wholeRealWarps is incorrect. 
-        --              --- 
-        --              body = [cstm| $id:("warpID") = vw + ((threadIdx.x / 32)*$int:warpQ); |] : goQR
-
-        -- wR = case warpR of 
-        --        0 -> [] 
-        --        -- Skip one division, 
-        --        -- Premature optimisation? CUDA compiler will share the threadIdx.x / 32 result. 
-        --        n -> [[cstm| if (threadIdx.x < $int:(n * 32)) {
-        --                       $id:("warpID") = $int:(warpQ*wholeRealWarps) + threadIdx.x / 32; 
-        --                       $stms:(goQR) } |], -- cim
-        --                     [cstm| $id:("warpID") = threadIdx.x / 32;|]]
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
 compileIM :: Platform -> Config -> IMList a -> [Stm]
 compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
-
 
 ---------------------------------------------------------------------------
 -- Generate entire Kernel 
