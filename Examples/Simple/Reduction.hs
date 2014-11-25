@@ -63,7 +63,7 @@ mapSumUpT arr = asGrid (fmap body arr)
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
-reduceLocal :: (Thread :<=: t, Forceable t, Storable a)
+reduceLocal :: (Forceable t, Storable a)
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -102,7 +102,7 @@ reduce = reduceGrid
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
 
-reduceLocal' :: (Thread :<=: t, Forceable t, Storable a)
+reduceLocal' :: (Forceable t, Storable a)
                => (a -> a -> a)
                -> SPull a
                -> Program t a

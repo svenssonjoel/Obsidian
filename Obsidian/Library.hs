@@ -20,7 +20,52 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Obsidian.Library where 
+module Obsidian.Library
+       ( reverse
+       , splitAt
+       , splitUp
+       , coalesce
+       , halve
+       , evenOdds
+       , evens
+       , odds
+       , everyNth
+       , singleton
+       , generate
+       , last
+       , first
+       , take
+       , drop
+       , fold1
+       , shiftLeft
+       , unzip
+       , zip
+       , unzip3
+       , zip3
+       , zipWith
+       , zipWith3
+       , pair
+       , unpair
+       , binSplit
+       , concP
+       , load   -- RENAME THIS 
+       , store  -- RENAME THIS
+       , asThread
+       , asThreadMap
+       , AsWarp(..)
+       , AsBlock(..)
+       , AsGrid(..)
+       , execThread
+       , execThread'
+       , execWarp
+       , execWarp'
+       , execBlock
+       , execBlock'
+       , singletonPush
+
+       -- Left here, but mainly intended for internal use
+       , runPush 
+       )where 
 
 import Obsidian.Array 
 import Obsidian.Exp 
@@ -34,7 +79,7 @@ import Control.Monad
 import Data.Bits 
 import Data.Word
 
-import Prelude hiding (splitAt,zipWith,replicate,reverse)
+import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,zipWith3, last, take, drop)
 
 ---------------------------------------------------------------------------
 -- Reverse an array by indexing in it backwards
@@ -309,16 +354,16 @@ store = load
 ---------------------------------------------------------------------------
 -- Parallel concatMap  
 ---------------------------------------------------------------------------
-pConcatMap :: ASize s
-              => (a -> SPush (Below t) b)
-              -> Pull s a
-              -> Push t s b 
-pConcatMap f = pConcat . fmap f
-pUnCoalesceMap f = pUnCoalesce . fmap f
-pConcatMapJoin f = pConcat . fmap (runPush.f)
-pUnCoalesceMapJoin f = pUnCoalesce . fmap (runPush.f)
-pCoalesceMap n f = pUnCoalesce . fmap f . coalesce n
-pSplitMap n f = pConcat . fmap f . splitUp n
+-- pConcatMap :: ASize s
+--               => (a -> SPush (Below t) b)
+--               -> Pull s a
+--               -> Push t s b 
+-- pConcatMap f = pConcat . fmap f
+-- pUnCoalesceMap f = pUnCoalesce . fmap f
+-- pConcatMapJoin f = pConcat . fmap (runPush.f)
+-- pUnCoalesceMapJoin f = pUnCoalesce . fmap (runPush.f)
+-- pCoalesceMap n f = pUnCoalesce . fmap f . coalesce n
+-- pSplitMap n f = pConcat . fmap f . splitUp n
 
 ---------------------------------------------------------------------------
 -- Step into the Hierarchy by distributing a
@@ -417,7 +462,7 @@ instance AsGrid Warp where
 -- | A way to enter into the hierarchy
 -- A bunch of Thread computations, spread across the threads of either
 -- a Warp, block or grid. (or performed sequentially in a single thread) 
-tConcat :: (Thread :<=: t, ASize l)
+tConcat :: ASize l
            => Pull l (SPush Thread b)
            -> Push t l b  
 tConcat arr =
@@ -431,7 +476,7 @@ tConcat arr =
     s  = len (arr ! 0) --(f (variable "tid")) -- arr
 
 -- | Variant of @tConcat@. 
-tDistribute :: (Thread :<=: t, ASize l)
+tDistribute :: ASize l
                => l
                -> (EWord32 -> SPush Thread b)
                -> Push t l b
@@ -439,7 +484,7 @@ tDistribute n f = tConcat (mkPull n f)
 
       
 -- | Distribute work across the parallel resources at a given level of the GPU hiearchy
-pConcat :: ASize l => Pull l (SPush (Below t) a) -> Push t l a
+pConcat :: ASize l => Pull l (SPush t a) -> Push (DirectlyAbove t) l a
 pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
     distrPar (sizeConv n) $ \bix ->
@@ -452,7 +497,10 @@ pConcat arr =
     rn = len (arr ! 0) -- All arrays are same length
 
 -- | Distribute work across the parallel resources at a given level of the GPU hierarchy
-pDistribute :: ASize l => l -> (EWord32 -> SPush (Below t) a) -> Push t l a
+pDistribute :: ASize l
+               => l
+               -> (EWord32 -> SPush t a)
+               -> Push (DirectlyAbove t) l a
 pDistribute n f = pConcat (mkPull n f) 
 
 -- | Sequential concatenation of a Pull of Push.
@@ -475,7 +523,9 @@ sDistribute n f = sConcat (mkPull n f)
 -- pUnCoalesce adapted from Niklas branch.
 -- | Combines work that was distributed in a Coalesced way.
 -- | Applies a permutation on stores.
-pUnCoalesce :: ASize l => Pull l (SPush (Below t) a) -> Push t l a
+pUnCoalesce :: ASize l
+               => Pull l (SPush t a)
+               -> Push (DirectlyAbove t) l a
 pUnCoalesce arr =
   mkPush (n * fromIntegral rn) $ \wf ->
   distrPar (sizeConv n) $ \bix ->
@@ -529,21 +579,21 @@ runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
 runPush2 f a b = runPush (f a b)  
 
 -- | Converts a program computing a pull Array to a Push array
-runPull :: (Thread :<=: t,  ASize s) => Program t (Pull s a) -> Push t s a
+runPull :: ASize s => Program t (Pull s a) -> Push t s a
 runPull = runPush . liftM push 
 
 -- | Lifts @runPull@ to one input functions.
-runPull1 :: (Thread :<=: t,  ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
+runPull1 :: ASize s => (a -> Program t (Pull s b)) -> a -> Push t s b
 runPull1 f a = runPull (f a)
 
 -- | Lifts @runPull@ to two input functions.
-runPull2 :: (Thread :<=: t,  ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
+runPull2 :: ASize s => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
 runPull2 f a b = runPull (f a b)
 
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------
-pushPrg :: (Thread :<=: t) => Program t a -> SPush t a
+pushPrg :: Program t a -> SPush t a
 pushPrg = singletonPush
 
 
@@ -557,7 +607,7 @@ pushPrg = singletonPush
 --singletonPush = singletonPushP . return 
 
 -- | Monadic version of @singleton@.
-singletonPush :: (Thread :<=: t) => Program t a -> SPush t a
+singletonPush :: Program t a -> SPush t a
 singletonPush prg =
   mkPush 1 $ \wf -> do
     a <- prg

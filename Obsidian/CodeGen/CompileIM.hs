@@ -5,8 +5,7 @@
 
 {-
 
-   Joel Svensson 2013
-
+   Joel Svensson 2013, 2014
 
 -} 
 
@@ -24,10 +23,7 @@ import Obsidian.Types as T
 import Obsidian.DimSpec 
 import Obsidian.CodeGen.Program
 
-import Control.Monad.State
-
 import Data.Word
-import Data.Int
 
 {- TODOs:
     
@@ -95,10 +91,42 @@ compileExp (IWord64 n) = [cexp| $ulint:(toInteger n) |]
 compileExp (IFloat n) = [cexp| $float:(toRational n) |]
 compileExp (IDouble n) = [cexp| $double:(toRational n) |]
 
+compileExp (IFloat2 n m) = error "IFloat2 unhandled"
+compileExp (IFloat3 n m l) = error "IFloat3 unhandled"
+compileExp (IFloat4 n m l k) = error "IFloat4 unhandled"
+compileExp (IDouble2 n m) = error "IDouble2 unhandled" 
+compileExp (IInt8_2 n m) = error "FIXME"
+compileExp (IInt8_3 n m k) = error "FIXME"
+compileExp (IInt8_4 n m k l) = error "FIXME"
+compileExp (IInt16_2 n m ) = error "FIXME"
+compileExp (IInt16_3 n m k) = error "FIXME"
+compileExp (IInt16_4 n m k l) = error "FIXME"
+compileExp (IInt32_2 n m) = error "FIXME"
+compileExp (IInt32_3 n m k) = error "FIXME"
+compileExp (IInt32_4 n m k l) = error "FIXME"
+compileExp (IInt64_2 n m) = error "FIXME"
+compileExp (IInt64_3 n m k) = error "FIXME"
+compileExp (IInt64_4 n m k l) = error "FIXME"
+compileExp (IWord8_2 n m) = error "FIXME"
+compileExp (IWord8_3 n m k) = error "FIXME"
+compileExp (IWord8_4 n m k l) = error "FIXME"
+compileExp (IWord16_2 n m ) = error "FIXME"
+compileExp (IWord16_3 n m k) = error "FIXME"
+compileExp (IWord16_4 n m k l) = error "FIXME"
+compileExp (IWord32_2 n m) = error "FIXME"
+compileExp (IWord32_3 n m k) = error "FIXME"
+compileExp (IWord32_4 n m k l) = error "FIXME"
+compileExp (IWord64_2 n m) = error "FIXME"
+compileExp (IWord64_3 n m k) = error "FIXME"
+compileExp (IWord64_4 n m k l) = error "FIXME"
+
+
+
 -- TODO Add support for Vector types here as well
 
 
-compileExp (IIndex (i1,[e]) t) = [cexp| $(compileExp i1)[$(compileExp e)] |] 
+compileExp (IIndex (i1,[e]) t) = [cexp| $(compileExp i1)[$(compileExp e)] |]
+compileExp a@(IIndex (_,_) _) = error $ "compileExp: Malformed index expression " ++ show a
 
 compileExp (ICond e1 e2 e3 t) = [cexp| $(compileExp e1) ? $(compileExp e2) : $(compileExp e3) |]
 
@@ -121,7 +149,8 @@ compileExp (IBinOp op e1 e2 t) = go op
     go IOr = [cexp| $x  || $y |]
     go IPow = case t of
                 Float ->  [cexp|powf($x,$y) |]
-                Double -> [cexp|pow($x,$y)  |] 
+                Double -> [cexp|pow($x,$y)  |]
+                _      -> error $ "IPow applied at wrong type" 
     go IBitwiseAnd = [cexp| $x & $y |]
     go IBitwiseOr = [cexp| $x | $y |]
     go IBitwiseXor = [cexp| $x ^ $y |]

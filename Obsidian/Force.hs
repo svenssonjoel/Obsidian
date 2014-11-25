@@ -88,7 +88,7 @@ instance Write Thread where
 ---------------------------------------------------------------------------
 -- unsafe!
 ---------------------------------------------------------------------------
-unsafeWritePull :: (Thread :<=: t, Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
+unsafeWritePull :: (Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
 unsafeWritePull t = unsafeWritePush t . push
 
 ---------------------------------------------------------------------------
@@ -113,7 +113,7 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Thread :<=: t, Storable a, Forceable t)
+forcePull :: (Storable a, Forceable t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 

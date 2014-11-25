@@ -22,7 +22,7 @@
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Warp, Below, 
+  Thread, Block, Grid, Warp, DirectlyAbove, 
   --  Step, Zero,
   -- Program type
   -- CoreProgram(..),
@@ -30,7 +30,7 @@ module Obsidian.Program  (
   TProgram, BProgram, GProgram, WProgram, 
 
   -- Class
-  Sync, (:<=:)  , 
+  Sync,
   
   
   -- helpers
@@ -59,27 +59,11 @@ import Control.Applicative
 ---------------------------------------------------------------------------
 
 data Thread
-data Warp 
-data Block
-data Grid
+data DirectlyAbove t 
 
-type family Below a where
-  Below Warp  = Thread
-  Below Block = Warp
-  Below Grid  = Block
-  
-
-class a :<=: b  -- below or equal level
-
-instance Thread :<=: Thread
-instance Thread :<=: Warp 
-instance Thread :<=: Block
-instance Thread :<=: Grid
-instance Warp   :<=: Warp
-instance Warp   :<=: Block
-instance Warp   :<=: Grid 
-instance Block  :<=: Block
-instance Block  :<=: Grid
+type Warp = DirectlyAbove Thread
+type Block = DirectlyAbove Warp
+type Grid  = DirectlyAbove Block
 
 ---------------------------------------------------------------------------
 
@@ -119,15 +103,15 @@ data Program t a where
   -- use threads along one level
   -- Warp, Block, Grid.
   -- Make sure Code generation works when t ~ Thread
-  ForAll :: (Thread :<=: t) => EWord32 
+  ForAll :: EWord32 
             -> (EWord32 -> Program Thread ())
             -> Program t () 
 
   -- Distribute over Warps yielding a Block
   -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
-           -> (EWord32 -> Program (Below t) ())
-           -> Program t ()
+           -> (EWord32 -> Program t ())
+           -> Program (DirectlyAbove t) ()
   
   
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
@@ -141,12 +125,11 @@ data Program t a where
                 
   Sync     :: Program Block ()
 
-  -- Parallel composition of Programs
-  -- TODO: Will I use this ? 
-  --Par :: Program p () ->
-  --       Program p () ->
-  --       Program p () 
+  -- Think about how to to allow multikernel programs.
 
+  -- HardSync :: Program Grid () 
+  -- How to decide arguments to the different kernels ? 
+  
   -- Monad
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
@@ -159,8 +142,6 @@ type WProgram = Program Warp
 type BProgram = Program Block
 type GProgram = Program Grid 
 
--- core :: Program t a -> EWord32 ->  CoreProgram t a
--- core (Program f) id = f id 
 ---------------------------------------------------------------------------
 -- Helpers 
 --------------------------------------------------------------------------- 
@@ -199,55 +180,30 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: (Thread :<=: t)
-          => EWord32
+forAll :: EWord32
           -> (EWord32 -> Program Thread ())
           -> Program t ()
 forAll n f = ForAll n f
   
--- forAll :: EWord32 -> (EWord32 -> Program t ()) -> Program (Step t) ()
--- forAll n f = Program $ \id -> ForAll n $ \ix -> core (f ix) id
-
-forAll2 :: (Thread :<=: Below t) => EWord32
+forAll2 :: EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
-           -> Program t ()
+           -> Program (DirectlyAbove t) ()
 forAll2 b n f =
   DistrPar b $ \bs ->
     ForAll n $ \ix -> f bs ix 
 
--- forAll2 :: EWord32
---            -> EWord32
---            -> (EWord32 -> EWord32 -> Program t ())
---            -> Program (Step (Step t)) ()
--- forAll2 b n f =  forAll b $ \bs -> forAll n (f bs)
-
 distrPar :: EWord32
-           -> (EWord32 -> Program (Below t) ())
-           -> Program t ()
+           -> (EWord32 -> Program t ())
+           -> Program (DirectlyAbove t) ()
 distrPar b f = DistrPar b $ \bs -> f bs
 
----------------------------------------------------------------------------
--- warpForAll 
----------------------------------------------------------------------------
---warpForAll :: EWord32 -> (EWord32 -> Program Thread ()) -> Program Warp ()
--- warpForAll n f = Program $ \id -> WarpForAll n $ \ix -> core (f ix) id 
- 
 ---------------------------------------------------------------------------
 -- seqFor
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
 seqFor (Literal 1) f = f 0
 seqFor n f = SeqFor n f 
-
----------------------------------------------------------------------------
--- iterate 
----------------------------------------------------------------------------
-
--- iterate :: EWord32 -> (a -> EWord32 -> Program t a) -> a -> Program t ()
--- iterate (Literal 1) f a = f a 0 >>= \x -> return () 
--- iterate n f a = Iterate n f a 
-
 
 ---------------------------------------------------------------------------
 -- seqWhile

@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 
-module Increment where
+module Main where
 
 
 import Obsidian
@@ -48,3 +48,6 @@ performInc =
 
         r <- copyOut o
         lift $ putStrLn $ show r
+
+main :: IO () 
+main = performInc 
