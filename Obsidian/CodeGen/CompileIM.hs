@@ -592,11 +592,3 @@ compileDeclsTop pform config toplevelarrs kname (params,im)
 declareArr :: (String, ((Word32,Word32),T.Type)) -> [BlockItem]
 declareArr (arr,((_,addr),t)) =
   [BlockDecl [cdecl| $ty:(compileType t) $id:arr = ($ty:(compileType t))(sbase + $int:addr);|]]
-
--- (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
--- declares (SCond _ im,_) = concatMap declares im 
--- declares (SSeqWhile _ im,_) = concatMap declares im
--- declares (SForAll _ _ im,_) = concatMap declares im
--- declares (SDistrPar _ _ im,_) = concatMap declares im
--- declares (SSeqFor _ _  im,_) = concatMap declares im
--- declares _ = []

@@ -99,7 +99,7 @@ bank_align conf address =
     
   where banks = smBanks conf
         -- if address % bank_alignment == 0
-        -- the address is aligned
+        --   the address is aligned
         bank_alignment = banks * 4 -- number of banks * 4 bytes
         
         how_far_off = address `mod`  bank_alignment
@@ -268,7 +268,7 @@ process conf (SDistrPar Block n im,_) m mm = mmIM conf im m mm
 process conf (_,_) m mm = (m,mm) 
 
 -- Friday (2013 Mars 29, discovered bug)
--- 2014-Nov-25: was the "l" the bug ? (some details help) 
+-- 2014-Nov-25: was the "l" the bug ? (some details help)
 getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 
 getFreeableSet (_,l) [] = Set.empty -- not l ! 
 getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1

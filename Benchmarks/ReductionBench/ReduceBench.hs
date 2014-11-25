@@ -18,6 +18,7 @@ import Control.Monad.State
 
 import Data.Word
 
+import System.Exit
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
 import Data.Time.Clock (getCurrentTime, diffUTCTime)
@@ -112,10 +113,14 @@ runBenchmark origkern t elts =
         lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral blcks * sizeOf (undefined :: EWord32))
         lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
         lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
-        when (sum (V.toList r) /= cpuresult) $ lift $
-          putStrLn "WARNING: CPU and GPU results not equal!!"
 
+        let ok = sum (V.toList r) == cpuresult
 
+        lift $ case ok of
+          False -> do 
+            putStrLn "WARNING: CPU and GPU results not the same!!"
+            exitFailure
+          True -> putStrLn "Success: GREAT!! CPU and GPU result are the same!"
 
   
 
@@ -171,6 +176,10 @@ runLargeBenchmark origkern t =
              lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
              lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
          
-             when ((V.toList r) P.!! 0 /= cpuresult) $ lift $ do 
-               putStrLn "WARNING: CPU and GPU results not equal!!" 
+             let ok = (V.toList r) P.!! 0 == cpuresult
 
+             lift $ case ok of
+               False -> do 
+                 putStrLn "WARNING: CPU and GPU results not the same!!"
+                 exitFailure
+               True -> putStrLn "Success: GREAT!! CPU and GPU result are the same!"
