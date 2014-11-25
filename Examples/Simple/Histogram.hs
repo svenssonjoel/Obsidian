@@ -15,12 +15,4 @@ histogram blocks threads mut arr =
       atomicInc (arr ! (bid * threads + tid)) mut
 
 
-input :: DPull EWord32
-input = undefinedGlobal (variable "X")
-
-inputM :: Mutable Global EWord32 EWord32 
-inputM = undefinedMutable (variable "X")
-
--- getHistogram = putStrLn $ genKernel "histo" (histogram 256 256) (inputM :- input :- ())
-
          

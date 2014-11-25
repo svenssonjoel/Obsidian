@@ -8,13 +8,7 @@ module Increment where
 import Obsidian
 import Obsidian.Run.CUDA.Exec
 
-
-import Data.Word
-import Data.Int
-
 import Prelude hiding (map, zipWith, sum, replicate, take, drop, iterate, reverse)
-import Prelude as P
-
 import qualified Data.Vector.Storable as V
 
 import Control.Monad.State
@@ -28,16 +22,16 @@ incLocal arr = fmap (+1) arr
 
 
 increment :: DPull (SPull EWord32) -> DPush Grid EWord32 
-increment arr = pConcat (fmap body arr) 
-  where body a = push (incLocal a)  
+increment arr = asGridMap body arr
+  where body a = push (incLocal a) :: SPush Block EWord32 
 
 
 increment' :: DPull (SPull (SPull EWord32)) -> DPush Grid EWord32 
-increment' arr = pConcat (fmap body arr) 
-  where body a = tConcat (fmap (push . incLocal) a) 
+increment' arr = asGrid (fmap body arr) 
+  where body a = asBlock (fmap body' a) 
+        body' a  = push $ incLocal a :: SPush Block EWord32
 
-
-
+performInc :: IO () 
 performInc =
   withCUDA $
   do

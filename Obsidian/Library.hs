@@ -77,7 +77,8 @@ coalesce n arr =
   mkPull s $ \i ->
     mkPull n $ \j -> arr ! (i + (sizeConv s) * j)
   where s = len arr `div` fromIntegral n
-        
+
+
 ---------------------------------------------------------------------------
 -- elements at even indices to fst output, odd to snd.
 ---------------------------------------------------------------------------
@@ -308,7 +309,10 @@ store = load
 ---------------------------------------------------------------------------
 -- Parallel concatMap  
 ---------------------------------------------------------------------------
-
+pConcatMap :: ASize s
+              => (a -> SPush (Below t) b)
+              -> Pull s a
+              -> Push t s b 
 pConcatMap f = pConcat . fmap f
 pUnCoalesceMap f = pUnCoalesce . fmap f
 pConcatMapJoin f = pConcat . fmap (runPush.f)
@@ -324,50 +328,91 @@ pSplitMap n f = pConcat . fmap f . splitUp n
 
 -- "Compute as" family of functions 
 
+
+---------------------------------------------------------------------------
+-- AsBlock
+---------------------------------------------------------------------------
 class AsBlock t where
   asBlock :: SPull (SPush t a) ->
              SPush Block a
+  asBlockMap :: (a -> SPush t b) 
+              -> SPull a
+              -> SPush Block b 
+
 
 instance AsBlock Thread where 
   asBlock = tConcat
+  asBlockMap f = tConcat . fmap f
+  
 instance AsBlock Warp where
   asBlock = pConcat
+  asBlockMap f = pConcat . fmap f
+  
 instance AsBlock Block where
   asBlock = sConcat
+  asBlockMap f = sConcat . fmap f 
 
+---------------------------------------------------------------------------
+-- AsWarp
+--------------------------------------------------------------------------- 
 class AsWarp t where
   asWarp :: SPull (SPush t a) ->
             SPush Warp a 
-  
+  asWarpMap :: (a -> SPush t b) 
+               -> SPull a
+               -> SPush Warp b 
+
             
 instance AsWarp Thread where
   asWarp = tConcat
-
+  asWarpMap f = tConcat . fmap f
+  
 instance AsWarp Warp where
   asWarp = sConcat
+  asWarpMap f = sConcat . fmap f
+
+---------------------------------------------------------------------------
+-- asThread
+---------------------------------------------------------------------------
   
 asThread :: ASize l
            => Pull l (SPush Thread b)
            -> Push Thread l b
 asThread = tConcat
 
+asThreadMap :: (a -> SPush Thread b) 
+               -> SPull a
+               -> SPush Thread b
+asThreadMap f = tConcat . fmap f
+
+
+---------------------------------------------------------------------------
+-- AsGrid
+---------------------------------------------------------------------------
+
 class AsGrid t where
   asGrid :: ASize l => Pull l (SPush t a) ->
             Push Grid l a
+  asGridMap :: ASize l => (a -> SPush t b) 
+              -> Pull l a
+              -> Push Grid l b 
+
 
 instance AsGrid Thread where
   asGrid = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
-
+  asGridMap = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
+  
 instance AsGrid Block where
   asGrid = pConcat
+  asGridMap f = pConcat . fmap f
 
 instance AsGrid Warp where
   asGrid = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
+  asGridMap = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
 
--- compute :: ASize l => Pull l (SPush (Below t) a) -> Push t l a
--- compute = pConcat
-
-
+---------------------------------------------------------------------------
+-- Old stuff that should nolonger be exported!
+---------------------------------------------------------------------------
 
 -- | A way to enter into the hierarchy
 -- A bunch of Thread computations, spread across the threads of either

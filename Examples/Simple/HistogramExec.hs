@@ -7,8 +7,6 @@ import Histogram
 import Prelude hiding (replicate)
 import Prelude as P
 
-
-import Obsidian
 import Obsidian.Run.CUDA.Exec
 
 import qualified Data.Vector.Storable as V
@@ -17,6 +15,7 @@ import Control.Monad.State
 import Data.Word
 
 -- allocaVector does not zero out the memory.
+performSmall :: IO () 
 performSmall =
   withCUDA $
   do
@@ -32,7 +31,7 @@ performSmall =
  
 
 
-
+performLarge :: IO ()
 performLarge =
   withCUDA $
   do
@@ -47,4 +46,5 @@ performLarge =
           lift $ putStrLn $ show r 
 
 
+main :: IO ()
 main = performLarge

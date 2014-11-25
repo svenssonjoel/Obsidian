@@ -75,17 +75,6 @@ reduceLocal f arr
       arr' <- compute $ push $ zipWith f a1 a2
       reduceLocal f arr'
 
-reduceLocal' :: (Thread :<=: t, Forceable t, Storable a)
-               => (a -> a -> a)
-               -> SPull a
-               -> Program t a
-reduceLocal' f arr
-  | len arr == 1 = return (arr ! 0)
-  | otherwise    =
-    do
-      let (a1,a2) = halve arr
-      arr' <- compute $ push $ zipWith f a1 a2
-      reduceLocal' f arr'
 
 reduceBlock :: forall a. Storable a 
           => (a -> a -> a)
@@ -113,3 +102,14 @@ reduce = reduceGrid
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
 
+reduceLocal' :: (Thread :<=: t, Forceable t, Storable a)
+               => (a -> a -> a)
+               -> SPull a
+               -> Program t a
+reduceLocal' f arr
+  | len arr == 1 = return (arr ! 0)
+  | otherwise    =
+    do
+      let (a1,a2) = halve arr
+      arr' <- compute $ push $ zipWith f a1 a2
+      reduceLocal' f arr'
