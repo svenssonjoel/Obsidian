@@ -9,6 +9,7 @@ data Names a where
   Single :: Name -> Names a
   Tuple  :: Names a -> Names b -> Names (a,b)
   Triple :: Names a -> Names b -> Names c -> Names (a,b,c) 
+  Quadruple :: Names a -> Names b -> Names c -> Names d -> Names (a,b,c,d) 
 
 ---------------------------------------------------------------------------
 -- helpers
@@ -20,4 +21,9 @@ mapNamesM_ f (Tuple n1 n2) = mapNamesM_ f n1 >>
 mapNamesM_ f (Triple n1 n2 n3) = mapNamesM_ f n1 >>
                                  mapNamesM_ f n2 >>
                                  mapNamesM_ f n3
+mapNamesM_ f (Quadruple n1 n2 n3 n4) = mapNamesM_ f n1 >>
+                                       mapNamesM_ f n2 >>
+                                       mapNamesM_ f n3 >>
+                                       mapNamesM_ f n4
+                                       
 

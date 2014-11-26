@@ -14,10 +14,10 @@ import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Memory
 import Obsidian.Names
-
+import qualified Obsidian.Library as Lib 
 
 -- TODO: Rename module to something better
-
+--       Or make part of Library.hs
 ---------------------------------------------------------------------------
 -- seqReduce 
 ---------------------------------------------------------------------------
@@ -110,16 +110,16 @@ seqScan op arr {-(Pull n ixf)-}  =
       n = len arr
 
 -- | Sequential scan that takes a carry-in. 
-seqScanCin :: Storable a
-           => (a -> a -> a)
-           -> a -- cin  
+seqScanCin :: (Storable a, Storable b) 
+           => (b -> a -> b)
+           -> b -- cin  
            -> SPull a
-           -> SPush Thread a
-seqScanCin op a arr {-(Pull n ixf)-} =
+           -> SPush Thread b
+seqScanCin op a arr =
   mkPush n $ \wf ->  do
-    (ns :: Names a) <- names "v" -- (ixf 0) 
-    allocateScalar ns -- (ixf 0)
-    assignScalar ns a -- (ixf 0)
+    (ns :: Names a) <- names "v" 
+    allocateScalar ns 
+    assignScalar ns a 
     -- wf (readFrom ns) 0 
     SeqFor (sizeConv  n) $ \ix -> do
       assignScalar ns  $ readFrom ns `op` (arr ! ix)
@@ -127,3 +127,30 @@ seqScanCin op a arr {-(Pull n ixf)-} =
   where
     n = len arr
     
+-- | Sequential scan with separate types for input, output and accumulator.
+mapAccumL :: (ASize s, Storable a, Storable b, Storable acc)
+           => (acc -> a -> (acc,b))
+           -> acc -- cin
+           -> Pull s a
+           -> Push Thread s b
+mapAccumL op acc arr {-(Pull n ixf)-} =
+  mkPush n $ \wf ->  do
+    (ns :: Names a) <- names "v" -- (ixf 0)
+    allocateScalar ns -- (ixf 0)
+    assignScalar ns acc -- (ixf 0)
+    -- wf (readFrom ns) 0
+    SeqFor (sizeConv  n) $ \ix -> do
+      let (newAcc, b) = op (readFrom ns) (arr ! ix)
+      -- order of writing matters, because readFrom is evaluated twice
+      wf b ix
+      assignScalar ns newAcc
+  where
+    n = len arr
+
+mapAccumR :: (ASize s, Storable a, Storable b, Storable acc)
+           => (acc -> a -> (acc,b))
+           -> acc -- cin
+           -> Pull s a
+           -> Push Thread s b
+mapAccumR op acc =
+   Lib.reverse . mapAccumL op acc . Lib.reverse

@@ -86,11 +86,10 @@ import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,z
 ---------------------------------------------------------------------------
 
 -- | Reverses a Pull array.
-reverse :: ASize l => Pull l a -> Pull l a 
-reverse arr = mkPull n (\ix -> arr ! ((sizeConv m) - ix))  
-   where m = n-1
-         n = len arr
-         
+reverse :: (Array array, ArrayLength array, ASize l) => array l a -> array l a
+reverse arr = ixMap (\ix -> (sizeConv m) - ix) arr
+    where m = n-1
+          n = len arr        
 ---------------------------------------------------------------------------
 -- splitAt (name clashes with Prelude.splitAt)
 ---------------------------------------------------------------------------
@@ -110,7 +109,7 @@ halve arr = splitAt n2 arr
     n2 = n `div` 2
 
 -- | Splits a Pull array into chunks of size n. Result is a Pull of Pull arrays.
-splitUp :: ASize l => Word32 -> Pull l a -> Pull l (SPull a)
+splitUp :: (ASize l, ASize s, Integral s) => s -> Pull l a -> Pull l (Pull s a)
 splitUp n arr {-(Pull m ixf)-} =
   mkPull (len arr `div` fromIntegral n) $ \i ->
     mkPull n $ \j -> arr ! (i * (sizeConv n) + j)                                               
@@ -159,7 +158,7 @@ everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegra
 singleton :: (Array a, ASize l) => e -> a l e
 singleton a = replicate 1 a
 
--- | Generate a pull or push array usign a function from Index to element.
+-- | Generate a pull or push array using a function from Index to element.
 generate :: (Functor (a s), Array a, ASize s)
          => s -> (EWord32 -> b) -> a s b
 generate n f = fmap f (iota n) 
@@ -264,6 +263,33 @@ unpair arr =
     in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
                                   (fst (arr ! (ix `shiftR` 1)))
                                   (snd (arr ! (ix `shiftR` 1)))) 
+
+-- | Triple up consecutive elements in a Pull array.
+triple :: ASize l => Pull l a -> Pull l (a,a,a)
+triple arr =
+  mkPull (len arr `div` 3) $ \ix ->
+    (arr ! (ix*3), arr ! (ix*3+1), arr ! (ix*3+2))
+
+-- | Flatten a Pull array of triples. 
+untriple :: ASize l => Choice a => Pull l (a,a,a) -> Pull l a
+untriple arr =
+  mkPull (3*len arr) $ \ix ->
+    let (k,j) = divMod ix 3
+        (a0,a1,a2) = arr ! k
+    in  ifThenElse (j ==* 0) a0 $
+        ifThenElse (j ==* 1) a1 a2
+
+
+-- | Quadruple up consecutive elements in a Pull array.
+quadruple :: ASize l => Pull l a -> Pull l (a,a,a,a)
+quadruple arr =
+  mkPull (len arr `div` 4) $ \ix ->
+    (arr ! (ix*4), arr ! (ix*4+1), arr ! (ix*4+2), arr ! (ix*4+3))
+
+-- | Flatten a Pull array of triples. 
+unquadruple :: ASize l => Choice a => Pull l (a,a,a,a) -> Pull l a
+unquadruple = unpair . unpair . fmap (\(a0,a1,a2,a3) -> ((a0,a1), (a2,a3)))
+
 
 
 ---------------------------------------------------------------------------

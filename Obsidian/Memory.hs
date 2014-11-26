@@ -200,3 +200,69 @@ instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
         p3 = readFrom ns3
     in (p1,p2,p3)
  
+instance (Storable a, Storable b, Storable c, Storable d) => Storable (a, b, c, d) where
+  names pre =
+    do
+      (a :: Names a) <- names pre
+      (b :: Names b) <- names pre
+      (c :: Names c) <- names pre
+      (d :: Names d) <- names pre
+      return $ Quadruple a b c d
+
+  allocateArray (Quadruple ns1 ns2 ns3 ns4) n =
+      allocateArray ns1 n >>
+      allocateArray ns2 n >>
+      allocateArray ns3 n >>
+      allocateArray ns4 n
+
+  allocateVolatileArray (Quadruple ns1 ns2 ns3 ns4) n =
+      allocateVolatileArray ns1 n >>
+      allocateVolatileArray ns2 n >>
+      allocateVolatileArray ns3 n >>
+      allocateVolatileArray ns4 n
+
+  allocateScalar (Quadruple ns1 ns2 ns3 ns4) =
+      allocateScalar ns1 >>
+      allocateScalar ns2 >>
+      allocateScalar ns3 >>
+      allocateScalar ns4
+
+  assignArray (Quadruple ns1 ns2 ns3 ns4) (a,b,c,d) ix =
+      assignArray ns1 a ix >>
+      assignArray ns2 b ix >>
+      assignArray ns3 c ix >>
+      assignArray ns4 d ix
+
+  warpAssignArray (Quadruple ns1 ns2 ns3 ns4) warpID step (a,b,c,d) ix =
+      warpAssignArray ns1 warpID step a ix >>
+      warpAssignArray ns2 warpID step b ix >>
+      warpAssignArray ns3 warpID step c ix >>
+      warpAssignArray ns4 warpID step d ix
+
+
+  assignScalar (Quadruple ns1 ns2 ns3 ns4) (a,b,c,d) =
+      assignScalar ns1 a >>
+      assignScalar ns2 b >>
+      assignScalar ns3 c >>
+      assignScalar ns4 d
+
+  pullFrom (Quadruple ns1 ns2 ns3 ns4) n =
+    let p1 = pullFrom ns1 n
+        p2 = pullFrom ns2 n
+        p3 = pullFrom ns3 n
+        p4 = pullFrom ns4 n
+    in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix, p4 ! ix))
+
+  warpPullFrom (Quadruple ns1 ns2 ns3 ns4) warpID n
+   = let p1 = warpPullFrom ns1 warpID n
+         p2 = warpPullFrom ns2 warpID n
+         p3 = warpPullFrom ns3 warpID n
+         p4 = warpPullFrom ns4 warpID n
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix, p4 ! ix))
+
+  readFrom (Quadruple ns1 ns2 ns3 ns4)  =
+    let p1 = readFrom ns1
+        p2 = readFrom ns2
+        p3 = readFrom ns3
+        p4 = readFrom ns4
+    in (p1,p2,p3,p4)
