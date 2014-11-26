@@ -1,3 +1,5 @@
+* BRANCH PRE BIG CHANGES IN NOV2014
+
 * Obsidian
   
   An embedded language for GPU kernel programming. 
