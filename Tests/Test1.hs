@@ -3,8 +3,6 @@
 module Main where
 
 
-
-
 import Prelude hiding (replicate)
 import Prelude as P
 
