@@ -29,19 +29,19 @@ input = undefinedGlobal (variable "X")
 red1 :: Storable a
       => (a -> a -> a)
       -> Pull Word32 a
-      -> Program Block a
+      -> Program Block (SPush Block a)
 red1 f arr
-  | len arr == 1 = return (arr ! 0)
+  | len arr == 1 = return $ push $ arr 
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      imm <- forcePull (zipWith f a1 a2)
+      imm <- computePull (zipWith f a1 a2)
       red1 f imm   
 
 mapRed1 :: Storable a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
-mapRed1 f arr = pConcat (fmap body arr)
+mapRed1 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red1 f arr) 
+    body arr = execBlock (red1 f arr) 
 
 getRed1 = putStrLn $
           genKernel 256 "red1"
@@ -55,19 +55,19 @@ getRed1 = putStrLn $
 red2 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red2 f arr
-  | len arr == 1 = return (arr ! 0) 
+  | len arr == 1 = return $ push $ arr 
   | otherwise    = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- computePull (zipWith f a1 a2)
       red2 f arr'   
 
 mapRed2 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed2 f arr = pConcat (fmap body arr)
+mapRed2 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red2 f arr)
+    body arr = execBlock (red2 f arr)
 
 getRed2 = putStrLn $ 
           genKernel 256 "red2"
@@ -82,21 +82,21 @@ red3 :: Storable a
            => Word32 
            -> (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red3 cutoff f  arr
   | len arr == cutoff =
-    return (fold1 f arr ! 0) 
+    return $ push $ fold1 f arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- computePull (zipWith f a1 a2)
       red3 cutoff f arr'   
 
 
 mapRed3 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed3 f arr = pConcat (fmap body arr)
+mapRed3 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red3 2 f arr)
+    body arr = execBlock (red3 2 f arr)
 
 getRed3 = putStrLn $ 
           genKernel 256 "red3"
@@ -115,16 +115,16 @@ seqReducePush f = singletonPush . seqReduce f
 red4 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red4 f arr =
   do
-    arr' <- force (tConcat (fmap (seqReducePush f) (splitUp 8 arr)))
+    arr' <- compute $ asBlockMap (seqReducePush f) (splitUp 8 arr)
     red3 2 f arr'
     
 mapRed4 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed4 f arr = pConcat (fmap body arr)
+mapRed4 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red4 f arr) 
+    body arr = execBlock (red4 f arr) 
 
 getRed4 = putStrLn $
           genKernel 256 "red4"
@@ -139,18 +139,18 @@ getRed4 = putStrLn $
 red5 :: Storable a
            => (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red5 f arr =
   do
-    arr' <- force (tConcat (fmap (seqReducePush f)
-                           (coalesce 8 arr)))
+    arr' <- compute $ asBlockMap (seqReducePush f)
+                                 (coalesce 8 arr)
     red3 2 f arr' 
   
 
 mapRed5 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed5 f arr = pConcat (fmap body arr)
+mapRed5 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red5 f arr) 
+    body arr = execBlock (red5 f arr) 
 
 getRed5 = putStrLn $
           genKernel 256 "red5"
@@ -166,18 +166,18 @@ red5' :: Storable a
            => Word32
            -> (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red5' n f arr =
   do
-    arr' <- force (tConcat (fmap (seqReducePush f) (coalesce n arr)))
+    arr' <- compute $ asBlockMap (seqReducePush f) (coalesce n arr)
     red3 2 f arr' 
 
 red6 = red5' 16 
 
 mapRed6 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed6 f arr = pConcat (fmap body arr) 
+mapRed6 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red6 f arr) 
+    body arr = execBlock (red6 f arr) 
 
 getRed6 = putStrLn $ 
           genKernel 256 "red6"
@@ -192,9 +192,9 @@ getRed6 = putStrLn $
 red7 = red5' 32  
 
 mapRed7 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed7 f arr = pConcat (fmap body arr) 
+mapRed7 f arr = asGridMap body arr
   where
-    body arr = singletonPush (red7 f arr)
+    body arr = execBlock (red7 f arr)
 
 getRed7 = putStrLn $
           genKernel 256 "red7"
