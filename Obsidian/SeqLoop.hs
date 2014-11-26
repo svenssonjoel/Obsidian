@@ -15,7 +15,6 @@ import Obsidian.Array
 import Obsidian.Memory
 import Obsidian.Names
 
-import Data.Word
 
 -- TODO: Rename module to something better
 

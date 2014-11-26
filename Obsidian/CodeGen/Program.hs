@@ -21,7 +21,6 @@ import Obsidian.Types
 import Obsidian.Atomic
 
 import qualified Obsidian.Program as P
--- import Obsidian.Program (Step,Zero)
 
 import Data.Word
 import Data.Supply
@@ -30,6 +29,7 @@ import Data.List
 import System.IO.Unsafe
 
 import Control.Monad.State
+import Control.Applicative 
 
 
 ---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ type IMList a = [(Statement a,a)]
 
 type IM = IMList ()
 
--- out :: 
+out :: a -> [(a,())] 
 out a = [(a,())]
 
 -- Atomic operations
@@ -88,7 +88,7 @@ data Context = Context { ctxNWarps :: Maybe Word32,
                          ctxGLBUsesWid :: Bool}
 
 newtype CM a = CM (State Context a)
-   deriving (Monad, MonadState Context)
+   deriving (Monad, MonadState Context, Functor, Applicative)
 
 runCM :: CM a -> Context -> a 
 --runCM (CM cm) ctx = evalState cm ctx
@@ -114,6 +114,7 @@ getNWarps = do
   ctx <- get
   return $ ctxNWarps ctx 
 
+emptyCtx :: Context
 emptyCtx = Context Nothing False False
 ---------------------------------------------------------------------------
 
@@ -136,7 +137,7 @@ usesTid = any (go . fst)
 usesBid :: IMList t -> Bool
 usesBid = any (go . fst)
   where
-    go (SDistrPar Block _ im) = True -- usesBid im
+    go (SDistrPar Block _ _) = True -- usesBid im
     -- go (SForAll Block _ _) = True
     go _ = False
 usesGid :: IMList t -> Bool

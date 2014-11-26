@@ -38,20 +38,17 @@ import Foreign.Ptr
 
 import Data.Word
 import Data.Int
-import Data.Supply
-import Data.List
-import qualified Data.Map as M
-import Data.Maybe
-
-import System.IO.Unsafe
 import System.Process
 import System.Random.MWC
-import System.CPUTime.Rdtsc
 
 import Control.Monad.State
 
+debug :: Bool
 debug = False
 
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
 instance V.Storable a => V.Storable (Vector4 a) where
   sizeOf _ = sizeOf (undefined :: a) * 4
   alignment _ = alignment (undefined :: a)

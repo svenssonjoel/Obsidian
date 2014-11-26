@@ -47,7 +47,8 @@ data Type
   | Global Type    -- OpenCL thing
   | Local Type     -- OpenCL thing
   deriving (Eq, Ord, Show)
-           
+
+typeSize :: Num a => Type -> a 
 typeSize Int8 = 1
 typeSize Int16 = 2
 typeSize Int32 = 4
@@ -59,3 +60,4 @@ typeSize Word64 = 8
 typeSize Bool = 4
 typeSize Float = 4
 typeSize Double = 8 
+typeSize t = error $ "typeSize: this is bad!: " ++ show t 

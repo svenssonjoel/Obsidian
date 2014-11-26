@@ -16,7 +16,6 @@ module Obsidian.Memory (Storable(..))  where
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Types
-import Obsidian.Globs
 import Obsidian.Array -- Importing this feels a bit strange.
 import Obsidian.Names
 

@@ -64,7 +64,7 @@ executable SyncCostNumWarpsBench.exe
                , mtl >=2.1 && <2.2
                , random   
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.1.0.2
+               , Obsidian >= 0.1.1
                , rdtsc >= 1.3, time >= 1.4
                , deepseq >= 1.3.0.2
   -- Directories containing source files.

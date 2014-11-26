@@ -28,10 +28,7 @@ genKernel :: ToProgram prg
              -> String
 genKernel = genKernelParams sm_conf
   where 
-    -- pretend we have 32 banks for now.
-    -- should be efficiency optimal regardless,
-    -- but less space efficient if there are really only 16 banks
-    -- TODO: Query device for shared mem size! 
+    -- pretend we have 32 banks and 48kb shared mem
     sm_conf :: SharedMemConfig 
     sm_conf = SharedMemConfig 49152 32 True
 

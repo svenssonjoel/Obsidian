@@ -31,12 +31,13 @@ import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.Liveness
 
 import qualified Data.Map as Map 
+
 ---------------------------------------------------------------------------
 -- Planned improvements
 ---------------------------------------------------------------------------
--- # Always start a shared memory array at a "bank-aligned" address
+-- # DONE: Always start a shared memory array at a "bank-aligned" address
 --      + So that programmer can really effect access patterns. 
--- # Do not rename with pointers
+-- # DONE: Do not rename with pointers
 --      instead output a list of (type ,name,address) quadruples
 --      that can be used to create an alias (at top scope of program)
 --      + Prettier code -> easier debugging 
@@ -44,6 +45,10 @@ import qualified Data.Map as Map
 -- # (LONG-TERM) Clever memory allocation
 --      + The future is known! So encode the optimal memory
 --        allocation schema
+
+-- Assumptions:
+--   # an array declares as being __shared__ in the CUDA code
+--     will be well aligned with the banks
 
 ---------------------------------------------------------------------------
 -- Memory layout
