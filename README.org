@@ -10,22 +10,43 @@
       supported by the CUDA bindings (Linux, Mac). 
       Obsidian.Run.CUDA.Exec provides a very low level interface to
       running kernels. 
+    + Memory manager alignes arrays in shared memory with respect to 
+      memory banks. 
+
+* News 
+  + New functions for "programming the hierarchy:
+    - asThread, asWarp, asBlock, asGrid replaces tConcat,pConcat,sConcat functionality
+    - execThread :: Program Thread (SPush Thread a) -> SPush Thread a 
+    - execWarp 
+    - execBlock 
+    - force is now called compute
+    
+  + Memory manager had a big revamping.  
+
+  + Code generation revamping: All intermediate shared arrays are declared at 
+    toplevel of kernel (as pointers into a chunk of shared mem). 
+    This makes the body of a kernel much more readable.
 
 * In Progress
-    + Support for CUDA Vector types (float4, Double2). 
     + Mutable arrays:
       Mutable arrays in shared memory can be created.
       Global mutable arrays can be passed into a kernel as an argument. 
     + Atomic operations on mutable arrays.
 
-  
 * TODOs
-  + Interface with cub in some way. 
-    Allow the programmer to call functions from the cub library 
-     - Blockwide operations. 
-    
-  + Look at code generation, is there a problem with the memory management ? 
-	    
+  + Query device for parameters (shared mem size, shared mem banks) 
+    but also allow programmer to specify this. Maybe by just saying what 
+    compute capability the program should be run on (compiled on).
+  + Implement a memory manager that uses the optimal memory layout. 
+    This is possible, all information is there. 
+  + come up with better name for forcePull, computePull?, or overload compute. 
+    Don't know if even more type classes is a good thing though.
+  + Enhance and improve the library for programming with mutable arrays. 
+    Make mutable arrays more accessible to the programmer and make them a 
+    more integrated part of the programming style. 
+  + Testing: Many changes lately, a test-suite is needed. 
+    Example programs and benchmarks seem to work, but more is needed. 
+  + Multikernel programs expressed within Obsidian. 
 
 * Versioning Policy (from Apr 14 2014 with the release of version 0.1.0.0) 
   + A.B.C.D  
