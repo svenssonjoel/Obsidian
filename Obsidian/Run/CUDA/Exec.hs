@@ -14,20 +14,20 @@ module Obsidian.Run.CUDA.Exec where
 
 
 import qualified Foreign.CUDA.Driver as CUDA
-import qualified Foreign.CUDA.Driver.Device as CUDA
-import qualified Foreign.CUDA.Analysis.Device as CUDA
-import qualified Foreign.CUDA.Driver.Stream as CUDAStream
+-- import qualified Foreign.CUDA.Driver.Device as CUDA
+-- import qualified Foreign.CUDA.Analysis.Device as CUDA
+-- import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
 import Obsidian.CodeGen.Reify
 import Obsidian.CodeGen.CUDA
 
-import Obsidian.Types -- experimental
+-- import Obsidian.Types -- experimental
 import Obsidian.Exp hiding (sizeOf)
 import Obsidian.Array
 import Obsidian.Program (Grid, GProgram)
 import Obsidian.Mutable
 
-import Foreign.Marshal.Array
+-- import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
 import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
 
@@ -134,6 +134,18 @@ propsSummary props = unlines
    "Num MP: " ++ show (CUDA.multiProcessorCount props),
    "Mem bus width: " ++ show (CUDA.memBusWidth props)] 
 
+---------------------------------------------------------------------------
+-- Extract shared mem config
+---------------------------------------------------------------------------
+sharedMemConfig :: CUDA.DeviceProperties -> SharedMemConfig 
+sharedMemConfig props = SharedMemConfig sm_bytes num_banks True
+  where
+    sm_bytes = fromIntegral $ CUDA.sharedMemPerBlock props
+    num_banks = if x < 2
+                then 16
+                else 32              
+    (CUDA.Compute x _) = CUDA.computeCapability props
+    
 --------------------------------------------------------------------------
 -- Environment to run CUDA computations in.
 --  # Needs to keep track of generated and loaded functions etc. 
@@ -311,21 +323,24 @@ capture threadsPerBlock f =
     
     let kn     = "gen" ++ show i
         fn     = kn ++ ".cu"
-        cub    = fn ++ ".cubin"
+        --cub    = fn ++ ".cubin"
 
-        prgstr = genKernel threadsPerBlock kn f
+        sm_conf = sharedMemConfig props
+        
+        prgstr = genKernelParams sm_conf threadsPerBlock kn f
         header = "#include <stdint.h>\n" -- more includes ? 
-
+      
+    
     when debug $ 
       do 
         lift $ putStrLn $ prgstr
 
     let arch = archStr props
         
-    lift $ storeAndCompile arch (fn) (header ++ prgstr)
+    cub_file <- lift $ storeAndCompile arch fn (header ++ prgstr)
     
-    mod <- liftIO $ CUDA.loadFile cub
-    fun <- liftIO $ CUDA.getFun mod kn 
+    cubin <- liftIO $ CUDA.loadFile cub_file
+    fun <- liftIO $ CUDA.getFun cubin kn 
 
     {- After loading the binary into the running process
        can I delete the .cu and the .cu.cubin ? -} 
