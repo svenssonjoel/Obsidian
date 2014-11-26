@@ -14,14 +14,10 @@ import Obsidian.Run.CUDA.Exec
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
 
-import Data.Int
 import Data.Word
 
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
-import Data.Time.Clock (getCurrentTime, diffUTCTime)
-
-import Data.IORef
 
 import Data.Time.Clock
 import Control.DeepSeq 
@@ -44,9 +40,9 @@ nonsense n_syncs arr = loopit 32 arr
 
 
 mapNonsense :: (Storable a, Num a)  => Word32 -> Word32 -> DPull a -> DPush Grid a
-mapNonsense blocksize n_syncs arr = pConcat $ fmap body arr'
+mapNonsense blocksize n_syncs arr = asGridMap body arr'
   where
-    body = runPush . (nonsense n_syncs)
+    body = execBlock . (nonsense n_syncs)
     arr' = splitUp blocksize arr
 
 

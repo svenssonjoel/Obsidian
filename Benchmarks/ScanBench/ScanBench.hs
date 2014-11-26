@@ -165,7 +165,7 @@ scanKernels :: [(String,
                        -> (Exp Word32 -> Exp Word32 -> Exp Word32)
                        -> DPull (Exp Word32)
                        -> DPull (SPull (Exp Word32))
-                       -> DPush (Step Block) (Exp Word32))]
+                       -> DPush Grid (Exp Word32))]
 scanKernels = [("cin1", mapScanCIn1)
               ,("cin2", mapScanCIn2)
               ,("cin3", mapScanCIn3)

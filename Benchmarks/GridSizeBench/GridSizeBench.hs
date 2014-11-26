@@ -14,14 +14,10 @@ import Obsidian.Run.CUDA.Exec
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
 
-import Data.Int
 import Data.Word
 
 import System.Environment
 import System.CPUTime.Rdtsc (rdtsc)
-import Data.Time.Clock (getCurrentTime, diffUTCTime)
-
-import Data.IORef
 
 import Data.Time.Clock
 import Control.DeepSeq
@@ -33,10 +29,10 @@ red3 :: Storable a
            => Word32 
            -> (a -> a -> a)
            -> Pull Word32 a
-           -> Program Block a
+           -> Program Block (SPush Block a)
 red3 cutoff f  arr
   | len arr == cutoff =
-    return (fold1 f arr ! 0) 
+    return $ push $ fold1 f arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
@@ -45,9 +41,10 @@ red3 cutoff f  arr
 
 
 mapRed3 :: Storable a => Word32 -> Word32 -> (a -> a -> a) -> DPull a -> DPush Grid a
-mapRed3 blocksize seq_depth f arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+mapRed3 blocksize seq_depth f arr = asGridMap (asBlockMap body) arr' --arr' 
+  -- pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
-    body arr = singletonPush (red3 2 f arr)
+    body arr = execBlock (red3 2 f arr)
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 
@@ -73,9 +70,11 @@ nonsense depth sync arr = do
                | otherwise = unsafeWritePull False arr
 
 mapNonsense :: (Storable a, Num a)  => Int -> Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
-mapNonsense depth sync blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+mapNonsense depth sync blocksize seq_depth arr =
+  asGridMap (asBlockMap body) arr'
+  --pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
-    body = runPush . (nonsense depth sync) 
+    body = execBlock . (nonsense depth sync) 
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 -- ######################################################################
@@ -86,17 +85,19 @@ arith :: (Storable a, Num a) =>
             Int 
             -> Pull Word32 a
             -> Push Block Word32 a
-arith iters arr = tConcat $ fmap tf arr 
+arith iters arr = asBlockMap tf arr -- $ fmap tf arr 
   where
     tf :: (Storable a, Num a) => a -> Push Thread Word32 a 
-    tf a = singletonPush 
+    tf a = execThread' 
           $ seqIterate (fromIntegral iters) 
                        (\_ val -> val + 1)
                        a 
   
   
 mapArith :: (Storable a, Num a)  => Int  -> Word32 -> Word32 -> DPull a -> DPush Grid a
-mapArith depth blocksize seq_depth arr = pConcat $ fmap sConcat (fmap (fmap body) arr')
+mapArith depth blocksize seq_depth arr =
+  asGridMap (asBlockMap body) arr' 
+  --pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
     body = arith depth
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
@@ -130,9 +131,11 @@ fan op arr =  a1 `append` fmap (op c) a2
 -- pushM = liftM push
 
 mapScan1 :: (Choice a, Storable a) => Word32 -> Word32 -> Int -> (a -> a -> a) -> DPull a -> DPush Grid a
-mapScan1 blocksize seq_depth n f arr = pConcat $ fmap sConcat (fmap (fmap body) arr') 
+mapScan1 blocksize seq_depth n f arr =
+  asGridMap (asBlockMap body) arr'
+  --pConcat $ fmap sConcat (fmap (fmap body) arr') 
   where
-    body arr = runPush (sklansky n f arr)
+    body arr = execBlock (sklansky n f arr)
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
 
 

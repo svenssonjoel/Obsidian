@@ -12,13 +12,10 @@ module Fractals where
 import Obsidian
 
 import Data.Word
-import Data.Int
-import Data.Bits
 
 import Control.Monad.State
 
 import Prelude hiding (zipWith,sum,replicate,take,drop,iterate)
-import qualified Prelude as P
 
 
 ---------------------------------------------------------------------------
@@ -78,9 +75,10 @@ genRect :: Storable b
            => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
-           -> DPush Grid b 
-genRect bs ts p = pDistribute bs $
-                  \bid -> (tDistribute ts $ p bid)
+           -> DPush Grid b
+genRect bs ts p = asGrid 
+                $ mkPull bs 
+                $ \bid -> asBlock $ mkPull ts (p bid)
 
 
 -- Generate square Mandelbrot images 
