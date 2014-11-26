@@ -16,7 +16,7 @@
 * News 
   + New functions for "programming the hierarchy:
     - asThread, asWarp, asBlock, asGrid replaces tConcat,pConcat,sConcat functionality
-    - execThread :: Program Thread (SPush Thread a) -> SPush Thread a 
+    - execThread  Program Thread (SPush Thread a) -> SPush Thread a 
     - execWarp 
     - execBlock 
     - force is now called compute
