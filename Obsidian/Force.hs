@@ -1,3 +1,4 @@
+
 {-# LANGUAGE ScopedTypeVariables #-} 
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -22,7 +23,8 @@
 
 -}
 
-module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull,compute ) where
+
+module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull,compute, computePull ) where
 -- Write, force, forcePull, unsafeForce, unsafeWritePush) where 
 
 
@@ -35,9 +37,19 @@ import Obsidian.Names
 
 import Data.Word
 
+{-# DEPRECATED force, forcePull, unsafeForce "Don't use these" #-}
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+
 compute :: (Storable a, Forceable t)
           => Push t Word32 a -> Program t (Pull Word32 a)      
-compute = force 
+compute = force
+
+computePull :: (Storable a, Forceable t)
+             => Pull Word32 a -> Program t (Pull Word32 a)  
+computePull = unsafeForce . push 
 
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
