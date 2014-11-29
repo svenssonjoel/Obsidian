@@ -4,7 +4,28 @@
              TypeSynonymInstances,
              FlexibleInstances #-} 
 
-module Obsidian.Run.CUDA.Exec where
+module Obsidian.Run.CUDA.Exec ( mkRandomVec
+                              , CUDAVector
+                              , getDevices
+                              , propsSummary
+                              , sharedMemConfig
+                              , CUDA
+                              , KernelT
+                              , (<:>)
+                              , (<>)
+                              , (<==)
+                              , syncAll
+                              , exec
+                              , withCUDA
+                              , capture
+                              , captureIO
+                              , useVector
+                              , allocaVector
+                              , allocaFillVector
+                              , fill
+                              , peekCUDAVector
+                              , copyOut
+                              ) where
 
 ---------------------------------------------------------------------------
 --
@@ -14,9 +35,6 @@ module Obsidian.Run.CUDA.Exec where
 
 
 import qualified Foreign.CUDA.Driver as CUDA
--- import qualified Foreign.CUDA.Driver.Device as CUDA
--- import qualified Foreign.CUDA.Analysis.Device as CUDA
--- import qualified Foreign.CUDA.Driver.Stream as CUDAStream
 
 import Obsidian.CodeGen.Reify
 import Obsidian.CodeGen.CUDA
@@ -29,10 +47,9 @@ import Obsidian.Mutable
 
 -- import Foreign.Marshal.Array
 import Foreign.ForeignPtr.Unsafe -- (req GHC 7.6 ?)
-import Foreign.ForeignPtr hiding (unsafeForeignPtrToPtr)
+import Foreign.ForeignPtr 
 
 import qualified Data.Vector.Storable as V
--- import Data.Vector.Storable hiding ((++),modify,mapM)
 import Foreign.Storable
 import Foreign.Ptr
 
@@ -95,18 +112,21 @@ instance V.Storable a => V.Storable (Vector2 a) where
 ---------------------------------------------------------------------------
 -- Tools 
 ---------------------------------------------------------------------------
+-- | Generate a random vector
 mkRandomVec :: forall a.(V.Storable a, Variate a) => Int -> IO (V.Vector a)
 mkRandomVec k = withSystemRandom $ \g -> uniformVector g k :: IO (V.Vector a) 
 
 ---------------------------------------------------------------------------
 -- An array located in GPU memory
 ---------------------------------------------------------------------------
+-- | Represents vectors (arrays) in GPU memory.
 data CUDAVector a = CUDAVector {cvPtr :: CUDA.DevicePtr a,
                                 cvLen :: Word32} 
 
 ---------------------------------------------------------------------------
 -- Get a list of devices from the CUDA driver
 ---------------------------------------------------------------------------
+-- | Get a list of CUDA devices available in the system 
 getDevices :: IO [(CUDA.Device,CUDA.DeviceProperties)]
 getDevices = do
   num <- CUDA.count 
@@ -117,6 +137,7 @@ getDevices = do
 ---------------------------------------------------------------------------
 -- Print a Summary of a device's properties. 
 ---------------------------------------------------------------------------
+-- | A string showing some of the properties os a CUDA device.
 propsSummary :: CUDA.DeviceProperties -> String
 propsSummary props = unlines
   ["Device Name: " ++ CUDA.deviceName props,
@@ -134,6 +155,8 @@ propsSummary props = unlines
 ---------------------------------------------------------------------------
 -- Extract shared mem config
 ---------------------------------------------------------------------------
+-- | Extract shared memory configuration. This information is used
+--   by the memory layout manager.
 sharedMemConfig :: CUDA.DeviceProperties -> SharedMemConfig 
 sharedMemConfig props = SharedMemConfig sm_bytes num_banks True
   where
@@ -147,19 +170,19 @@ sharedMemConfig props = SharedMemConfig sm_bytes num_banks True
 -- Environment to run CUDA computations in.
 --  # Needs to keep track of generated and loaded functions etc. 
 ---------------------------------------------------------------------------
-
+-- | An environment to perform CUDA computations within.
 data CUDAState = CUDAState { csIdent :: Int,
                              csCtx   :: CUDA.Context,
                              csProps :: CUDA.DeviceProperties}
 
 type CUDA a =  StateT CUDAState IO a
 
-data Kernel = Kernel {kFun :: CUDA.Fun,
-                      kThreadsPerBlock :: Word32,
-                      kSharedBytes :: Word32}
 
 -- Change so that the type parameter to KernelT
--- represents the "captured" type, with CUDAVectors instead of Pull, Push vectors. 
+-- represents the "captured" type, with CUDAVectors instead of Pull, Push vectors.
+
+-- | A representation of a CUDA kernel. This represents the
+--   kernel after it has been loaded from an Object file. 
 data KernelT a = KernelT {ktFun :: CUDA.Fun,
                           ktThreadsPerBlock :: Word32,
                           ktSharedBytes :: Word32,
@@ -211,13 +234,15 @@ instance Scalar a => KernelO (CUDAVector a) where
 ---------------------------------------------------------------------------
 -- (<>) apply a kernel to an input
 ---------------------------------------------------------------------------
+-- | Apply a kernel to an input 
 (<>) :: KernelI a
         => (Word32,KernelT (KInput a -> b)) -> a -> (Word32,KernelT b)
 (<>) (blocks,kern) a = (blocks,addInParam kern a)
 
 ---------------------------------------------------------------------------
 -- Assign a mutable input/output to a kernel
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
+-- | apply a kernel to a mutable array 
 (<:>) :: KernelM a
          => (Word32, KernelT (KMutable a -> b)) -> a -> (Word32, KernelT b)
 (<:>) (blocks,kern) a = (blocks, addMutable kern a)
@@ -226,6 +251,8 @@ instance Scalar a => KernelO (CUDAVector a) where
 ---------------------------------------------------------------------------
 -- Execute a kernel and store output to an array
 ---------------------------------------------------------------------------
+-- | Infix operator taking an allocated output array on LHS and
+--   a (Number_Of_Blocks,Kernel) pair on the right. 
 (<==) :: KernelO b => b -> (Word32, KernelT (KOutput b)) -> CUDA ()
 (<==) o (nb,kern) =
   do
@@ -255,7 +282,9 @@ instance Scalar a => KernelO (CUDAVector a) where
 --       (ktInputs k ++ ktOutput k) -- params
 --     lift $ CUDA.sync
 --     t2 <- lift rdtsc
---     return (t2 - t1) 
+--     return (t2 - t1)
+
+-- | Wait for all launched work on the device to finish 
 syncAll :: CUDA () 
 syncAll = lift $ CUDA.sync
 
@@ -267,6 +296,8 @@ infixl 3 <==
 ---------------------------------------------------------------------------
 -- Execute a kernel that has no Output ( a -> GProgram ()) KernelT (GProgram ()) 
 ---------------------------------------------------------------------------
+-- | Execute a kernel that has no specified output.
+--   It may write data into a Global Mutable array. 
 exec :: (Word32, KernelT (GProgram ())) -> CUDA ()
 exec (nb, k) =
  lift $ CUDA.launchKernel
@@ -290,13 +321,14 @@ newIdent =
 ---------------------------------------------------------------------------
 -- Run a CUDA computation
 ---------------------------------------------------------------------------
+withCUDA :: CUDA a -> IO a
 withCUDA p =
   do
     CUDA.initialise []
     devs <- getDevices
     case devs of
       [] -> error "No CUDA device found!" 
-      (x:xs) ->
+      (x:_) ->
         do 
           ctx <- CUDA.create (fst x) [CUDA.SchedAuto] 
           (a,_) <- runStateT p (CUDAState 0 ctx (snd x)) 
@@ -344,6 +376,42 @@ capture threadsPerBlock f =
            
     return $! KernelT fun threadsPerBlock 0 {-bytesShared-} [] []
 
+
+-- | Compile a program to a CUDA kernel and then load it into memory.
+captureIO :: ToProgram prg
+             => String  -- ^ name of Kernel (and files stored to disk)
+             -> CUDA.DeviceProperties -- ^ deviceproperties to compile for 
+             -> Word32  -- ^ Threads per block
+             -> prg     -- ^ Program to capture
+             -> IO (KernelT prg) 
+captureIO nom props threadsPerBlock f =
+  do
+    let kn     = nom
+        fn     = kn ++ ".cu"
+
+        sm_conf = sharedMemConfig props
+        
+        prgstr = genKernelParams sm_conf threadsPerBlock kn f
+        header = "#include <stdint.h>\n" -- more includes ? 
+      
+    
+    when debug $ 
+      do 
+        putStrLn $ prgstr
+
+    let arch = archStr props
+        
+    cub_file <- storeAndCompile arch fn (header ++ prgstr)
+    
+    cubin <- liftIO $ CUDA.loadFile cub_file
+    fun <- liftIO $ CUDA.getFun cubin kn 
+
+    {- After loading the binary into the running process
+       can I delete the .cu and the .cu.cubin ? -} 
+           
+    return $! KernelT fun threadsPerBlock 0 {-bytesShared-} [] []
+
+
 ---------------------------------------------------------------------------
 -- useVector: Copies a Data.Vector from "Haskell" onto the GPU Global mem 
 --------------------------------------------------------------------------- 
@@ -364,6 +432,7 @@ useVector v f =
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
+-- | allocate a vector in GPU Device memory 
 allocaVector :: V.Storable a => 
                 Int -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaVector n f =
@@ -377,6 +446,7 @@ allocaVector n f =
 ---------------------------------------------------------------------------
 -- Allocate and fill with default value
 ---------------------------------------------------------------------------
+-- | Allocate and Fill a vector in GPU Device memory
 allocaFillVector :: V.Storable a => 
                 Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaFillVector n a f =
@@ -391,6 +461,7 @@ allocaFillVector n a f =
 ---------------------------------------------------------------------------
 -- Fill a Vector
 ---------------------------------------------------------------------------
+-- | Fill a vector 
 fill :: V.Storable a =>
         CUDAVector a -> 
         a -> CUDA ()
@@ -400,10 +471,13 @@ fill (CUDAVector dptr n) a =
 ---------------------------------------------------------------------------
 -- Peek in a CUDAVector (Simple "copy back")
 ---------------------------------------------------------------------------
+-- | Copy a vector from the device to the host
+--   as a list.
 peekCUDAVector :: V.Storable a => CUDAVector a -> CUDA [a]
 peekCUDAVector (CUDAVector dptr n) = 
     lift $ CUDA.peekListArray (fromIntegral n) dptr
-    
+
+-- | Copy a vector from the device to the host.
 copyOut :: V.Storable a => CUDAVector a -> CUDA (V.Vector a)
 copyOut (CUDAVector dptr n) =
   do
@@ -419,13 +493,7 @@ copyOut (CUDAVector dptr n) =
 archStr :: CUDA.DeviceProperties -> String
 archStr props = "-arch=sm_" ++ archStr' (CUDA.computeCapability props)
   where
-    -- Updated for Cuda bindings version 0.5.0.0
     archStr' (CUDA.Compute h l) = show h ++ show l
-    --archStr' (CUDA.Compute 1 0) = "10"
-    --archStr' (CUDA.Compute 1 2) = "12"
-    --archStr' (CUDA.Compute 2 0) = "20" 
-    --archStr' (CUDA.Compute 3 0) = "30"
-    --archStr' x = error $ "Unknown architecture: " ++ show x 
     
 ---------------------------------------------------------------------------
 -- Compile to Cubin (interface with nvcc)
@@ -439,5 +507,6 @@ storeAndCompile arch fp code =
 
     (_,_,_,pid) <-
       createProcess (shell ("nvcc " ++ arch ++ " -cubin -o " ++ nfp ++ " " ++ fp))
-    exitCode <- waitForProcess pid
+    -- This could fail. Should be error check here (waitForProcess).
+    _ <- waitForProcess pid
     return nfp

@@ -3,19 +3,20 @@
              EmptyDataDecls,
              FlexibleInstances #-}
 
-{- Joel Svensson 2013 -}
+{- Joel Svensson 2013, 2014 -}
 
 module Obsidian.Mutable ( Mutable(Mutable) 
                         , Shared
-                        , Global 
-                        , newS
-                        , forceTo
+                        , Global
+                        , MShared
+                        , MGlobal
+                        , newSharedMutable
+                        , writeToSync
                         , writeTo
-                        , assign 
-                        , pullFrom
+                        , assignMutable
+                        , indexMutable 
+                        , mutableToPull
                         , atomicInc
-                        , namedMutable
-                        , undefinedMutable
                         )  where 
 
 
@@ -25,7 +26,7 @@ import Obsidian.Program
 import Obsidian.Memory
 import Obsidian.Names
 import Obsidian.Array
-import Obsidian.Atomic 
+import Obsidian.Atomic
 
 import Data.Word
 
@@ -63,17 +64,14 @@ instance ArrayLength (Mutable Shared) where
   len (Mutable n _) = n
 
   
-
-
-namedMutable s v = Mutable v (Single s)
-undefinedMutable v = Mutable v undefined 
 ---------------------------------------------------------------------------
 -- Create Mutable Shared memory arrays
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
-newS :: Storable a => SPush Block a -> Program Block (Mutable Shared Word32 a)
-newS arr = do
+-- | Create a new Mutable array in shared memory 
+newSharedMutable :: Storable a => SPush Block a -> Program Block (Mutable Shared Word32 a)
+newSharedMutable arr = do
   (snames :: Names a) <- names "arr"
   allocateArray snames n
   let mut = Mutable n snames
@@ -85,7 +83,10 @@ newS arr = do
 ---------------------------------------------------------------------------
 -- forceTo & writeTo
 ---------------------------------------------------------------------------
--- Much Hacking here 
+-- Much Hacking here
+
+-- | Write a Push array into a mutable array.
+--   There is no synchronisation inserted after the write
 writeTo :: Storable a
            => Mutable Shared Word32 a
            -> Push Block Word32 a
@@ -98,11 +99,12 @@ writeTo (Mutable n snames) p
    
     
 -- Add forceTo with offsets (why? just thought it might be useful)
-forceTo :: Storable a
-           => Mutable Shared Word32 a
-           -> Push Block Word32 a
-           -> Program Block ()
-forceTo m arr =
+-- | Write  a Push array into a mutable array and sync
+writeToSync :: Storable a
+               => Mutable Shared Word32 a
+               -> Push Block Word32 a
+               -> Program Block ()
+writeToSync m arr =
   do
     writeTo m arr
     Sync
@@ -112,16 +114,20 @@ forceTo m arr =
 ---------------------------------------------------------------------------
 
 -- | Write a value into a storable array. 
-assign :: Storable a => Mutable loc l a -> EWord32 ->  a -> Program Thread ()
-assign  (Mutable _ snames) ix a = assignArray snames a ix 
-
+assignMutable :: Storable a => Mutable loc l a -> EWord32 ->  a -> Program Thread ()
+assignMutable  (Mutable _ snames) ix a = assignArray snames a ix 
+ 
+indexMutable :: (ASize s, Storable a) => Mutable loc s a -> EWord32 -> a 
+indexMutable mut ix = mutableToPull mut ! ix 
     
 ---------------------------------------------------------------------------
--- pullFrom 
+-- mutable to pull conversion
 ---------------------------------------------------------------------------
 
-toPull :: Storable a => Mutable Shared Word32 a -> SPull  a
-toPull (Mutable n snames) = pullFrom snames n  
+-- | Convert a Mutable array to a Pull array 
+mutableToPull :: (ASize s, Storable a) => Mutable l s a -> Pull s a
+mutableToPull (Mutable n snames) = pullFrom snames n  
+
 
 
 ---------------------------------------------------------------------------

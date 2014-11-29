@@ -3,8 +3,6 @@
 
    Notes:
      Nov-25-2014: Changes to memory management
-
-
   
      Jan-21-2013: Added a SeqFor case 
 

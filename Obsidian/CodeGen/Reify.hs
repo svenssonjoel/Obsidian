@@ -25,6 +25,8 @@ import Obsidian.Mutable
 import Obsidian.Types
 import Obsidian.Program
 import Obsidian.Library
+import Obsidian.Globs
+import Obsidian.Names
 
 import qualified Obsidian.CodeGen.Program as CG
 import Obsidian.CodeGen.CompileIM
@@ -157,6 +159,12 @@ instance (ToProgram b, Scalar t) => ToProgram (Mutable Global EWord32 (Exp t) ->
       lengthVar = variable n
       input = namedMutable nom lengthVar
       t     = typeOf_ (undefined :: t)
+
+namedMutable :: Name -> s -> Mutable mloc s a
+namedMutable s v = Mutable v (Single s)
+undefinedMutable :: s -> Mutable mloc s a 
+undefinedMutable v = Mutable v undefined 
+
 
 
 instance (ToProgram b, Scalar t) => ToProgram ((Exp t) -> b) where

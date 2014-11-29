@@ -33,15 +33,13 @@ class Storable a where
   -- Array operations 
   assignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
   allocateArray  :: Names a -> Word32 -> Program t ()
-  pullFrom       :: Names a -> Word32 -> Pull Word32 a
+  pullFrom       :: ASize s => Names a -> s -> Pull s a
 
   
-
   -- Scalar operations 
   assignScalar   :: Names a -> a -> Program Thread ()
   allocateScalar :: Names a ->  Program t () 
   readFrom       :: Names a -> a
-  
   
   -- Warp level operations   
   warpAssignArray   :: Names a
