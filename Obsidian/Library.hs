@@ -410,7 +410,6 @@ class AsBlock t where
               -> SPull a
               -> SPush Block b 
 
-
 instance AsBlock Thread where 
   asBlock = tConcat
   asBlockMap f = tConcat . fmap f
