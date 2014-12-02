@@ -11,7 +11,8 @@ module Obsidian (module Obsidian.Array,
                  module Obsidian.SeqLoop, 
                  module Obsidian.Memory, 
                  module Obsidian.Names,
-                 module Obsidian.Mutable) where
+                 module Obsidian.Mutable,
+                 module Obsidian.Data) where
 
 
 
@@ -29,4 +30,5 @@ import Obsidian.SeqLoop
 import Obsidian.Memory
 import Obsidian.Names
 import Obsidian.Mutable
+import Obsidian.Data 
 

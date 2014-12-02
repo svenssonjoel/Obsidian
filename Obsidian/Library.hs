@@ -50,16 +50,19 @@ module Obsidian.Library
        , concP
        , load   -- RENAME THIS 
        , store  -- RENAME THIS
-       , asThread
-       , asThreadMap
-       , AsWarp(..)
-       , AsBlock(..)
-       , AsGrid(..)
-       , execThread
+       , liftThread
+       , liftThreadMap
+       , LiftWarp(..)
+       , LiftBlock(..)
+       , LiftGrid(..)
+       , ExecBlock(..)
+       , ExecWarp(..)
+       , ExecThread(..)
+--       , execThread
        , execThread'
-       , execWarp
+--       , execWarp
        , execWarp'
-       , execBlock
+--       , execBlock
        , execBlock'
        , singletonPush
 
@@ -70,6 +73,7 @@ module Obsidian.Library
 import Obsidian.Array 
 import Obsidian.Exp 
 import Obsidian.Program
+import Obsidian.Data 
 
 -- needed for threadsPerBlock analysis 
 -- import qualified Obsidian.CodeGen.Program as P 
@@ -403,82 +407,84 @@ store = load
 ---------------------------------------------------------------------------
 -- AsBlock
 ---------------------------------------------------------------------------
-class AsBlock t where
-  asBlock :: SPull (SPush t a) ->
+class LiftBlock t where
+  liftBlock :: SPull (SPush t a) ->
              SPush Block a
-  asBlockMap :: (a -> SPush t b) 
+  liftBlockMap :: (a -> SPush t b) 
               -> SPull a
               -> SPush Block b 
 
-instance AsBlock Thread where 
-  asBlock = tConcat
-  asBlockMap f = tConcat . fmap f
+instance LiftBlock Thread where 
+  liftBlock = tConcat
+  liftBlockMap f = tConcat . fmap f
   
-instance AsBlock Warp where
-  asBlock = pConcat
-  asBlockMap f = pConcat . fmap f
+instance LiftBlock Warp where
+  liftBlock = pConcat
+  liftBlockMap f = pConcat . fmap f
   
-instance AsBlock Block where
-  asBlock = sConcat
-  asBlockMap f = sConcat . fmap f 
+instance LiftBlock Block where
+  liftBlock = sConcat
+  liftBlockMap f = sConcat . fmap f 
 
 ---------------------------------------------------------------------------
 -- AsWarp
 --------------------------------------------------------------------------- 
-class AsWarp t where
-  asWarp :: SPull (SPush t a) ->
+class LiftWarp t where
+  liftWarp :: SPull (SPush t a) ->
             SPush Warp a 
-  asWarpMap :: (a -> SPush t b) 
+  liftWarpMap :: (a -> SPush t b) 
                -> SPull a
                -> SPush Warp b 
 
             
-instance AsWarp Thread where
-  asWarp = tConcat
-  asWarpMap f = tConcat . fmap f
+instance LiftWarp Thread where
+  liftWarp = tConcat
+  liftWarpMap f = tConcat . fmap f
   
-instance AsWarp Warp where
-  asWarp = sConcat
-  asWarpMap f = sConcat . fmap f
+instance LiftWarp Warp where
+  liftWarp = sConcat
+  liftWarpMap f = sConcat . fmap f
 
 ---------------------------------------------------------------------------
 -- asThread
 ---------------------------------------------------------------------------
   
-asThread :: ASize l
+liftThread :: ASize l
            => Pull l (SPush Thread b)
            -> Push Thread l b
-asThread = tConcat
+liftThread = tConcat
 
-asThreadMap :: (a -> SPush Thread b) 
+liftThreadMap :: (a -> SPush Thread b) 
                -> SPull a
                -> SPush Thread b
-asThreadMap f = tConcat . fmap f
+liftThreadMap f = tConcat . fmap f
 
 
 ---------------------------------------------------------------------------
 -- AsGrid
 ---------------------------------------------------------------------------
 
-class AsGrid t where
-  asGrid :: ASize l => Pull l (SPush t a) ->
+class LiftGrid t where
+  -- The "a" cannot be an array.
+  -- This needs to be made clear.. but dont know where. 
+  liftGrid :: ASize l => Pull l (SPush t a) ->
             Push Grid l a
-  asGridMap :: ASize l => (a -> SPush t b) 
+  liftGridMap :: ASize l => (a -> SPush t b) 
               -> Pull l a
               -> Push Grid l b 
 
 
-instance AsGrid Thread where
-  asGrid = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
-  asGridMap = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
+instance LiftGrid Thread where
+  liftGrid = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
+  liftGridMap = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
   
-instance AsGrid Block where
-  asGrid = pConcat
-  asGridMap f = pConcat . fmap f
+instance LiftGrid Block where
+  liftGrid = pConcat
+  liftGridMap f = pConcat . fmap f
 
-instance AsGrid Warp where
-  asGrid = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
-  asGridMap = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
+instance LiftGrid Warp where
+  liftGrid = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
+  liftGridMap = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
 
 ---------------------------------------------------------------------------
 -- Old stuff that should nolonger be exported!
@@ -567,24 +573,65 @@ pUnCoalesce arr =
 ---------------------------------------------------------------------------
 -- RunPush 
 ---------------------------------------------------------------------------
+class ExecThread a where
+  execThread  :: Data e
+                 => Program Thread (a Word32 e)
+                 -> Push Thread Word32 e
+  
+execThread' :: Data a => Program t a -> SPush t a
+execThread' = singletonPush
 
-execThread :: Program Thread (Push Thread s a) -> Push Thread s a
-execThread = runPush
+instance ExecThread (Push Thread) where
+  execThread = runPush
 
-execThread' :: Program Thread a -> SPush Thread a
-execThread' = singletonPush 
+instance ExecThread Pull where
+  execThread = execThread . liftM asThread
 
-execWarp :: Program Warp (Push Warp s a) -> Push Warp s a
-execWarp = runPush
+class ExecBlock a where
+  execBlock :: Data e
+               => Program Block (a Word32 e)
+               -> Push Block Word32 e
 
-execWarp' :: Program Warp a -> SPush Warp a
-execWarp' = singletonPush
-
-execBlock :: Program Block (Push Block s a) -> Push Block s a
-execBlock = runPush
-
-execBlock' :: Program Block a -> SPush Block a
+execBlock' :: Data a => Program Block a -> SPush Block a
 execBlock' = singletonPush 
+
+instance ExecBlock (Push Block) where
+  execBlock = runPush
+
+instance ExecBlock Pull where
+  execBlock = execBlock . liftM asBlock
+
+
+class ExecWarp a where
+  execWarp :: Data e
+               => Program Warp (a Word32 e)
+               -> Push Warp Word32 e
+
+execWarp' :: Data a => Program Warp a -> SPush Warp a
+execWarp' = singletonPush 
+
+instance ExecWarp (Push Warp) where
+  execWarp = runPush
+
+instance ExecWarp Pull where
+  execWarp = execWarp . liftM asWarp
+
+
+-- execThread :: Program Thread (Push Thread s a) -> Push Thread s a
+-- execThread = runPush
+
+-- execThread' :: Data a => Program Thread a -> SPush Thread a
+-- execThread' = singletonPush 
+
+-- execWarp :: Program Warp (Push Warp s a) -> Push Warp s a
+-- execWarp = runPush
+
+-- execWarp' :: Data a => Program Warp a -> SPush Warp a
+-- execWarp' = singletonPush
+
+-- execBlock :: Program Block (Push Block s a) -> Push Block s a
+-- execBlock = runPush
+
 
 -- | Fuses the program that computes a Push array into the Push array. 
 runPush :: Program t (Push t s a) -> Push t s a

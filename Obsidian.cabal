@@ -60,6 +60,7 @@ Library
                ,  Obsidian.Program 
                ,  Obsidian.SeqLoop 
                ,  Obsidian.Types 
+               ,  Obsidian.Data
                ,  Obsidian.CodeGen.CompileIM
                ,  Obsidian.CodeGen.Liveness
                ,  Obsidian.CodeGen.Memory2

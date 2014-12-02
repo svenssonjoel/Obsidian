@@ -16,19 +16,24 @@
     2012-12-10: Drastically shortened. 
 -}
 
-module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
+module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
 --                        Pushable, 
-                       mkPull,
-                       mkPush,
-                       push,
-                       setSize,
-                       (!),
-                       (<:),
-                       Array(..),
-                       ArrayLength(..),
-                       ASize(..),
-                       namedGlobal,
-                       undefinedGlobal) where
+                      , mkPull
+                      , mkPush
+                      , push
+                      , setSize
+                      , (!)
+                      , (<:)
+                      , Array(..)
+                      , ArrayLength(..)
+                      , ASize(..)
+                      , namedGlobal
+                      , undefinedGlobal
+                      , AsThread(..)
+                      , AsWarp(..)
+                      , AsBlock(..)
+                      , AsGrid(..)
+                      ) where
 
 import Obsidian.Exp 
 import Obsidian.Program
@@ -192,6 +197,97 @@ push ::  ASize s => Pull s e -> Push t s e
 push (Pull n ixf) =
   Push n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
+
+class AsGrid a where
+  asGrid :: ASize s => a s e -> Push Grid s e
+
+instance AsGrid Pull where
+  asGrid = push
+
+instance AsGrid (Push Grid) where
+  asGrid = id
+
+instance AsGrid (Push Block) where
+  asGrid _ = error $ "asGrid: Trying to convert a Block to a Grid.\n" ++
+                     "This operation is not supported!"
+               
+instance AsGrid (Push Warp) where 
+  asGrid _ = error $ "asGrid: Trying to convert a Warp to a Grid.\n" ++
+                     "This operation is not supported!"
+
+instance AsGrid (Push Thread) where 
+  asGrid _ = error $ "asGrid: Trying to convert a Thread to a Grid.\n" ++
+                     "This operation is not supported!"
+
+
+class AsBlock a where
+  asBlock :: a Word32 e -> SPush Block e
+
+instance AsBlock Pull where
+  asBlock = push
+
+instance AsBlock (Push Block) where
+  asBlock = id
+
+instance AsBlock (Push Grid) where
+  asBlock _ = error $ "asBlock: Trying to convert a Grid to a Block.\n" ++
+                      "This operation is not supported!"
+
+instance AsBlock (Push Warp) where 
+  asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+                      "This operation is not supported!"
+
+instance AsBlock (Push Thread) where
+  asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+                      "This operation is not supported!"
+
+
+class AsWarp a where
+  asWarp :: a Word32 e -> SPush Warp e
+
+instance AsWarp Pull where
+  asWarp = push
+
+instance AsWarp (Push Warp) where
+  asWarp = id
+
+instance AsWarp (Push Grid) where
+  asWarp _ = error $ "asWarp: Trying to convert a Grid to a Warp.\n" ++
+                      "This operation is not supported!"
+
+instance AsWarp (Push Block) where 
+  asWarp _ = error $ "asWarp: Trying to convert a Block to a Warp.\n" ++
+                      "This operation is not supported!"
+
+instance AsWarp (Push Thread) where
+  asWarp _ = error $ "asBlock: Trying to convert a Thread to a Warp.\n" ++
+                      "This operation is not supported!"
+
+
+class AsThread a where
+  asThread :: a Word32 e -> SPush Thread e
+
+instance AsThread Pull where
+  asThread = push
+
+instance AsThread (Push Thread) where
+  asThread = id
+
+instance AsThread (Push Grid) where
+  asThread _ = error $ "asThread: Trying to convert a Grid to a Thread.\n" ++
+                      "This operation is not supported!"
+
+instance AsThread (Push Block) where 
+  asThread _ = error $ "asThread: Trying to convert a Block to a Thread.\n" ++
+                      "This operation is not supported!"
+
+instance AsThread (Push Warp) where
+  asThread _ = error $ "asThread: Trying to convert a Warp to a Thread.\n" ++
+                      "This operation is not supported!"
+
+
+
+
 
 -- class Pushable t where
 --   push :: ASize s => Pull s e -> Push t s e 

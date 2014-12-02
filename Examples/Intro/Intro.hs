@@ -26,14 +26,30 @@ increment arr = fmap (+1) arr
 incrementAndReverse :: Num a => SPull a -> SPull a
 incrementAndReverse = reverse . increment 
 
+increment2 :: (Storable a, Forceable t, Num a) => SPull a -> Program t (SPull a)
+increment2 arr = computePull $ fmap (+1) arr
 
 -- Programming the Hierarchy
 
--- incrementKernel :: Num a => DPull a -> DPush Grid a
--- incrementKernel arr = asGrid $ fmap (push . increment) arr'
---   where
---     -- make a selection of how many elements to process per CUDA block
---     arr' = splitUp 2048 arr 
+incrementKernel :: Num a => DPull a -> DPush Grid a
+incrementKernel arr = liftGrid $ fmap (asBlock . increment) arr'
+  where
+    -- make a selection of how many elements to process per CUDA block
+    arr' = splitUp 2048 arr 
+
+incrementKernel2 :: (Data a, Num a) => DPull a -> DPush Grid a
+incrementKernel2  arr = liftGrid $ fmap (execBlock . increment2) arr'
+  where
+    -- make a selection of how many elements to process per CUDA block
+    arr' = splitUp 2048 arr 
+
+incrementKernel3 :: (Data a, Num a) => DPull a -> DPush Grid a
+incrementKernel3 arr = liftGrid $ fmap (liftBlock . (fmap (execWarp . increment2))) arr'
+  where
+    -- make a selection of how many elements to process per CUDA block/warp
+    arr' = fmap (splitUp 32) $ splitUp 2048 arr 
+
+
 
 
 ---------------------------------------------------------------------------
@@ -59,7 +75,7 @@ performInc =
   withCUDA $
   do
     -- kern <- capture 256 (increment . splitUp 256)
-    kern <- capture 512 incrementKernel
+    kern <- capture 512 incrementKernel3
     
 
     useVector (V.fromList [0..4096 :: Word32]) $ \i ->
