@@ -101,7 +101,44 @@ unFlatIndex sh@(_sh :. _) ix = fromIndexOne sh ix
     fromIndexOne (ds@(_ :. _) :. d) ix
       = Index $ DynSnoc (unIndex $ fromIndexOne ds (ix `quot` (toExtent d)))  (ix `rem` (toExtent d))
 
+---------------------------------------------------------------------------
+-- Various 
+---------------------------------------------------------------------------
+unsnoc :: Shape (sh :. e) -> (Shape sh, e)
+unsnoc (sh :. e) = (sh, e) 
 
+-- need something more to be able to implement this. 
+-- shapeEq :: Shape sh -> Shape sh -> EBool
+-- shapeEq Z Z = Literal True
+-- shapeEq (sh1 :. e1) (sh2 :. e2) = e1 ==* e2 &&* shapeEq sh1 sh2 
+
+class Shapely sh where
+  zeroDim :: Shape sh
+  unitDim :: Shape sh
+  fakeShape :: Shape sh
+  toShapeDyn :: Int -> [EW32] -> Shape sh
+  toShapeStat :: Int -> [Word32] -> Shape sh
+
+instance Shapely Z where
+  zeroDim = Z
+  unitDim = Z
+  fakeShape = Z
+  toShapeDyn _ _ = Z
+  toShapeStat _ _ = Z 
+
+instance Shapely sh => Shapely (sh :. EW32) where
+  zeroDim = zeroDim :. 0
+  unitDim = unitDim :. 1
+  fakeShape = fakeShape :. error "You shall not inspect the syntax tree!"
+  toShapeDyn i arr = toShapeDyn (i+1) arr :. (arr !! fromIntegral i) 
+  toShapeStat i arr = error "This is a dynamic Shape"
+
+instance Shapely sh => Shapely (sh :. Word32) where
+  zeroDim = zeroDim :. 0
+  unitDim = unitDim :. 1
+  fakeShape = fakeShape :. error "You shall not inspect the syntax tree!"
+  toShapeDyn i arr = error "This is a static Shape"
+  toShapeStat i arr = toShapeStat (i+1) arr :. (arr !! fromIntegral i) 
 
 ---------------------------------------------------------------------------
 -- MultiDim Pull and Push arrays 

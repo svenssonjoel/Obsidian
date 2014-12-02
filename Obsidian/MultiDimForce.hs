@@ -1,5 +1,5 @@
 
-module Obsidian.MultidimForce where
+module Obsidian.MultiDimForce where
 
 
 import Obsidian.Force
