@@ -9,7 +9,6 @@ import qualified Prelude as P
 
 import Obsidian
 import Obsidian.Run.CUDA.Exec
--- import Obsidian.Run.CUDA.SC
 
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
@@ -26,7 +25,7 @@ import Control.DeepSeq
 -- ######################################################################
 -- Nonsense Kernel 
 -- ######################################################################
-nonsense :: (Storable a, Num a)
+nonsense :: (Data a, Num a)
             => Bool
             -> Pull Word32 a
             -> BProgram (Push Block Word32 a)
@@ -40,8 +39,8 @@ nonsense sync arr = loopit 10 arr
           loopit (n-1) arr' 
 
 
-mapNonsense :: (Storable a, Num a)  => Word32 -> Bool -> DPull a -> DPush Grid a
-mapNonsense blocksize sync arr = asGridMap body arr'
+mapNonsense :: (Data a, Num a)  => Word32 -> Bool -> DPull a -> DPush Grid a
+mapNonsense blocksize sync arr = liftGridMap body arr'
   where
     body = execBlock . (nonsense sync)
     arr' = splitUp blocksize arr

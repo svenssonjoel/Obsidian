@@ -446,7 +446,7 @@ instance LiftWarp Warp where
   liftWarpMap f = sConcat . fmap f
 
 ---------------------------------------------------------------------------
--- asThread
+-- LiftThread
 ---------------------------------------------------------------------------
   
 liftThread :: ASize l

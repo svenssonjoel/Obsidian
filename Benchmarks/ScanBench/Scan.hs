@@ -23,7 +23,7 @@ import Prelude hiding (map,zipWith,zip,sum,replicate,take,drop,iterate,last)
 ---------------------------------------------------------------------------
 
 -- Kernel1 is just a reduction! 
-kernel1 :: Storable a
+kernel1 :: Data a
            => (a -> a -> a)
            -> SPull a
            -> BProgram (SPush Block a)
@@ -35,8 +35,8 @@ kernel1 f arr
       arr' <- forcePull (zipWith f a1 a2)
       kernel1 f arr'   
 
-mapKernel1 :: Storable a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapKernel1 f arr = asGridMap body arr -- pConcat (fmap body arr)
+mapKernel1 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapKernel1 f arr = liftGridMap body arr 
   where
     body arr = execBlock (kernel1 f arr)
 
@@ -44,7 +44,7 @@ mapKernel1 f arr = asGridMap body arr -- pConcat (fmap body arr)
 -- Sklansky 
 ---------------------------------------------------------------------------
     
-sklansky :: (Choice a, Storable a)
+sklansky :: Data a 
             => Int
             -> (a -> a -> a)
             -> Pull Word32 a
@@ -57,7 +57,7 @@ sklansky n op arr =
     sklansky (n-1) op arr2
 
 
-fan :: Choice a
+fan :: Data a
        => (a -> a -> a)
        -> SPull a
        -> SPull a
@@ -68,8 +68,8 @@ fan op arr =  a1 `append` fmap (op c) a2
 
 -- pushM = liftM push
 
-mapScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan1 n f arr = asGridMap body arr -- pConcat (fmap body arr)
+mapScan1 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan1 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (sklansky n f arr)
 
@@ -95,14 +95,14 @@ phase i f arr =
     sl2 = fromIntegral l2
 
 
-sklansky2 :: Storable a
+sklansky2 :: Data a
            => Int
            -> (a -> a -> a)
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
 sklansky2 l f = compose [phase i f | i <- [0..(l-1)]]
   
-compose :: Storable a
+compose :: Data a
            => [Pull Word32 a -> Push Block Word32 a] 
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
@@ -133,8 +133,8 @@ oneBits i = (2^i) - 1
 
 
 
-mapScan2 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan2 n f arr = asGridMap body arr -- pConcat $ fmap body arr  -- sklansky2 n f
+mapScan2 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan2 n f arr = liftGridMap body arr -- pConcat $ fmap body arr  -- sklansky2 n f
     where
       body arr = execBlock (sklansky2 n f arr)
 
@@ -146,7 +146,7 @@ mapScan2 n f arr = asGridMap body arr -- pConcat $ fmap body arr  -- sklansky2 n
 -- TWEAK LOADS
 ----------------------------------------------------------------------------
 
-sklansky3 :: Storable a
+sklansky3 :: Data a
            => Int
            -> (a -> a -> a)
            -> Pull Word32 a
@@ -157,8 +157,8 @@ sklansky3 l f arr =
     compose [phase i f | i <- [0..(l-1)]] im 
 
 
-mapScan3 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan3 n f arr = asGridMap body arr -- pConcat (fmap body arr)
+mapScan3 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan3 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (sklansky3 n f arr)
 
@@ -170,7 +170,7 @@ mapScan3 n f arr = asGridMap body arr -- pConcat (fmap body arr)
 ----------------------------------------------------------------------------
 -- KS based Scans
 ----------------------------------------------------------------------------
-ksLocal :: (Choice a, Storable a) 
+ksLocal :: Data a 
         => Int -- Stages (log n) 
         -> (a -> a -> a) -- opertor
         -> SPull a -- input data
@@ -182,16 +182,16 @@ ksLocal n op arr = do
       oped = zipWith op arr2 a1 
       copy = take (2^(n-1)) arr2
       all  = copy `append` oped
-  return $push all
+  return $ asBlock all
 -- Little bit ugly... 
   
              
-ks n op arr = asGridMap body arr -- pConcatMap body arr
+ks n op arr = liftGridMap body arr -- pConcatMap body arr
   where
     body arr = execBlock (ksLocal n op arr)
     
-mapScan4 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan4 n f arr = asGridMap body arr 
+mapScan4 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan4 n f arr = liftGridMap body arr 
   where
     body arr = execBlock (ksLocal n f arr)
 
@@ -199,11 +199,11 @@ mapScan4 n f arr = asGridMap body arr
 -- An alternative to ksLocal
 -- that uses concP for push array concatenation rather
 -- than append for pull array concat. 
-ksLocalP :: (Choice a, Storable a) 
-        => Int -- Stages (log n) 
-        -> (a -> a -> a) -- opertor
-        -> SPull a -- input data
-        -> BProgram (SPush Block a) -- output computation
+ksLocalP :: Data a
+            => Int -- Stages (log n) 
+            -> (a -> a -> a) -- opertor
+            -> SPull a -- input data
+            -> BProgram (SPush Block a) -- output computation
 ksLocalP 0 op arr = return $ push arr
 ksLocalP n op arr = do
   arr2 <- compute =<< ksLocalP (n-1) op arr
@@ -213,12 +213,12 @@ ksLocalP n op arr = do
   return $ copy `concP` oped
 
 
-ksP n op arr = asGridMap body arr -- pConcatMap body arr
+ksP n op arr = liftGridMap body arr -- pConcatMap body arr
   where
     body arr = execBlock (ksLocalP n op arr)
     
-mapScan5 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan5 n f arr = asGridMap body arr -- pConcat (fmap body arr)
+mapScan5 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapScan5 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (ksLocalP n f arr)
 
@@ -249,7 +249,7 @@ mapScan5 n f arr = asGridMap body arr -- pConcat (fmap body arr)
 --           b = drop 1 arr
 --       in h `append` b
          
-wrapCIn :: (Storable a, Forceable t, Choice a)
+wrapCIn :: (Forceable t, Data a)
            => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
            -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
 wrapCIn scan n op cin arr =
@@ -262,7 +262,7 @@ wrapCIn scan n op cin arr =
           b = drop 1 arr
       in h `append` b
 
-sklanskyCInLocal :: (Choice a, Storable a)
+sklanskyCInLocal :: Data a
                     => Int
                     -> (a -> a -> a)
                     -> a
@@ -271,7 +271,7 @@ sklanskyCInLocal :: (Choice a, Storable a)
 sklanskyCInLocal = wrapCIn sklansky
 
 
-mapScanCIn1 :: (Storable a, Choice a)
+mapScanCIn1 :: Data a
                => Int
                -> (a -> a -> a)
                -> DPull a
@@ -280,31 +280,31 @@ mapScanCIn1 :: (Storable a, Choice a)
 
 -- Horrible code duplication (refactor) 
 mapScanCIn1 n op cins arr =
-  asGrid $
+  liftGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky) n op arr1 arr2) 
 
 mapScanCIn2 n op cins arr =
-  asGrid $
+  liftGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky2) n op arr1 arr2) 
 
 mapScanCIn3 n op cins arr =
-  asGrid $
+  liftGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky3) n op arr1 arr2) 
 
 mapScanCIn4 n op cins arr =
-  asGrid $
+  liftGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn ksLocal) n op arr1 arr2) 
 
 mapScanCIn5 n op cins arr =
-  asGrid $
+  liftGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn ksLocalP) n op arr1 arr2) 
@@ -327,29 +327,29 @@ wrapI scan n op a arr =
 
 
 -- Horrible code duplication!!! 
-mapIScan1 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan1 n f a arr = asGridMap body arr -- pConcat (fmap body arr)
+mapIScan1 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan1 n f a arr = liftGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock ((wrapI sklansky n f a) arr)
 
 
-mapIScan2 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan2 n f a arr = asGridMap body arr
+mapIScan2 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan2 n f a arr = liftGridMap body arr
   where
     body arr = execBlock ((wrapI sklansky2 n f a) arr)
 
-mapIScan3 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan3 n f a arr = asGridMap body arr 
+mapIScan3 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan3 n f a arr = liftGridMap body arr 
   where
     body arr = execBlock ((wrapI sklansky3 n f a) arr)
 
 
-mapIScan4 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan4 n f a arr = asGridMap body arr
+mapIScan4 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan4 n f a arr = liftGridMap body arr
   where
     body arr = execBlock ((wrapI ksLocal n f a) arr)
 
-mapIScan5 :: (Choice a, Storable a) => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan5 n f a arr = asGridMap body arr
+mapIScan5 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
+mapIScan5 n f a arr = liftGridMap body arr
   where
     body arr = execBlock ((wrapI ksLocalP n f a) arr)

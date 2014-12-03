@@ -8,12 +8,11 @@ import Prelude hiding (take, drop, zipWith,all)
 ---------------------------------------------------------------------------
 -- Sklansky Scan
 --------------------------------------------------------------------------- 
-sklanskyLocal
-  :: (Choice a, Storable a) =>
-     Int
-     -> (a -> a -> a)
-     -> SPull a
-     -> BProgram (SPush Block a)
+sklanskyLocal :: Data a
+                 => Int
+                 -> (a -> a -> a)
+                 -> SPull a
+                 -> BProgram (SPush Block a)
 sklanskyLocal 0 _ arr = return $ push arr
 sklanskyLocal n op arr =
   do 
@@ -28,12 +27,12 @@ fan op arr =  a1 `append`  fmap (op c) a2
       (a1,a2) = halve arr
       c = a1 ! (fromIntegral (len a1 - 1))              
 
-sklansky :: (Choice a, Storable a)
+sklansky :: Data a 
             => Int
             -> (a -> a -> a)
             -> DPull (SPull a)
             -> DPush Grid a
-sklansky n op arr = asGridMap body arr
+sklansky n op arr = liftGridMap body arr
   where
     body a = execBlock (sklanskyLocal n op a)
 
@@ -49,7 +48,7 @@ sklansky n op arr = asGridMap body arr
 -- stage 0: combine j with j-1 (j > 0) 
 -- stage 1: combine j with j-2 (j > 1)
 -- stage 2: combine j wiht j-4 (j > 3) 
-ksLocal :: (Choice a, Storable a) 
+ksLocal :: Data a 
         => Int -- Stages (log n) 
         -> (a -> a -> a) -- opertor
         -> SPull a -- input data
@@ -64,10 +63,10 @@ ksLocal n op arr = do
   return $push all
 
   
-ks :: (Choice a, Storable a)
+ks :: Data a 
       => Int -> (a -> a -> a)
       -> DPull (SPull a) -> DPush Grid a 
-ks n op arr = asGridMap body arr
+ks n op arr = liftGridMap body arr
   where
     body a = execBlock (ksLocal n op a)
                    

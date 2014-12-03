@@ -71,14 +71,14 @@ iters s bid tid =
   where
     color c= ((w32ToW8 c) `mod` 16) * 16
 
-genRect :: Storable b
+genRect :: Data  b
            => EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b
-genRect bs ts p = asGrid 
+genRect bs ts p = liftGrid 
                 $ mkPull bs 
-                $ \bid -> asBlock $ mkPull ts (p bid)
+                $ \bid -> liftBlock $ mkPull ts (p bid)
 
 
 -- Generate square Mandelbrot images 
