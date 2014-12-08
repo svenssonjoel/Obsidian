@@ -47,6 +47,7 @@ module Obsidian.Library
        , pair
        , unpair
        , unsafeBinSplit
+       , binSplit 
        , concP
        , load   -- RENAME THIS 
        , store  -- RENAME THIS
@@ -73,7 +74,8 @@ module Obsidian.Library
 import Obsidian.Array 
 import Obsidian.Exp 
 import Obsidian.Program
-import Obsidian.Data 
+import Obsidian.Data
+import Obsidian.Mutable 
 
 -- needed for threadsPerBlock analysis 
 -- import qualified Obsidian.CodeGen.Program as P 
@@ -303,11 +305,18 @@ unquadruple = unpair . unpair . fmap (\(a0,a1,a2,a3) -> ((a0,a1), (a2,a3)))
 -- | Recursively split an array in the middle. Apply an array to array computation
 --   on each part. @binSplit 3@ divides the array into 8 pieces.
 --   UNSAFE
-unsafeBinSplit ::Int
+unsafeBinSplit :: Int
            -> (Pull Word32 a -> Pull Word32 b)
            -> Pull Word32 a
            -> Pull Word32 b 
 unsafeBinSplit = twoK
+
+binSplit :: Data a
+            => Int
+            -> (Pull Word32 a -> Pull Word32 b)
+            -> Mutable Shared Word32 a
+            -> Pull Word32 b
+binSplit n f = unsafeBinSplit n f . mutableToPull 
 
 -- See if this should be specifically for Static size pull arrays
 twoK :: Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 

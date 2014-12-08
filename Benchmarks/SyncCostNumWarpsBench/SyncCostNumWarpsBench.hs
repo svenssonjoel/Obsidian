@@ -32,7 +32,7 @@ nonsense :: (Data a, Num a)
 nonsense sync arr = loopit 10 arr  
   where loopit 0 arr = return $ push arr
         loopit n arr | sync = do
-          arr' <- forcePull $ fmap (+1) arr
+          arr' <- compute $ fmap (+1) arr
           loopit (n-1) arr'
                      | otherwise = do
           arr' <- unsafeWritePull False $ fmap (+1) arr
