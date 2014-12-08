@@ -26,7 +26,7 @@ sumUp' arr
   | len arr == 1 = return (arr ! 0)
   | otherwise    = do
       let (a1,a2) = halve arr
-      arr' <-  forcePull (zipWith (+) a1 a2)
+      arr' <-  compute (zipWith (+) a1 a2)
       sumUp' arr' 
 
 -- sequential (but expressively so) 
@@ -35,7 +35,7 @@ sumUpT arr
   | len arr == 1 = return (arr ! 0)
   | otherwise    = do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith (+) a1 a2)
+      arr' <- compute (zipWith (+) a1 a2)
       sumUpT arr' 
 
 
@@ -63,7 +63,7 @@ mapSumUpT arr = liftGrid (fmap body arr)
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
-reduceLocal :: (Forceable t, Data a)
+reduceLocal :: (Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -102,7 +102,7 @@ reduce = reduceGrid
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
 
-reduceLocal' :: (Forceable t, Data a)
+reduceLocal' :: (Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t a

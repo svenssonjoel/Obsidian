@@ -26,8 +26,8 @@ increment arr = fmap (+1) arr
 incrementAndReverse :: Num a => SPull a -> SPull a
 incrementAndReverse = reverse . increment 
 
-increment2 :: (Storable a, Forceable t, Num a) => SPull a -> Program t (SPull a)
-increment2 arr = computePull $ fmap (+1) arr
+increment2 :: (Data a, Compute t, Num a) => SPull a -> Program t (SPull a)
+increment2 arr = compute $ push $ fmap (+1) arr
 
 
 
@@ -60,7 +60,7 @@ performInc :: IO ()
 performInc =
   withCUDA $
   do
-    kern <- capture 512 incrementKernel3
+    kern <- capture 512 incrementKernel2
     
     useVector (V.fromList [0..4096 :: Word32]) $ \i ->
       allocaVector 4096  $ \o ->

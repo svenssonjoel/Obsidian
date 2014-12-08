@@ -9,7 +9,6 @@
 -}
 
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -41,7 +40,9 @@ module Obsidian.Program  (
   allocate, declare,
   atomicOp, 
   -- Programming interface
-  seqFor, forAll, seqWhile, sync, distrPar, forAll2
+  seqFor, forAll, seqWhile, sync, distrPar, forAll2,
+  singleThread
+                                            
   ) where 
  
 import Data.Word
@@ -199,6 +200,13 @@ distrPar :: EWord32
 distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------
+-- Let a single thread perform  of a block/Warp perform a given
+-- Thread program 
+---------------------------------------------------------------------------
+singleThread :: Program Thread () -> Program t ()
+singleThread p =
+  forAll 1 (\_ -> p) 
+
 -- seqFor
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()

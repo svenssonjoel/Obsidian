@@ -36,7 +36,7 @@ red3 cutoff f  arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red3 cutoff f arr'   
 
 
@@ -66,7 +66,7 @@ nonsense depth sync arr = do
       a' <- force' $ fmap (+1) ain
       loop (n-1) a' 
 
-    force' arr | sync = forcePull arr
+    force' arr | sync = compute arr
                | otherwise = unsafeWritePull False arr
 
 mapNonsense :: (Data a, Num a)  => Int -> Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
@@ -113,8 +113,8 @@ sklansky :: Data a
 sklansky 0 op arr = return (push arr)
 sklansky n op arr =
   do 
-    let arr1 = binSplit (n-1) (fan op) arr
-    arr2 <- computePull arr1
+    let arr1 = unsafeBinSplit (n-1) (fan op) arr
+    arr2 <- compute arr1
     sklansky (n-1) op arr2
 
 

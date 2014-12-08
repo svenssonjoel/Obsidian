@@ -193,11 +193,12 @@ instance Functor (Pull s) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
+
 push ::  ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
   Push n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
-
+                                
 class AsGrid a where
   asGrid :: ASize s => a s e -> Push Grid s e
 

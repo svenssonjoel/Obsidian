@@ -46,7 +46,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 
-executable Increment.exe
+executable Intro.exe
   -- .hs or .lhs file containing the Main module.
   main-is:             Intro.hs
  

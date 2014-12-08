@@ -32,7 +32,7 @@ kernel1 f arr
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       kernel1 f arr'   
 
 mapKernel1 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
@@ -52,8 +52,8 @@ sklansky :: Data a
 sklansky 0 op arr = return $ push arr 
 sklansky n op arr =
   do 
-    let arr1 = binSplit (n-1) (fan op) arr
-    arr2 <- forcePull arr1
+    let arr1 = unsafeBinSplit (n-1) (fan op) arr
+    arr2 <- compute arr1
     sklansky (n-1) op arr2
 
 
@@ -107,7 +107,7 @@ compose :: Data a
            -> Pull Word32 a
            -> Program Block (Push Block Word32 a)
 compose [f] arr = return $ f arr
-compose (f:fs) arr = compose fs =<< force (f arr)
+compose (f:fs) arr = compose fs =<< compute (f arr)
  -- do
  --   let arr1 = f arr
  --   arr2 <- force arr1
@@ -249,7 +249,7 @@ mapScan5 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
 --           b = drop 1 arr
 --       in h `append` b
          
-wrapCIn :: (Forceable t, Data a)
+wrapCIn :: (Compute t, Data a)
            => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
            -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
 wrapCIn scan n op cin arr =

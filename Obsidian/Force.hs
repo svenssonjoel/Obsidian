@@ -4,7 +4,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs #-}
 
 
 {- Joel Svensson 2012, 2013 
@@ -24,7 +25,16 @@
 -}
 
 
-module Obsidian.Force (Forceable, force, forcePull, unsafeForce, unsafeWritePush, unsafeWritePull,compute, computePull ) where
+module Obsidian.Force ( Forceable
+                      , force
+                      , forcePull
+                      , unsafeForce
+                      , unsafeWritePush
+                      , unsafeWritePull
+                      , compute_
+                      , computePull_
+                      , ComputeAs(..)
+                      , Compute(..)) where
 -- Write, force, forcePull, unsafeForce, unsafeWritePush) where 
 
 
@@ -34,23 +44,58 @@ import Obsidian.Array
 import Obsidian.Memory 
 
 import Obsidian.Names
+import Obsidian.Data
 
 import Data.Word
 
 {-# DEPRECATED force, forcePull, unsafeForce "Don't use these" #-}
-
+{-# DEPRECATED Forceable "class is phased out" #-} 
 ---------------------------------------------------------------------------
 --
----------------------------------------------------------------------------
+-------------------------------------------------------------------------
+--
+class (Sync t, Write t) => Forceable t
 
-compute :: (Storable a, Forceable t)
+instance Forceable Thread
+instance Forceable Warp
+instance Forceable Block
+
+class (Sync t, Write t) => Compute t 
+instance Compute Thread
+instance Compute Warp
+instance Compute Block 
+
+
+class ComputeAs t a where
+  compute :: Data e => a Word32 e -> Program t (Pull Word32 e)
+  
+instance Compute t => ComputeAs t Pull where
+  compute = computePull_ 
+
+{- 
+   The key to this instance is that the typechecker
+   matches only against the head, ignoring the constraint.
+   meaning that all variations of t, t1 is caught by this
+   instance. Though, those where t and t1 are not equal
+   a type error is the result (rather than a missing instance).
+
+   This means that the constraint "Compute Block (Push Thread)"
+   matches this instance, but is a type error.
+
+   I still wonder about a few things in related to this instance.
+   Will expand this comment as they are understood. 
+-} 
+instance (t ~ t1, Compute t) => ComputeAs t (Push t1) where
+  compute =  compute_
+
+compute_ :: (Data a, Compute t)
           => Push t Word32 a -> Program t (Pull Word32 a)      
-compute = force
+compute_ = force
 
-computePull :: (Storable a, Forceable t)
+computePull_ :: (Data a, Compute t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
-computePull = unsafeForce . push 
-
+computePull_ = unsafeForce . push 
+               
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 ---------------------------------------------------------------------------
@@ -108,16 +153,10 @@ unsafeWritePull t = unsafeWritePush t . push
 ---------------------------------------------------------------------------
 
 -- | It is possible to force at level T if we can Write and Sync at that level. 
-class (Sync t, Write t) => Forceable t
-
-instance Forceable Thread
-instance Forceable Warp
-instance Forceable Block
-
 
 -- | force turns a @Push@ array to a @Program@ generating a @Pull@ array.
 --   The returned array represents reading from an array manifest in memory.
-force :: (Storable a, Forceable t)
+force :: (Data a, Compute t)
          => Push t Word32 a -> Program t (Pull Word32 a)      
 force arr = do
   rval <- unsafeWritePush False arr
@@ -125,13 +164,13 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Storable a, Forceable t)
+forcePull :: (Data a, Compute t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 
 -- | unsafeForce is dangerous on @Push@ arrays as it does not
 --   insert synchronization primitives. 
-unsafeForce :: (Storable a, Forceable t) =>
+unsafeForce :: (Data a, Compute t) =>
          Push t  Word32 a -> Program t (Pull Word32 a)      
 unsafeForce arr = 
   if (len arr <= 32)

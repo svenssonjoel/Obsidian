@@ -154,3 +154,38 @@ mapAccumR :: (ASize s, Storable a, Storable b, Storable acc)
            -> Push Thread s b
 mapAccumR op acc =
    Lib.reverse . mapAccumL op acc . Lib.reverse
+
+
+--------------------------------------------------------------------------- 
+-- sMapAccum
+-- Generalisation of the old sConcat functionality.
+
+sMapAccum :: (Sync t, Storable acc, ASize l)
+             => (acc -> Pull l a -> Program t (acc,Push t l b))
+             -> acc
+             -> Pull l (Pull l a)
+             -> Push t l b
+sMapAccum f acc arr =
+  
+  mkPush (n * fromIntegral rn) $ \wf ->
+  do
+    (noms :: Names acc) <- names "v"
+    --(noms2 :: Names acc) <- names "APA"
+    
+    allocateScalar noms
+   -- allocateScalar noms2
+    -- a single thread in the group, performs an assignment
+    -- May need synchronization! 
+    singleThread $ assignScalar noms acc
+    sync
+    seqFor (sizeConv n) $ \bix -> do
+      --singleThread $ assignScalar noms2 acc 
+      (newAcc, b) <- f (readFrom noms) (arr ! bix)
+      singleThread $ assignScalar noms newAcc
+      sync
+      let wf' a ix = wf a (bix * sizeConv rn + ix) 
+      b <: wf'
+     
+  where 
+    n  = len arr
+    rn = len $ arr ! 0

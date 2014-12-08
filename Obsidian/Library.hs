@@ -46,7 +46,7 @@ module Obsidian.Library
        , zipWith3
        , pair
        , unpair
-       , binSplit
+       , unsafeBinSplit
        , concP
        , load   -- RENAME THIS 
        , store  -- RENAME THIS
@@ -301,12 +301,13 @@ unquadruple = unpair . unpair . fmap (\(a0,a1,a2,a3) -> ((a0,a1), (a2,a3)))
 ---------------------------------------------------------------------------
 
 -- | Recursively split an array in the middle. Apply an array to array computation
---   on each part. @binSplit 3@ divides the array into 8 pieces. 
-binSplit ::Int
+--   on each part. @binSplit 3@ divides the array into 8 pieces.
+--   UNSAFE
+unsafeBinSplit ::Int
            -> (Pull Word32 a -> Pull Word32 b)
            -> Pull Word32 a
            -> Pull Word32 b 
-binSplit = twoK
+unsafeBinSplit = twoK
 
 -- See if this should be specifically for Static size pull arrays
 twoK :: Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
@@ -546,6 +547,7 @@ sConcat arr =
   where 
     n  = len arr
     rn = len $ arr ! 0
+
 
 -- | Variant of sConcat.
 sDistribute :: ASize l => l -> (EWord32 -> SPush t a) -> Push t l a
