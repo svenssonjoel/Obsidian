@@ -115,5 +115,7 @@ myconf conf =
        customTagHarvesterInt "BYTES_TO_DEVICE" `mappend`
        customTagHarvesterInt "BYTES_FROM_DEVICE" `mappend`
        customTagHarvesterInt "CYCLES" `mappend`
+       customTagHarveserInt  "NUMBER_OF_BLOCKS" `mappend`
+       customTagHarvesterInt "ELEMENTS_PER_BLOCK" `mappend`
        harvesters conf
    }
