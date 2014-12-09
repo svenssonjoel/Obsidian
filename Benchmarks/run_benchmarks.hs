@@ -34,8 +34,15 @@ largeReduceConf = And [ Set (Variant "large") (RuntimeArg "large")
 scanConf = Or [ And [ Set (Variant v) (RuntimeArg v) 
                     , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
                     , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..12]]
-                    ] | v <- ["s1", "s2", "s3", "k1", "k2" ]] 
-
+                    ] | v <- ["s1", "s2", "s3", "k1", "k2" ]]
+scan2Conf = Or [And [ Set (Variant v) (RuntimeArg v)
+                    , Or [ Set NoMeaning (RuntimeArg (show blocks))]
+                    , Or [ Set NoMeaning (RuntimeArg (show (16777216 `div` blocks)))]
+                    , Or [ Set NoMeaning (RuntimeArg (show threads))] 
+                    ]| blocks <- [16,32,64,96,128,160,192,224,256]
+                     , threads <- [32,64,128,256,512]
+                     , v <- ["chain1","chain2","chain3"]]
+            
 largeScanConf = And [ Set (Variant "bigscan") (RuntimeArg "bigscan")
                     , Or [ Set NoMeaning (RuntimeArg reducer) | reducer <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]]
                     , Or [ Set NoMeaning (RuntimeArg scaner)  | scaner  <- ["cin1", "cin2", "cin3", "cin4", "cin5"]]
@@ -74,7 +81,8 @@ all_benchmarks =
   , (mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf2)  { progname = Just "Reduce" } 
   , (mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf)  { progname = Just "Reduce" }
   , (mkBenchmark "ScanBench/Scan.cabal" [] scanConf) {progname = Just "Scan" }
-  , (mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf) {progname = Just "LargeScan"} 
+  , (mkBenchmark "ScanBench2/Scan2.cabal" [] scan2Conf) {progname = Just "Scan2" }
+  , (mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf) {progname = Just "LargeScan"}
   , (mkBenchmark "FractalBench/Fractals.cabal" [] fractalConf) {progname = Just "Fractals"}
   , (mkBenchmark "GridSizeBench/GridSizeBench.cabal" [] gridSizeConf) {progname = Just "GridSize"} 
   , (mkBenchmark "SyncCostBench/SyncCostBench.cabal" [] syncCostConf) {progname = Just "SyncCost"} 
