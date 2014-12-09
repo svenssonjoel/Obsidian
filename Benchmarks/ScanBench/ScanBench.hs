@@ -56,7 +56,10 @@ kernels = [("s1", mapScan1)
           ,("s2", mapScan2)
           ,("s3", mapScan3)
           ,("k1", mapScan4)
-          ,("k2", mapScan5)] 
+          ,("k2", mapScan5)]
+          -- ,("chain1",seqChain sklanskies 0)
+          -- ,("chain2",seqChain kss 0)
+          -- ,("chain3",seqChain ksps 0)]
 
        
 -- ######################################################################

@@ -353,3 +353,84 @@ mapIScan5 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Gri
 mapIScan5 n f a arr = liftGridMap body arr
   where
     body arr = execBlock ((wrapI ksLocalP n f a) arr)
+
+
+
+---------------------------------------------------------------------------
+-- chained up scans within a block
+---------------------------------------------------------------------------
+
+sklanskyLocalPull :: Data a
+                 => Int
+                 -> (a -> a -> a)
+                 -> SPull a
+                 -> BProgram (SPull a)
+sklanskyLocalPull 0 _ arr = return arr
+sklanskyLocalPull n op arr =
+  do 
+    let arr1 = unsafeBinSplit (n-1) (fan op) arr
+    arr2 <- compute $ push arr1
+    sklanskyLocalPull (n-1) op arr2
+
+
+ksLocalPull :: Data a 
+        => Int -- Stages (log n) 
+        -> (a -> a -> a) -- opertor
+        -> SPull a -- input data
+        -> BProgram (SPull a) -- output computation
+ksLocalPull 0 op arr = return arr
+ksLocalPull n op arr = do
+  arr2 <- compute =<< ksLocalPull (n-1) op arr
+  let a1   = shiftLeft (2^(n-1)) arr2
+      oped = zipWith op arr2 a1 
+      copy = take (2^(n-1)) arr2
+      all  = copy `append` oped
+  return all
+
+ksLocalPPull :: Data a
+            => Int -- Stages (log n) 
+            -> (a -> a -> a) -- opertor
+            -> SPull a -- input data
+            -> BProgram (SPull a) -- output computation
+ksLocalPPull 0 op arr = return arr
+ksLocalPPull n op arr = do
+  arr2 <- compute =<< ksLocalPPull (n-1) op arr
+  let a1   = shiftLeft (2^(n-1)) arr2
+      oped = push $ zipWith op arr2 a1 
+      copy = push $ take (2^(n-1)) arr2
+  compute $ copy `concP` oped
+
+
+
+wrapKernCin kern n op cin arr = do
+  arr' <- compute (applyToHead op cin arr)
+  arr'' <- kern n op arr'
+  return (arr'' ! (fromIntegral (len arr'' - 1)), asBlock arr'')
+  where
+    applyToHead op cin arr =
+      let h = fmap (op cin ) $ take 1 arr
+          b = drop 1 arr
+      in h `append` b
+
+
+sklanskies n op acc arr = sMapAccum (wrapKernCin sklanskyLocalPull n op) acc (splitUp (2^n) arr)
+
+kss n op acc arr = sMapAccum (wrapKernCin ksLocalPull n op) acc (splitUp (2^n) arr)
+
+ksps n op acc arr = sMapAccum (wrapKernCin ksLocalPPull n op) acc (splitUp (2^n) arr)
+
+type Kernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
+                    
+seqChain :: (Num a, Data a )
+            => Kernel a
+            -> a 
+            -> Int
+            -> (a -> a -> a)
+            -> DPull (SPull a)
+            -> DPush Grid a
+seqChain kern acc n op arr = liftGridMap body arr
+  where
+    body a = kern n op acc a -- sklanskies n op acc a
+
+
+
