@@ -81,9 +81,6 @@ instance Compute t => ComputeAs t Pull where
 
    This means that the constraint "Compute Block (Push Thread)"
    matches this instance, but is a type error.
-
-   I still wonder about a few things in related to this instance.
-   Will expand this comment as they are understood. 
 -} 
 instance (t ~ t1, Compute t) => ComputeAs t (Push t1) where
   compute =  compute_
