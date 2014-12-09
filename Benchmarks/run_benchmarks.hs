@@ -39,8 +39,8 @@ scan2Conf = Or [And [ Set (Variant v) (RuntimeArg v)
                     , Or [ Set NoMeaning (RuntimeArg (show blocks))]
                     , Or [ Set NoMeaning (RuntimeArg (show (16777216 `div` blocks)))]
                     , Or [ Set NoMeaning (RuntimeArg (show threads))] 
-                    ]| blocks <- [16,32,64,96,128,160,192,224,256]
-                     , threads <- [32,64,128,256,512]
+                    ]| blocks <- [16,32,64,128,256,512,1024]
+                     , threads <- [32,64,128,256,512,1024]
                      , v <- ["chain1","chain2","chain3"]]
             
 largeScanConf = And [ Set (Variant "bigscan") (RuntimeArg "bigscan")
