@@ -49,6 +49,9 @@ segmentedScan segSize vec = V.scanl1 (+) (V.take segSize vec) V.++
 
 
 
+
+
+
 -- ######################################################################
 -- Kernels
 -- ######################################################################
@@ -142,11 +145,17 @@ small k t e = do
         lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
         lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
         lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+
+        lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (fromIntegral (e * blcks))
+        lift $ putStrLn $ "NUMBER_OF_BLOCKS: "   ++ show (fromIntegral blcks)
+        lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show (fromIntegral e) 
+        
         lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
-        -- lift $ putStrLn "Done: ... Comparing to CPU result"         
-        -- when (r /= cpuresult) $ 
-        --   lift $ putStrLn "WARNING: GPU and CPU results don't match " 
+        -- lift $ putStrLn "Done: ... Comparing to CPU result"
+        -- case r == cpuresult of
+        --   False -> lift $ putStrLn "WARNING: GPU and CPU results don't match!"
+        --   True  -> lift $ putStrLn "GREAT! GPU and CPU results are equal."
 
 
 
@@ -220,7 +229,8 @@ large reducer scan threads elements = do
     compile_t1 <- lift getCurrentTime  
 
     --(inputs :: V.Vector Word32) <- lift $ mkRandomVec (fromIntegral (e * blcks))
-    let inputs = V.fromList $ P.take (fromIntegral (e*blcks)) (P.repeat 1) 
+    let inputs = V.fromList $ P.take (fromIntegral (e*blcks)) (P.repeat 1)
+        cpuresult = V.scanl1 (+) inputs 
 
     transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
@@ -260,7 +270,16 @@ large reducer scan threads elements = do
             lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral (e * blcks) * sizeOf (undefined :: EWord32))
             lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
             lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
-            lift $ putStrLn $ show $ P.take 10 (V.toList r)
+            lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (fromIntegral (e * blcks))
+            lift $ putStrLn $ "NUMBER_OF_BLOCKS: "   ++ show (fromIntegral blcks)
+            lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show (fromIntegral e) 
+        
+--        lift $ putStrLn $ show $ P.take 10 (V.toList r) 
+
+            lift $ putStrLn "Done: ... Comparing to CPU result"
+            case r == cpuresult of
+              False -> lift $ putStrLn "WARNING: GPU and CPU results don't match!"
+              True  -> lift $ putStrLn "GREAT! GPU and CPU results are equal."
 
 
 

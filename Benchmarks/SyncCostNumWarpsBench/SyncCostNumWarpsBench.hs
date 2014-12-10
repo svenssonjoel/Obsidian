@@ -114,5 +114,9 @@ main = do
               lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral results_size * sizeOf (undefined :: EWord32))
               lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
               lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+
+              lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show data_size
+              lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show grid_size
+              lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show block_size
               lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 

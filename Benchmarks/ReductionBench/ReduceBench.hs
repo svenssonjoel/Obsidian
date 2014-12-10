@@ -114,6 +114,10 @@ runBenchmark origkern t elts =
         lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
         lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
 
+        lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (fromIntegral (blcks * elts))
+        lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show (fromIntegral blcks)
+        lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show (fromIntegral elts) 
+
         let ok = sum (V.toList r) == cpuresult
 
         lift $ case ok of
@@ -175,7 +179,12 @@ runLargeBenchmark origkern t =
              lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral blcks * sizeOf (undefined :: EWord32))
              lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
              lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
-         
+
+             lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (fromIntegral (blcks * elts))
+             lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show (fromIntegral blcks)
+             lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show (fromIntegral elts) 
+
+          
              let ok = (V.toList r) P.!! 0 == cpuresult
 
              lift $ case ok of

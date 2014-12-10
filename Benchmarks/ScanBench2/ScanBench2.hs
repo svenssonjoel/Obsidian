@@ -116,12 +116,7 @@ small num_blocks elts_per_block threads k = do
         r <- copyOut o
         t_end <- lift getCurrentTime
         
-        --lift $ putStrLn $ show r
-        --lift $ putStrLn $ show cpuresult
-        --lift $ putStrLn $ show (r == cpuresult)
-
-        -- Computing the cpuresults take a long time!
-        -- I implemented a bad cpu segmented scan (uses V.++)         
+  
         lift $ putStrLn $ "SELFTIMED: " ++ show (diffUTCTime t1 t0)
         lift $ putStrLn $ "CYCLES: "    ++ show (cnt1 - cnt0)
 
@@ -134,7 +129,6 @@ small num_blocks elts_per_block threads k = do
         lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show num_blocks
         lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show elts_per_block 
         lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (num_blocks * elts_per_block)
-        lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
         lift $ putStrLn "Done: ... Comparing to CPU result"         
         case (r == cpuresult) of

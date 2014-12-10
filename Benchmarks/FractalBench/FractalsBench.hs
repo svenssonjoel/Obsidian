@@ -73,3 +73,8 @@ main = do
           lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
           lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
 
+          -- in this case computed
+          lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show (fromIntegral (s*s))
+          lift $ putStrLn $ "NUMBER_OF_BLOCKS: "   ++ show (fromIntegral s)
+          lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show s 
+          
