@@ -423,14 +423,14 @@ type Kernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
                     
 seqChain :: (Num a, Data a )
             => Kernel a
-            -> a 
             -> Int
             -> (a -> a -> a)
+            -> DPull a
             -> DPull (SPull a)
             -> DPush Grid a
-seqChain kern acc n op arr = liftGridMap body arr
+seqChain kern n op accs arr = liftGrid $ zipWith body accs arr
   where
-    body a = kern n op acc a -- sklanskies n op acc a
+    body acc a = kern n op acc a -- sklanskies n op acc a
 
 
 

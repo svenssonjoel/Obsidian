@@ -42,7 +42,17 @@ scan2Conf = Or [And [ Set (Variant v) (RuntimeArg v)
                     ]| blocks <- [16,32,64,128,256,512,1024]
                      , threads <- [32,64,128,256,512,1024]
                      , v <- ["chain1","chain2","chain3"]]
-            
+
+largeScan2Conf = Or [ And [ Set (Variant "bigscan2") (RuntimeArg "")
+                          , Or [ Set NoMeaning (RuntimeArg iscan) | iscan <- ["iscan1", "iscan2", "iscan3", "iscan4", "iscan5"]]
+                          , Or [ Set NoMeaning (RuntimeArg scan)  | scan  <- ["chain1", "chain2", "chain3"]]
+                          , Or [ Set NoMeaning (RuntimeArg (show blocks))]
+                            -- 8,16 and 32 M elements 
+                          , Or [ Set NoMeaning (RuntimeArg (show (elts `div` blocks)))| elts <- [8388608,16777216,33554432]]
+                          , Or [ Set NoMeaning (RuntimeArg (show threads))]
+                          ] | blocks <- [16,32,64,128,256,512,1024]
+                            , threads <- [32,64,128,256,512,1024]]
+
 largeScanConf = And [ Set (Variant "bigscan") (RuntimeArg "bigscan")
                     , Or [ Set NoMeaning (RuntimeArg reducer) | reducer <- ["rbs_1", "rbs_2", "rbs_3", "rbs_4", "rbs_5", "rbs_6", "rbs_7"]]
                     , Or [ Set NoMeaning (RuntimeArg scaner)  | scaner  <- ["cin1", "cin2", "cin3", "cin4", "cin5"]]
@@ -82,6 +92,7 @@ all_benchmarks =
   , (mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf)  { progname = Just "Reduce" }
   , (mkBenchmark "ScanBench/Scan.cabal" [] scanConf) {progname = Just "Scan" }
   , (mkBenchmark "ScanBench2/Scan2.cabal" [] scan2Conf) {progname = Just "Scan2" }
+  , (mkBenchmark "ScanBench2/Scan2.cabal" [] largeScan2Conf) {progname = Just "LargeScan2" }
   , (mkBenchmark "ScanBench/Scan.cabal" [] largeScanConf) {progname = Just "LargeScan"}
   , (mkBenchmark "FractalBench/Fractals.cabal" [] fractalConf) {progname = Just "Fractals"}
   , (mkBenchmark "GridSizeBench/GridSizeBench.cabal" [] gridSizeConf) {progname = Just "GridSize"} 
@@ -115,7 +126,7 @@ myconf conf =
        customTagHarvesterInt "BYTES_TO_DEVICE" `mappend`
        customTagHarvesterInt "BYTES_FROM_DEVICE" `mappend`
        customTagHarvesterInt "CYCLES" `mappend`
-       customTagHarveserInt  "NUMBER_OF_BLOCKS" `mappend`
+       customTagHarvesterInt  "NUMBER_OF_BLOCKS" `mappend`
        customTagHarvesterInt "ELEMENTS_PER_BLOCK" `mappend`
        harvesters conf
    }

@@ -28,8 +28,7 @@ red1 f arr
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      -- forcePull needs new name! 
-      imm <- forcePull (zipWith f a1 a2)
+      imm <- compute (zipWith f a1 a2)
       red1 f imm   
 
 mapRed1 :: Data a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
@@ -55,7 +54,7 @@ red2 f arr
   | otherwise    = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red2 f arr'   
 
 mapRed2 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
@@ -83,7 +82,7 @@ red3 cutoff f  arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red3 cutoff f arr'   
 
 
@@ -195,4 +194,14 @@ getRed7 = putStrLn $
             (mapRed7 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
-
+---------------------------------------------------------------------------
+-- switches to parallel at the point where #elts=numthreads*2
+---------------------------------------------------------------------------
+mapRed8 :: Data a => Word32 -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
+mapRed8 num_threads f arr = liftGridMap body arr -- pConcat (fmap body arr) 
+  where
+    body arr =
+      let n = len arr
+          m = n `div` (num_threads*2)
+      in execBlock (red5' (fromIntegral m) f arr)
+    
