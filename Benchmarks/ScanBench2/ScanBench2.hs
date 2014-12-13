@@ -109,7 +109,7 @@ small num_blocks elts_per_block threads k = do
         allocaVector (fromIntegral (elts_per_block*num_blocks))  $ \(o :: CUDAVector Word32) -> do
           transfer_done <- lift getCurrentTime
           fill o 0
-
+          fill carry_ins 0 
 
           t0   <- lift getCurrentTime
           cnt0 <- lift rdtsc
