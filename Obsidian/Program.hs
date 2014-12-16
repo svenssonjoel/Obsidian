@@ -16,7 +16,7 @@
 {-# LANGUAGE TypeOperators #-} 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-} 
-
+{-# LANGUAGE ExplicitNamespaces #-}
 
 
 module Obsidian.Program  (
@@ -30,7 +30,7 @@ module Obsidian.Program  (
 
   -- Class
   Sync,
-  
+  type (*<=*),
   
   -- helpers
   printPrg,
@@ -65,6 +65,23 @@ data DirectlyAbove t
 type Warp = DirectlyAbove Thread
 type Block = DirectlyAbove Warp
 type Grid  = DirectlyAbove Block
+
+
+class a *<=* b
+instance Thread *<=* Thread
+instance Thread *<=* Warp
+instance Thread *<=* Block
+instance Thread *<=* Grid
+
+instance Warp *<=* Warp
+instance Warp *<=* Block
+instance Warp *<=* Grid
+
+instance Block *<=* Block
+instance Block *<=* Grid
+
+instance Grid *<=* Grid 
+
 
 ---------------------------------------------------------------------------
 
@@ -102,9 +119,9 @@ data Program t a where
   Break  :: Program Thread () 
 
   -- use threads along one level
-  -- Warp, Block, Grid.
+  -- Thread, Warp, Block.
   -- Make sure Code generation works when t ~ Thread
-  ForAll :: EWord32 
+  ForAll :: (t *<=* Block) => EWord32 
             -> (EWord32 -> Program Thread ())
             -> Program t () 
 
@@ -159,8 +176,8 @@ uniqueNamed_ pre = do id <- Identifier
 ---------------------------------------------------------------------------
 -- Memory 
 ---------------------------------------------------------------------------
--- assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
--- assign nom ix e = Assign nom ix e 
+assign :: Scalar a => Name -> [Exp Word32] -> Exp a -> Program Thread ()
+assign nom ix e = Assign nom ix e 
 
 allocate :: Name -> Word32 -> Type -> Program t () 
 allocate nom l t = Allocate nom l t 
@@ -181,12 +198,12 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32
+forAll :: (t *<=* Block) => EWord32
           -> (EWord32 -> Program Thread ())
           -> Program t ()
 forAll n f = ForAll n f
   
-forAll2 :: EWord32
+forAll2 :: (t *<=* Block) => EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
            -> Program (DirectlyAbove t) ()
@@ -203,7 +220,7 @@ distrPar b f = DistrPar b $ \bs -> f bs
 -- Let a single thread perform  of a block/Warp perform a given
 -- Thread program 
 ---------------------------------------------------------------------------
-singleThread :: Program Thread () -> Program t ()
+singleThread :: (t *<=* Block) => Program Thread () -> Program t ()
 singleThread p =
   forAll 1 (\_ -> p) 
 

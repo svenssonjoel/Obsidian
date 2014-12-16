@@ -1,6 +1,7 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Main where
 
@@ -26,7 +27,7 @@ increment arr = fmap (+1) arr
 incrementAndReverse :: Num a => SPull a -> SPull a
 incrementAndReverse = reverse . increment 
 
-increment2 :: (Data a, Compute t, Num a) => SPull a -> Program t (SPull a)
+increment2 :: (t *<=* Block, Data a, Compute t, Num a) => SPull a -> Program t (SPull a)
 increment2 arr = compute $ push $ fmap (+1) arr
 
 

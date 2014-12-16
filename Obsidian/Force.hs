@@ -66,10 +66,10 @@ instance Compute Warp
 instance Compute Block 
 
 
-class ComputeAs t a where
+class Compute t => ComputeAs t a where
   compute :: Data e => a Word32 e -> Program t (Pull Word32 e)
   
-instance Compute t => ComputeAs t Pull where
+instance (t *<=* Block, Compute t) => ComputeAs t Pull where
   compute = computePull_ 
 
 {- 
@@ -89,7 +89,7 @@ compute_ :: (Data a, Compute t)
           => Push t Word32 a -> Program t (Pull Word32 a)      
 compute_ = force
 
-computePull_ :: (Data a, Compute t)
+computePull_ :: (t *<=* Block, Data a, Compute t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 computePull_ = unsafeForce . push 
                
@@ -142,7 +142,7 @@ instance Write Thread where
 ---------------------------------------------------------------------------
 -- unsafe!
 ---------------------------------------------------------------------------
-unsafeWritePull :: (Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
+unsafeWritePull :: (t *<=* Block, Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
 unsafeWritePull t = unsafeWritePush t . push
 
 ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ force arr = do
   return rval
 
 -- | Make a @Pull@ array manifest in memory. 
-forcePull :: (Data a, Compute t)
+forcePull :: (t *<=* Block, Data a, Compute t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
 forcePull = unsafeForce . push 
 

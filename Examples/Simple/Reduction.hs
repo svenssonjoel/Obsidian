@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-} 
-{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE ScopedTypeVariables #-}
 module Reduction where
 
 import Obsidian
@@ -63,7 +63,7 @@ mapSumUpT arr = liftGrid (fmap body arr)
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
-reduceLocal :: (Compute t, Data a)
+reduceLocal :: (t *<=* Block, Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -102,7 +102,7 @@ reduce = reduceGrid
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
 
-reduceLocal' :: (Compute t, Data a)
+reduceLocal' :: (t *<=* Block, Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t a

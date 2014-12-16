@@ -1,4 +1,6 @@
-{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-
 
    sequential loops with state
@@ -14,6 +16,7 @@ import Obsidian.Exp
 import Obsidian.Array
 import Obsidian.Memory
 import Obsidian.Names
+import Obsidian.Data
 import qualified Obsidian.Library as Lib 
 
 -- TODO: Rename module to something better
@@ -160,7 +163,7 @@ mapAccumR op acc =
 -- sMapAccum
 -- Generalisation of the old sConcat functionality.
 
-sMapAccum :: (Sync t, Storable acc, ASize l)
+sMapAccum :: (t *<=* Block, Sync t, Data acc, ASize l)
              => (acc -> Pull l a -> Program t (acc,Push t l b))
              -> acc
              -> Pull l (Pull l a)

@@ -503,7 +503,7 @@ instance LiftGrid Warp where
 -- | A way to enter into the hierarchy
 -- A bunch of Thread computations, spread across the threads of either
 -- a Warp, block or grid. (or performed sequentially in a single thread) 
-tConcat :: ASize l
+tConcat :: (t *<=* Block, ASize l)
            => Pull l (SPush Thread b)
            -> Push t l b  
 tConcat arr =
@@ -517,7 +517,7 @@ tConcat arr =
     s  = len (arr ! 0) --(f (variable "tid")) -- arr
 
 -- | Variant of @tConcat@. 
-tDistribute :: ASize l
+tDistribute :: (t *<=* Block, ASize l)
                => l
                -> (EWord32 -> SPush Thread b)
                -> Push t l b
@@ -589,7 +589,7 @@ class ExecThread a where
                  => Program Thread (a Word32 e)
                  -> Push Thread Word32 e
   
-execThread' :: Data a => Program t a -> SPush t a
+execThread' :: (t *<=* Block, Data a) => Program t a -> SPush t a
 execThread' = singletonPush
 
 instance ExecThread (Push Thread) where
@@ -662,21 +662,21 @@ runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
 runPush2 f a b = runPush (f a b)  
 
 -- | Converts a program computing a pull Array to a Push array
-runPull :: ASize s => Program t (Pull s a) -> Push t s a
+runPull :: (t *<=* Block, ASize s) => Program t (Pull s a) -> Push t s a
 runPull = runPush . liftM push 
 
 -- | Lifts @runPull@ to one input functions.
-runPull1 :: ASize s => (a -> Program t (Pull s b)) -> a -> Push t s b
+runPull1 :: (t *<=* Block, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
 runPull1 f a = runPull (f a)
 
 -- | Lifts @runPull@ to two input functions.
-runPull2 :: ASize s => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
+runPull2 :: (t *<=* Block, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
 runPull2 f a b = runPull (f a b)
 
 ---------------------------------------------------------------------------
 -- 
 ---------------------------------------------------------------------------
-pushPrg :: Program t a -> SPush t a
+pushPrg :: (t *<=* Block) => Program t a -> SPush t a
 pushPrg = singletonPush
 
 
@@ -690,7 +690,7 @@ pushPrg = singletonPush
 --singletonPush = singletonPushP . return 
 
 -- | Monadic version of @singleton@.
-singletonPush :: Program t a -> SPush t a
+singletonPush :: (t *<=* Block) => Program t a -> SPush t a
 singletonPush prg =
   mkPush 1 $ \wf -> do
     a <- prg

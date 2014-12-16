@@ -1,6 +1,8 @@
 
 {-# LANGUAGE NoMonomorphismRestriction,
              ScopedTypeVariables#-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Scan where
 
@@ -249,7 +251,7 @@ mapScan5 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
 --           b = drop 1 arr
 --       in h `append` b
          
-wrapCIn :: (Compute t, Data a)
+wrapCIn :: (t *<=* Block, Compute t, Data a)
            => (t2 -> (t1 -> a -> a) -> Pull Word32 a -> Program t b)
            -> t2 -> (t1 -> a -> a) -> t1 -> Pull Word32 a -> Program t b
 wrapCIn scan n op cin arr =

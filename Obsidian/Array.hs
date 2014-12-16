@@ -2,6 +2,7 @@
              FlexibleInstances,
              GADTs  #-}
 {-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE FlexibleContexts #-}
 
 {- Joel Svensson 2012
 
@@ -156,7 +157,7 @@ instance Array Pull where
   fromDyn n (Pull _ ixf) = Pull n ixf 
    
   
-instance  Array (Push t) where
+instance Array (Push Thread) where
   iota s = Push s $ \wf ->
     do
       forAll (sizeConv s) $ \ix -> wf ix ix 
@@ -178,12 +179,80 @@ instance  Array (Push t) where
    -- technicalities
   toDyn (Push n p) = Push (fromIntegral n) p 
   fromDyn n (Push _ p) = Push n p 
- 
+
+instance Array (Push Warp) where
+  iota s = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf ix ix 
+  replicate s e = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf e ix 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+
+instance Array (Push Block) where
+  iota s = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf ix ix 
+  replicate s e = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf e ix 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+instance Array (Push Grid) where
+  iota s = error "iota: not supported as Grid" 
+  replicate s e = error "replicate: not supported as Grid" 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+
+
 
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
-instance  Functor (Push t s) where 
+instance  Array (Push t) => Functor (Push t s) where 
   fmap = aMap
 
 instance Functor (Pull s) where
@@ -194,7 +263,7 @@ instance Functor (Pull s) where
 -- Pushable
 ---------------------------------------------------------------------------
 
-push ::  ASize s => Pull s e -> Push t s e 
+push ::  (t *<=* Block) => ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
   Push n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
@@ -203,8 +272,9 @@ class AsGrid a where
   asGrid :: ASize s => a s e -> Push Grid s e
 
 instance AsGrid Pull where
-  asGrid = push
-
+  asGrid = error $ "asGrid: Trying to compute a pull array as a grid.\n" ++ 
+                   "This operation is not supported, there are too many choises\n" ++
+                   "involved that we just should not make automatically"
 instance AsGrid (Push Grid) where
   asGrid = id
 
