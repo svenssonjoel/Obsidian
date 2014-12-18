@@ -26,9 +26,9 @@ import Prelude hiding (map,zipWith,zip,sum,replicate,take,drop,iterate,last)
 
 -- Kernel1 is just a reduction! 
 kernel1 :: Data a
-           => (a -> a -> a)
-           -> SPull a
-           -> BProgram (SPush Block a)
+        => (a -> a -> a)
+        -> SPull a
+        -> BProgram (SPush Block a)
 kernel1 f arr
   | len arr == 1 = return $ push arr
   | otherwise    = 
@@ -47,22 +47,21 @@ mapKernel1 f arr = liftGridMap body arr
 ---------------------------------------------------------------------------
     
 sklansky :: Data a 
-            => Int
-            -> (a -> a -> a)
-            -> Pull Word32 a
-            -> Program Block (Push Block Word32 a)
+         => Int
+         -> (a -> a -> a)
+         -> Pull Word32 a
+         -> Program Block (Push Block Word32 a)
 sklansky 0 op arr = return $ push arr 
 sklansky n op arr =
-  do 
-    let arr1 = unsafeBinSplit (n-1) (fan op) arr
-    arr2 <- compute arr1
-    sklansky (n-1) op arr2
+  do let arr1 = unsafeBinSplit (n-1) (fan op) arr
+     arr2 <- compute arr1
+     sklansky (n-1) op arr2
 
 
 fan :: Data a
-       => (a -> a -> a)
-       -> SPull a
-       -> SPull a
+    => (a -> a -> a)
+    -> SPull a
+    -> SPull a
 fan op arr =  a1 `append` fmap (op c) a2 
     where 
       (a1,a2) = halve arr
@@ -98,10 +97,10 @@ phase i f arr =
 
 
 sklansky2 :: Data a
-           => Int
-           -> (a -> a -> a)
-           -> Pull Word32 a
-           -> Program Block (Push Block Word32 a)
+          => Int
+          -> (a -> a -> a)
+          -> Pull Word32 a
+          -> Program Block (Push Block Word32 a)
 sklansky2 l f = compose [phase i f | i <- [0..(l-1)]]
   
 compose :: Data a
@@ -149,14 +148,13 @@ mapScan2 n f arr = liftGridMap body arr -- pConcat $ fmap body arr  -- sklansky2
 ----------------------------------------------------------------------------
 
 sklansky3 :: Data a
-           => Int
-           -> (a -> a -> a)
-           -> Pull Word32 a
-           -> Program Block (Push Block Word32 a)
+          => Int
+          -> (a -> a -> a)
+          -> Pull Word32 a
+          -> Program Block (Push Block Word32 a)
 sklansky3 l f arr =
-  do
-    im <- compute $ load 2 arr
-    compose [phase i f | i <- [0..(l-1)]] im 
+  do im <- compute $ load 2 arr
+     compose [phase i f | i <- [0..(l-1)]] im 
 
 
 mapScan3 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a

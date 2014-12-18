@@ -49,10 +49,10 @@ deltaP, deltaQ :: EFloat
 deltaP = (xmax - xmin) / 512.0
 deltaQ = (ymax - ymin) / 512.0
 
-f ::  EFloat
-     -> EFloat
-     -> (EFloat, EFloat, EWord32)
-     -> (EFloat, EFloat, EWord32) 
+f :: EFloat
+  -> EFloat
+  -> (EFloat, EFloat, EWord32)
+  -> (EFloat, EFloat, EWord32) 
 f b t (x,y,iter) =
   (xsq - ysq + (xmin + t * deltaP),
    2*x*y + (ymax - b * deltaQ),

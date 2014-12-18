@@ -46,9 +46,9 @@ getRed1 = putStrLn $
 ---------------------------------------------------------------------------
 
 red2 :: Data a
-           => (a -> a -> a)
-           -> Pull Word32 a
-           -> Program Block (SPush Block a) 
+     => (a -> a -> a)
+     -> Pull Word32 a
+     -> Program Block (SPush Block a) 
 red2 f arr
   | len arr == 1 = return $ push $ arr 
   | otherwise    = 
@@ -72,10 +72,10 @@ getRed2 = putStrLn $
 ---------------------------------------------------------------------------
 
 red3 :: Data a
-        => Word32 
-        -> (a -> a -> a)
-        -> Pull Word32 a
-        -> Program Block (SPush Block a)
+     => Word32 
+     -> (a -> a -> a)
+     -> Pull Word32 a
+     -> Program Block (SPush Block a)
 red3 cutoff f  arr
   | len arr == cutoff =
     return $ push $ fold1 f arr
@@ -103,15 +103,17 @@ getRed3 = putStrLn $
 -- An alternative is to use fold1 and get an unrolled loop in the
 -- generated code. 
 ---------------------------------------------------------------------------
-seqReducePush f = singletonPush . seqReduce f 
+seqReducePush :: Data a => (a -> a -> a) -> SPull a -> SPush Thread a
+seqReducePush f = execThread' . seqReduce f 
 
 red4 :: Data a
-        => (a -> a -> a)
-        -> Pull Word32 a
-        -> Program Block (SPush Block a)
+     => (a -> a -> a)
+     -> Pull Word32 a
+     -> Program Block (SPush Block a)
 red4 f arr =
   do
-    arr' <- compute $ liftBlockMap (seqReducePush f) (splitUp 8 arr)
+    arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
+                                   (splitUp 8 arr)
     red3 2 f arr'
     
 mapRed4 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
@@ -135,8 +137,8 @@ red5 :: Data a
         -> Program Block (SPush Block a)
 red5 f arr =
   do
-    arr' <- compute $ liftBlockMap (seqReducePush f)
-                                 (coalesce 8 arr)
+    arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
+                                   (coalesce 8 arr)
     red3 2 f arr' 
   
 
@@ -161,9 +163,9 @@ red5' :: Data a
            -> Pull Word32 a
            -> Program Block (SPush Block a) 
 red5' n f arr =
-  do
-    arr' <- compute $ liftBlockMap (seqReducePush f) (coalesce n arr)
-    red3 2 f arr' 
+  do arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
+                                    (coalesce n arr)
+     red3 2 f arr' 
 
 red6 = red5' 16 
 

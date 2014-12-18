@@ -22,10 +22,13 @@ import Prelude hiding (zipWith,sum,replicate,take,drop,iterate)
 --
 ---------------------------------------------------------------------------
 -- Mandel
-xmax =  1.2 :: EFloat
-xmin = -2.0 :: EFloat
-ymax =  1.2 :: EFloat
-ymin = -1.2 :: EFloat
+xmax, xmin :: EFloat
+xmax =  1.2
+xmin = -2.0
+
+ymax, ymin :: EFloat
+ymax =  1.2
+ymin = -1.2 
 
 -- plate1
 -- xmax =  -0.690906 :: EFloat
@@ -47,10 +50,15 @@ ymin = -1.2 :: EFloat
 
 
 -- For generating a 512x512 image
+deltaP, deltaQ :: EWord32 -> EFloat 
 deltaP s = (xmax - xmin) / (w32ToF s) -- 512.0
 deltaQ s = (ymax - ymin) / (w32ToF s) -- 512.0
 
-
+f :: Num t => EWord32
+     -> EWord32
+     -> EWord32
+     -> (EFloat,EFloat, t)
+     -> (EFloat,EFloat, t)
 f s bid tid (x,y,iter) = (xsq - ysq + (xmin + (w32ToF tid) * deltaP s),
                         2*x*y + (ymax - (w32ToF bid) * deltaQ s),
                         iter+1) 
