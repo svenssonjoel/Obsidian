@@ -41,21 +41,21 @@ sumUpT arr
 
 
 mapSumUp :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
-mapSumUp arr = liftGrid (fmap body arr)
+mapSumUp arr = asGrid (fmap body arr)
   where
     body a = execBlock' (return (sumUp a)) :: Push Block Word32 EWord32 
 
 mapSumUp' :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
-mapSumUp' arr = liftGrid (fmap body arr)
+mapSumUp' arr = asGrid (fmap body arr)
   where
     body a = singletonPush (sumUp' a)
 
 
 -- {{{0,1,2,3,4,5,6,7}},{{8,9,10,11,12,13,14,15}}}
 mapSumUpT :: Pull EWord32 (SPull (SPull EWord32)) -> Push Grid EWord32 EWord32
-mapSumUpT arr = liftGrid (fmap body arr)
+mapSumUpT arr = asGrid (fmap body arr)
   where
-    body a = liftBlock (fmap bodyThread a) 
+    body a = asBlock (fmap bodyThread a) 
     bodyThread a = execThread' (sumUpT a)
 
 
@@ -80,7 +80,7 @@ reduceBlock :: forall a. Data a
           => (a -> a -> a)
           -> SPull a -> Program Block (SPush Block a)
 reduceBlock f arr =
-  do imm <- compute $ liftBlock (fmap body (splitUp 32 arr))
+  do imm <- compute $ asBlock (fmap body (splitUp 32 arr))
      reduceLocal f imm
   where
     body a = execWarp (reduceLocal f a)
@@ -88,7 +88,7 @@ reduceBlock f arr =
 reduceGrid :: forall a. Data a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
-reduceGrid f arr = liftGrid $ fmap body (splitUp 4096 arr) 
+reduceGrid f arr = asGrid $ fmap body (splitUp 4096 arr) 
     where
       body a = execBlock (reduceBlock f a)
 

@@ -34,21 +34,21 @@ increment2 arr = compute $ push $ fmap (+1) arr
 
 -- Programming the Hierarchy
 incrementKernel :: Num a => DPull a -> DPush Grid a
-incrementKernel arr = liftGrid $ fmap (asBlock . increment) arr'
+incrementKernel arr = asGrid $ fmap (push . increment) arr'
   where
     -- make a selection of how many elements to process per CUDA block
     arr' = splitUp 2048 arr 
 
 incrementKernel2 :: (Data a, Num a) => DPull a -> DPush Grid a
 incrementKernel2  arr =
-  liftGrid $ fmap (execBlock . increment2) arr'
+  asGrid $ fmap (execBlock . increment2) arr'
   where
     -- make a selection of how many elements to process per CUDA block
     arr' = splitUp 2048 arr 
 
 incrementKernel3 :: (Data a, Num a) => DPull a -> DPush Grid a
 incrementKernel3 arr =
-  liftGrid $ fmap (liftBlock . (fmap (execWarp . increment2))) arr'
+  asGrid $ fmap (asBlock . (fmap (execWarp . increment2))) arr'
   where
     -- make a selection of how many elements to process per CUDA block/warp
     arr' = fmap (splitUp 512) $ splitUp 2048 arr 

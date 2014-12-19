@@ -32,7 +32,7 @@ red1 f arr
       red1 f imm   
 
 mapRed1 :: Data a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
-mapRed1 f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapRed1 f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (red1 f arr) 
 
@@ -58,7 +58,7 @@ red2 f arr
       red2 f arr'   
 
 mapRed2 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed2 f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapRed2 f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (red2 f arr)
 
@@ -87,7 +87,7 @@ red3 cutoff f  arr
 
 
 mapRed3 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed3 f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapRed3 f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (red3 2 f arr)
 
@@ -112,12 +112,12 @@ red4 :: Data a
      -> Program Block (SPush Block a)
 red4 f arr =
   do
-    arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
-                                   (splitUp 8 arr)
+    arr' <- compute $ asBlockMap (execThread' . seqReduce f)
+                                 (splitUp 8 arr)
     red3 2 f arr'
     
 mapRed4 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed4 f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapRed4 f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (red4 f arr) 
 
@@ -137,13 +137,13 @@ red5 :: Data a
         -> Program Block (SPush Block a)
 red5 f arr =
   do
-    arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
+    arr' <- compute $ asBlockMap (execThread' . seqReduce f)
                                    (coalesce 8 arr)
     red3 2 f arr' 
   
 
 mapRed5 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed5 f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapRed5 f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (red5 f arr) 
 
@@ -163,14 +163,14 @@ red5' :: Data a
            -> Pull Word32 a
            -> Program Block (SPush Block a) 
 red5' n f arr =
-  do arr' <- compute $ liftBlockMap (execThread' . seqReduce f)
+  do arr' <- compute $ asBlockMap (execThread' . seqReduce f)
                                     (coalesce n arr)
      red3 2 f arr' 
 
 red6 = red5' 16 
 
 mapRed6 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed6 f arr = liftGridMap body arr -- pConcat (fmap body arr) 
+mapRed6 f arr = asGridMap body arr -- pConcat (fmap body arr) 
   where
     body arr = execBlock (red6 f arr) 
 
@@ -187,7 +187,7 @@ getRed6 = putStrLn $
 red7 = red5' 32  
 
 mapRed7 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed7 f arr = liftGridMap body arr -- pConcat (fmap body arr) 
+mapRed7 f arr = asGridMap body arr -- pConcat (fmap body arr) 
   where
     body arr = execBlock (red7 f arr)
 
@@ -200,7 +200,7 @@ getRed7 = putStrLn $
 -- switches to parallel at the point where #elts=numthreads*2
 ---------------------------------------------------------------------------
 mapRed8 :: Data a => Word32 -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed8 num_threads f arr = liftGridMap body arr -- pConcat (fmap body arr) 
+mapRed8 num_threads f arr = asGridMap body arr -- pConcat (fmap body arr) 
   where
     body arr =
       let n = len arr

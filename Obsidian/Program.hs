@@ -18,6 +18,9 @@
 {-# LANGUAGE UndecidableInstances #-} 
 {-# LANGUAGE ExplicitNamespaces #-}
 
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Obsidian.Program  (
   -- Hierarchy 
@@ -66,7 +69,6 @@ type Warp = DirectlyAbove Thread
 type Block = DirectlyAbove Warp
 type Grid  = DirectlyAbove Block
 
-
 class a *<=* b
 instance Thread *<=* Thread
 instance Thread *<=* Warp
@@ -81,7 +83,6 @@ instance Block *<=* Block
 instance Block *<=* Grid
 
 instance Grid *<=* Grid 
-
 
 ---------------------------------------------------------------------------
 

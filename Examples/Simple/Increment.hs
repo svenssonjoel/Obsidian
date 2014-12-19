@@ -22,14 +22,14 @@ incLocal arr = fmap (+1) arr
 
 
 increment :: DPull (SPull EWord32) -> DPush Grid EWord32 
-increment arr = liftGridMap body arr
-  where body a = asBlock (incLocal a) 
+increment arr = asGridMap body arr
+  where body a = push (incLocal a) 
 
 
 increment' :: DPull (SPull (SPull EWord32)) -> DPush Grid EWord32 
-increment' arr = liftGrid (fmap body arr) 
-  where body a = liftBlock (fmap body' a) 
-        body' a  = asBlock $ incLocal a 
+increment' arr = asGrid (fmap body arr) 
+  where body a = asBlock (fmap body' a) 
+        body' a  = pushBlock $ incLocal a 
 
 performInc :: IO () 
 performInc =

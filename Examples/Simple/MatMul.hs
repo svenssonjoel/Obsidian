@@ -11,7 +11,7 @@ matMul :: (Num a, Data a)
         => Pull Word32 (Pull Word32 a)
         -> Pull Word32 (Pull Word32 a)
         -> Push Grid Word32 a
-matMul a b = liftGridMap body a
+matMul a b = asGridMap body a
   where
     body x = matMulRow x (transpose b) 
 
@@ -20,7 +20,7 @@ matMulRow :: (Num a, Data a)
            -> Pull Word32 (Pull Word32 a)
            -> Push Block Word32 a
 matMulRow row mat =
-  liftBlockMap (dotProd row) mat 
+  asBlockMap (dotProd row) mat 
 
 dotProd :: (Num a, Data a)
            => Pull Word32 a

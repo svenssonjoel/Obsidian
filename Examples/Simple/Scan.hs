@@ -33,7 +33,7 @@ sklansky :: Data a
             -> (a -> a -> a)
             -> DPull (SPull a)
             -> DPush Grid a
-sklansky n op arr = liftGridMap body arr
+sklansky n op arr = asGridMap body arr
   where
     body a = execBlock (sklanskyLocal n op a)
 
@@ -67,7 +67,7 @@ ksLocal n op arr = do
 ks :: Data a 
       => Int -> (a -> a -> a)
       -> DPull (SPull a) -> DPush Grid a 
-ks n op arr = liftGridMap body arr
+ks n op arr = asGridMap body arr
   where
     body a = execBlock (ksLocal n op a)
                    
@@ -98,7 +98,7 @@ sklanskyLocalCin :: Data a
 sklanskyLocalCin n op cin arr = do
   arr' <- compute (applyToHead op cin arr)
   arr'' <- sklanskyLocalPull n op arr'
-  return (arr'' ! (fromIntegral (len arr'' - 1)), asBlock arr'')
+  return (arr'' ! (fromIntegral (len arr'' - 1)), push arr'')
   where
     applyToHead op cin arr =
       let h = fmap (op cin ) $ take 1 arr
@@ -114,6 +114,6 @@ sklanskies' :: (Num a, Data a )
              -> a 
              -> DPull (SPull a)
              -> DPush Grid a
-sklanskies' n op acc arr = liftGridMap body arr
+sklanskies' n op acc arr = asGridMap body arr
   where
     body a = sklanskies n op acc a

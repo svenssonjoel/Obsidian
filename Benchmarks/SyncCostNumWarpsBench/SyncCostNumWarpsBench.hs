@@ -40,7 +40,7 @@ nonsense sync arr = loopit 10 arr
 
 
 mapNonsense :: (Data a, Num a)  => Word32 -> Bool -> DPull a -> DPush Grid a
-mapNonsense blocksize sync arr = liftGridMap body arr'
+mapNonsense blocksize sync arr = asGridMap body arr'
   where
     body = execBlock . (nonsense sync)
     arr' = splitUp blocksize arr

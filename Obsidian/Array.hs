@@ -22,6 +22,9 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
                       , mkPull
                       , mkPush
                       , push
+                      , pushThread
+                      , pushWarp
+                      , pushBlock
                       , setSize
                       , (!)
                       , (<:)
@@ -30,10 +33,10 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
                       , ASize(..)
                       , namedGlobal
                       , undefinedGlobal
-                      , AsThread(..)
-                      , AsWarp(..)
-                      , AsBlock(..)
-                      , AsGrid(..)
+                      -- , AsThread(..)
+                      -- , AsWarp(..)
+                      -- , AsBlock(..)
+                      -- , AsGrid(..)
                       ) where
 
 import Obsidian.Exp 
@@ -262,99 +265,119 @@ instance Functor (Pull s) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-
+-- | Convert a pull array to a push array. 
 push ::  (t *<=* Block) => ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
   Push n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
-                                
-class AsGrid a where
-  asGrid :: ASize s => a s e -> Push Grid s e
 
-instance AsGrid Pull where
-  asGrid = error $ "asGrid: Trying to compute a pull array as a grid.\n" ++ 
-                   "This operation is not supported, there are too many choises\n" ++
-                   "involved that we just should not make automatically"
-instance AsGrid (Push Grid) where
-  asGrid = id
+-- Keep push, user may need to annotate with a type
+-- Add specific
+--   pushThread
+--   pushWarp 
+--   pushBlock
+pushThread :: ASize s => Pull s e -> Push Thread s e 
+pushThread = push 
 
-instance AsGrid (Push Block) where
-  asGrid _ = error $ "asGrid: Trying to convert a Block to a Grid.\n" ++
-                     "This operation is not supported!"
+pushWarp :: ASize s => Pull s e ->  Push Warp s e
+pushWarp = push
+
+pushBlock :: ASize s => Pull s e -> Push Block s e
+pushBlock = push 
+
+
+------------------------------------------------------------
+-- I think these are strange and should go away.
+-- They are always id for Push arrays and push for pull arrays.
+-- Most instances are nonsense. which is Weird.
+-- 
+-- class AsGrid a where
+--   asGrid :: ASize s => a s e -> Push Grid s e
+
+-- instance AsGrid Pull where
+--   asGrid = error $ "asGrid: Trying to compute a pull array as a grid.\n" ++ 
+--                    "This operation is not supported, there are too many choises\n" ++
+--                    "involved that we just should not make automatically"
+-- instance AsGrid (Push Grid) where
+--   asGrid = id
+
+-- instance AsGrid (Push Block) where
+--   asGrid _ = error $ "asGrid: Trying to convert a Block to a Grid.\n" ++
+--                      "This operation is not supported!"
                
-instance AsGrid (Push Warp) where 
-  asGrid _ = error $ "asGrid: Trying to convert a Warp to a Grid.\n" ++
-                     "This operation is not supported!"
+-- instance AsGrid (Push Warp) where 
+--   asGrid _ = error $ "asGrid: Trying to convert a Warp to a Grid.\n" ++
+--                      "This operation is not supported!"
 
-instance AsGrid (Push Thread) where 
-  asGrid _ = error $ "asGrid: Trying to convert a Thread to a Grid.\n" ++
-                     "This operation is not supported!"
-
-
-class AsBlock a where
-  asBlock :: a Word32 e -> SPush Block e
-
-instance AsBlock Pull where
-  asBlock = push
-
-instance AsBlock (Push Block) where
-  asBlock = id
-
-instance AsBlock (Push Grid) where
-  asBlock _ = error $ "asBlock: Trying to convert a Grid to a Block.\n" ++
-                      "This operation is not supported!"
-
-instance AsBlock (Push Warp) where 
-  asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
-                      "This operation is not supported!"
-
-instance AsBlock (Push Thread) where
-  asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
-                      "This operation is not supported!"
+-- instance AsGrid (Push Thread) where 
+--   asGrid _ = error $ "asGrid: Trying to convert a Thread to a Grid.\n" ++
+--                      "This operation is not supported!"
 
 
-class AsWarp a where
-  asWarp :: a Word32 e -> SPush Warp e
+-- class AsBlock a where
+--   asBlock :: a Word32 e -> SPush Block e
 
-instance AsWarp Pull where
-  asWarp = push
+-- instance AsBlock Pull where
+--   asBlock = push
 
-instance AsWarp (Push Warp) where
-  asWarp = id
+-- instance AsBlock (Push Block) where
+--   asBlock = id
 
-instance AsWarp (Push Grid) where
-  asWarp _ = error $ "asWarp: Trying to convert a Grid to a Warp.\n" ++
-                      "This operation is not supported!"
+-- instance AsBlock (Push Grid) where
+--   asBlock _ = error $ "asBlock: Trying to convert a Grid to a Block.\n" ++
+--                       "This operation is not supported!"
 
-instance AsWarp (Push Block) where 
-  asWarp _ = error $ "asWarp: Trying to convert a Block to a Warp.\n" ++
-                      "This operation is not supported!"
+-- instance AsBlock (Push Warp) where 
+--   asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+--                       "This operation is not supported!"
 
-instance AsWarp (Push Thread) where
-  asWarp _ = error $ "asBlock: Trying to convert a Thread to a Warp.\n" ++
-                      "This operation is not supported!"
+-- instance AsBlock (Push Thread) where
+--   asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+--                       "This operation is not supported!"
 
 
-class AsThread a where
-  asThread :: a Word32 e -> SPush Thread e
+-- class AsWarp a where
+--   asWarp :: a Word32 e -> SPush Warp e
 
-instance AsThread Pull where
-  asThread = push
+-- instance AsWarp Pull where
+--   asWarp = push
 
-instance AsThread (Push Thread) where
-  asThread = id
+-- instance AsWarp (Push Warp) where
+--   asWarp = id
 
-instance AsThread (Push Grid) where
-  asThread _ = error $ "asThread: Trying to convert a Grid to a Thread.\n" ++
-                      "This operation is not supported!"
+-- instance AsWarp (Push Grid) where
+--   asWarp _ = error $ "asWarp: Trying to convert a Grid to a Warp.\n" ++
+--                       "This operation is not supported!"
 
-instance AsThread (Push Block) where 
-  asThread _ = error $ "asThread: Trying to convert a Block to a Thread.\n" ++
-                      "This operation is not supported!"
+-- instance AsWarp (Push Block) where 
+--   asWarp _ = error $ "asWarp: Trying to convert a Block to a Warp.\n" ++
+--                       "This operation is not supported!"
 
-instance AsThread (Push Warp) where
-  asThread _ = error $ "asThread: Trying to convert a Warp to a Thread.\n" ++
-                      "This operation is not supported!"
+-- instance AsWarp (Push Thread) where
+--   asWarp _ = error $ "asBlock: Trying to convert a Thread to a Warp.\n" ++
+--                       "This operation is not supported!"
+
+
+-- class AsThread a where
+--   asThread :: a Word32 e -> SPush Thread e
+
+-- instance AsThread Pull where
+--   asThread = push
+
+-- instance AsThread (Push Thread) where
+--   asThread = id
+
+-- instance AsThread (Push Grid) where
+--   asThread _ = error $ "asThread: Trying to convert a Grid to a Thread.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsThread (Push Block) where 
+--   asThread _ = error $ "asThread: Trying to convert a Block to a Thread.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsThread (Push Warp) where
+--   asThread _ = error $ "asThread: Trying to convert a Warp to a Thread.\n" ++
+--                       "This operation is not supported!"
 
 
 

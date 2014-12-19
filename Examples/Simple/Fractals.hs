@@ -81,9 +81,9 @@ genRect :: EWord32
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b 
-genRect bs ts p = liftGrid 
+genRect bs ts p = asGrid 
                 $ mkPull bs 
-                $ \bid -> liftBlock $ mkPull ts (p bid)
+                $ \bid -> asBlock $ mkPull ts (p bid)
 
 mandel :: DPush Grid EW8
 mandel = genRect 512 512 body 

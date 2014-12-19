@@ -38,7 +38,7 @@ kernel1 f arr
       kernel1 f arr'   
 
 mapKernel1 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapKernel1 f arr = liftGridMap body arr 
+mapKernel1 f arr = asGridMap body arr 
   where
     body arr = execBlock (kernel1 f arr)
 
@@ -70,7 +70,7 @@ fan op arr =  a1 `append` fmap (op c) a2
 -- pushM = liftM push
 
 mapScan1 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan1 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapScan1 n f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (sklansky n f arr)
 
@@ -135,7 +135,7 @@ oneBits i = (2^i) - 1
 
 
 mapScan2 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan2 n f arr = liftGridMap body arr -- pConcat $ fmap body arr  -- sklansky2 n f
+mapScan2 n f arr = asGridMap body arr -- pConcat $ fmap body arr  -- sklansky2 n f
     where
       body arr = execBlock (sklansky2 n f arr)
 
@@ -158,7 +158,7 @@ sklansky3 l f arr =
 
 
 mapScan3 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan3 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapScan3 n f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (sklansky3 n f arr)
 
@@ -182,16 +182,16 @@ ksLocal n op arr = do
       oped = zipWith op arr2 a1 
       copy = take (2^(n-1)) arr2
       all  = copy `append` oped
-  return $ asBlock all
+  return $ push all
 -- Little bit ugly... 
   
              
-ks n op arr = liftGridMap body arr -- pConcatMap body arr
+ks n op arr = asGridMap body arr -- pConcatMap body arr
   where
     body arr = execBlock (ksLocal n op arr)
     
 mapScan4 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan4 n f arr = liftGridMap body arr 
+mapScan4 n f arr = asGridMap body arr 
   where
     body arr = execBlock (ksLocal n f arr)
 
@@ -213,12 +213,12 @@ ksLocalP n op arr = do
   return $ copy `concP` oped
 
 
-ksP n op arr = liftGridMap body arr -- pConcatMap body arr
+ksP n op arr = asGridMap body arr -- pConcatMap body arr
   where
     body arr = execBlock (ksLocalP n op arr)
     
 mapScan5 :: Data a => Int -> (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapScan5 n f arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapScan5 n f arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock (ksLocalP n f arr)
 
@@ -280,31 +280,31 @@ mapScanCIn1 :: Data a
 
 -- Horrible code duplication (refactor) 
 mapScanCIn1 n op cins arr =
-  liftGrid $
+  asGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky) n op arr1 arr2) 
 
 mapScanCIn2 n op cins arr =
-  liftGrid $
+  asGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky2) n op arr1 arr2) 
 
 mapScanCIn3 n op cins arr =
-  liftGrid $
+  asGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn sklansky3) n op arr1 arr2) 
 
 mapScanCIn4 n op cins arr =
-  liftGrid $
+  asGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn ksLocal) n op arr1 arr2) 
 
 mapScanCIn5 n op cins arr =
-  liftGrid $
+  asGrid $
   zipWith (body) cins arr 
     where
       body arr1 arr2 = execBlock ((wrapCIn ksLocalP) n op arr1 arr2) 
@@ -328,29 +328,29 @@ wrapI scan n op a arr =
 
 -- Horrible code duplication!!! 
 mapIScan1 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan1 n f a arr = liftGridMap body arr -- pConcat (fmap body arr)
+mapIScan1 n f a arr = asGridMap body arr -- pConcat (fmap body arr)
   where
     body arr = execBlock ((wrapI sklansky n f a) arr)
 
 
 mapIScan2 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan2 n f a arr = liftGridMap body arr
+mapIScan2 n f a arr = asGridMap body arr
   where
     body arr = execBlock ((wrapI sklansky2 n f a) arr)
 
 mapIScan3 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan3 n f a arr = liftGridMap body arr 
+mapIScan3 n f a arr = asGridMap body arr 
   where
     body arr = execBlock ((wrapI sklansky3 n f a) arr)
 
 
 mapIScan4 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan4 n f a arr = liftGridMap body arr
+mapIScan4 n f a arr = asGridMap body arr
   where
     body arr = execBlock ((wrapI ksLocal n f a) arr)
 
 mapIScan5 :: Data a => Int -> (a -> a -> a) -> a -> DPull (SPull a) -> DPush Grid a
-mapIScan5 n f a arr = liftGridMap body arr
+mapIScan5 n f a arr = asGridMap body arr
   where
     body arr = execBlock ((wrapI ksLocalP n f a) arr)
 
@@ -405,18 +405,20 @@ ksLocalPPull n op arr = do
 wrapKernCin kern n op cin arr = do
   arr' <- compute (applyToHead op cin arr)
   arr'' <- kern n op arr'
-  return (arr'' ! (fromIntegral (len arr'' - 1)), asBlock arr'')
+  return (arr'' ! (fromIntegral (len arr'' - 1)), push arr'')
   where
     applyToHead op cin arr =
       let h = fmap (op cin ) $ take 1 arr
           b = drop 1 arr
       in h `append` b
 
-
+sklanskies :: Data a => Kernel a 
 sklanskies n op acc arr = sMapAccum (wrapKernCin sklanskyLocalPull n op) acc (splitUp (2^n) arr)
 
+kss :: Data a => Kernel a 
 kss n op acc arr = sMapAccum (wrapKernCin ksLocalPull n op) acc (splitUp (2^n) arr)
 
+ksps :: Data a => Kernel a 
 ksps n op acc arr = sMapAccum (wrapKernCin ksLocalPPull n op) acc (splitUp (2^n) arr)
 
 type Kernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
@@ -428,9 +430,9 @@ seqChain :: (Num a, Data a )
             -> DPull a
             -> DPull (SPull a)
             -> DPush Grid a
-seqChain kern n op accs arr = liftGrid $ zipWith body accs arr
+seqChain kern n op accs arr = asGrid $ zipWith body accs arr
   where
-    body acc a = kern n op acc a -- sklanskies n op acc a
+    body acc a = kern n op acc a 
 
 
 

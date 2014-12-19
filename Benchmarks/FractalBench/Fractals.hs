@@ -84,9 +84,9 @@ genRect :: Data  b
            -> Word32
            -> (EWord32 -> EWord32 -> SPush Thread b)
            -> DPush Grid b
-genRect bs ts p = liftGrid 
+genRect bs ts p = asGrid 
                 $ mkPull bs 
-                $ \bid -> liftBlock $ mkPull ts (p bid)
+                $ \bid -> asBlock $ mkPull ts (p bid)
 
 
 -- Generate square Mandelbrot images 

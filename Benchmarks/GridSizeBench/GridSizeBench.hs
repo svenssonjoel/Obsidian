@@ -41,7 +41,7 @@ red3 cutoff f  arr
 
 
 mapRed3 :: Data a => Word32 -> Word32 -> (a -> a -> a) -> DPull a -> DPush Grid a
-mapRed3 blocksize seq_depth f arr = liftGridMap (liftBlockMap body) arr' --arr' 
+mapRed3 blocksize seq_depth f arr = asGridMap (asBlockMap body) arr'
   -- pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
     body arr = execBlock (red3 2 f arr)
@@ -71,7 +71,7 @@ nonsense depth sync arr = do
 
 mapNonsense :: (Data a, Num a)  => Int -> Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
 mapNonsense depth sync blocksize seq_depth arr =
-  liftGridMap (liftBlockMap body) arr'
+  asGridMap (asBlockMap body) arr'
   --pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
     body = execBlock . (nonsense depth sync) 
@@ -85,7 +85,7 @@ arith :: (Data a, Num a) =>
             Int 
             -> Pull Word32 a
             -> Push Block Word32 a
-arith iters arr = liftBlockMap tf arr -- $ fmap tf arr 
+arith iters arr = asBlockMap tf arr -- $ fmap tf arr 
   where
     tf :: (Data a, Num a) => a -> Push Thread Word32 a 
     tf a = execThread' 
@@ -96,7 +96,7 @@ arith iters arr = liftBlockMap tf arr -- $ fmap tf arr
   
 mapArith :: (Data a, Num a)  => Int  -> Word32 -> Word32 -> DPull a -> DPush Grid a
 mapArith depth blocksize seq_depth arr =
-  liftGridMap (liftBlockMap body) arr' 
+  asGridMap (asBlockMap body) arr' 
   where
     body = arith depth
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
@@ -131,7 +131,7 @@ fan op arr =  a1 `append` fmap (op c) a2
 
 mapScan1 :: Data a => Word32 -> Word32 -> Int -> (a -> a -> a) -> DPull a -> DPush Grid a
 mapScan1 blocksize seq_depth n f arr =
-  liftGridMap (liftBlockMap body) arr'
+  asGridMap (asBlockMap body) arr'
   --pConcat $ fmap sConcat (fmap (fmap body) arr') 
   where
     body arr = execBlock (sklansky n f arr)
