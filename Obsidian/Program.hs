@@ -290,7 +290,9 @@ runPrg i (Return a) = (a,i)
 runPrg i (Bind m f) =
   let (a,i') = runPrg i m
   in runPrg i' (f a)
-     
+
+-- All other constructors have () result 
+
 runPrg i (Sync) = ((),i)
 runPrg i (ForAll n ixf) =
   let (p,i') = runPrg i (ixf (variable "tid")) 
@@ -299,11 +301,11 @@ runPrg i (DistrPar n f) =
   let (p,i') = runPrg i (f (variable "DUMMY"))
   in (p,i')
 -- What can this boolean depend upon ? its quite general!
---  (we know p returns a ()... ) 
+-- p here is a Program Thread () 
 runPrg i (Cond b p) = ((),i) 
 runPrg i (Declare _ _) = ((),i)
 runPrg i (Allocate _ _ _ ) = ((),i)
-runPrg i (Assign _ _ a) = ((),i) -- Probaby wrong.. 
+runPrg i (Assign _ _ a) = ((),i) 
 runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 
 {- What do I want from runPrg ?
