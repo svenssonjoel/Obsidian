@@ -53,24 +53,32 @@ module Obsidian.Library
        , concP
        , load   -- RENAME THIS 
        , store  -- RENAME THIS
+       -- Hierarchy programming 
        , asThread
        , asThreadMap
        , asGrid
        , asGridMap
        , AsWarp(..)
        , AsBlock(..)
+       , liftPar -- generic hierarchy programming
+       , liftSeq -- generic hierarchy programming
+       , liftIn  -- generic hierarchy programming 
+
+       -- Executing programs
+       , ExecProgram(..) 
        , ExecBlock(..)
        , ExecWarp(..)
        , ExecThread(..)
---       , execThread
        , execThread'
---       , execWarp
        , execWarp'
---       , execBlock
        , execBlock'
-       , singletonPush
+--       , execBlock
+--       , execThread
+--       , execWarp
 
-       -- Left here, but mainly intended for internal use
+
+       -- Leftovers from past days 
+       , singletonPush
        , runPush 
        )where 
 
@@ -421,6 +429,11 @@ liftPar = pConcat
 
 liftSeq :: ASize l => Pull l (SPush t a) -> Push t l a
 liftSeq = sConcat 
+
+liftIn :: (t *<=* Block, ASize l)
+      => Pull l (SPush Thread b)
+      -> Push t l b  
+liftIn = tConcat
 
 ---------------------------------------------------------------------------
 -- AsBlock
