@@ -24,7 +24,7 @@
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Warp, DirectlyAbove, 
+  Thread, Block, Grid, Warp, Step, 
   --  Step, Zero,
   -- Program type
   -- CoreProgram(..),
@@ -63,11 +63,11 @@ import Control.Applicative
 ---------------------------------------------------------------------------
 
 data Thread
-data DirectlyAbove t 
+data Step t 
 
-type Warp = DirectlyAbove Thread
-type Block = DirectlyAbove Warp
-type Grid  = DirectlyAbove Block
+type Warp  = Step Thread
+type Block = Step Warp
+type Grid  = Step Block
 
 class a *<=* b
 instance Thread *<=* Thread
@@ -130,7 +130,7 @@ data Program t a where
   -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
            -> (EWord32 -> Program t ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
   
   
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
@@ -207,14 +207,14 @@ forAll n f = ForAll n f
 forAll2 :: (t *<=* Block) => EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
 forAll2 b n f =
   DistrPar b $ \bs ->
     ForAll n $ \ix -> f bs ix 
 
 distrPar :: EWord32
            -> (EWord32 -> Program t ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
 distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------

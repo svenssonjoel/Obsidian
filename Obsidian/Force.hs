@@ -60,7 +60,7 @@ instance Forceable Thread
 instance Forceable Warp
 instance Forceable Block
 
-class (Sync t, Write t) => Compute t 
+class (t *<=* Block, Sync t, Write t) => Compute t 
 instance Compute Thread
 instance Compute Warp
 instance Compute Block 

@@ -424,7 +424,7 @@ store = load
 
 -- "Compute as" family of functions 
 
-liftPar :: ASize l => Pull l (SPush t a) -> Push (DirectlyAbove t) l a
+liftPar :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 liftPar = pConcat
 
 liftSeq :: ASize l => Pull l (SPush t a) -> Push t l a
@@ -439,7 +439,7 @@ liftIn = tConcat
 -- AsBlock
 ---------------------------------------------------------------------------
 -- Rename this to asBlock, asGrid, asThread
-class AsBlock t where
+class (t *<=* Block) => AsBlock t where
   asBlock :: SPull (SPush t a) ->
              SPush Block a
   asBlockMap :: (a -> SPush t b) 
@@ -461,7 +461,7 @@ instance AsBlock Block where
 ---------------------------------------------------------------------------
 -- AsWarp
 --------------------------------------------------------------------------- 
-class AsWarp t where
+class (t *<=* Warp) => AsWarp t where
   asWarp :: SPull (SPush t a) ->
             SPush Warp a 
   asWarpMap :: (a -> SPush t b) 
@@ -556,7 +556,7 @@ tDistribute n f = tConcat (mkPull n f)
 
       
 -- | Distribute work across the parallel resources at a given level of the GPU hiearchy
-pConcat :: ASize l => Pull l (SPush t a) -> Push (DirectlyAbove t) l a
+pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
     distrPar (sizeConv n) $ \bix ->
@@ -572,7 +572,7 @@ pConcat arr =
 pDistribute :: ASize l
                => l
                -> (EWord32 -> SPush t a)
-               -> Push (DirectlyAbove t) l a
+               -> Push (Step t) l a
 pDistribute n f = pConcat (mkPull n f) 
 
 -- | Sequential concatenation of a Pull of Push.
@@ -598,7 +598,7 @@ sDistribute n f = sConcat (mkPull n f)
 -- | Applies a permutation on stores.
 pUnCoalesce :: ASize l
                => Pull l (SPush t a)
-               -> Push (DirectlyAbove t) l a
+               -> Push (Step t) l a
 pUnCoalesce arr =
   mkPush (n * fromIntegral rn) $ \wf ->
   distrPar (sizeConv n) $ \bix ->
@@ -615,6 +615,7 @@ pUnCoalesce arr =
 ---------------------------------------------------------------------------
 -- RunPush 
 ---------------------------------------------------------------------------
+
 class ExecProgram t a  where
   exec :: Data e
         => Program t (a Word32 e)

@@ -3,6 +3,7 @@
 module Main where
 
 import Reduction
+import qualified ReduceIntro as RI
 
 import Prelude hiding (replicate)
 import Prelude as P
@@ -31,23 +32,39 @@ performSmall =
         lift $ putStrLn $ show r 
 
 
+performSmallGeneric =
+  withCUDA $ do
+    kern <- capture 64 (RI.reduceGrid (+))
+
+    useVector (V.fromList [0..511 :: Int32]) $ \input ->
+      allocaVector 1 $ \ o ->
+      do o <== (1,kern) <> input
+         r <- peekCUDAVector o
+         lift $ putStrLn $ show r
+
+performSmallNonGeneric =
+  withCUDA $ do
+    kern <- capture 64 (RI.reduceGrid' (+))
+
+    useVector (V.fromList [0..511 :: Int32]) $ \input ->
+      allocaVector 1 $ \ o ->
+      do o <== (1,kern) <> input
+         r <- peekCUDAVector o
+         lift $ putStrLn $ show r
+
+performSmall1stage =
+  withCUDA $ do
+    kern <- capture 64 (RI.reduceGrid1stage (+))
+
+    useVector (V.fromList [0..511 :: Int32]) $ \input ->
+      allocaVector 1 $ \ o ->
+      do o <== (1,kern) <> input
+         r <- peekCUDAVector o
+         lift $ putStrLn $ show r
 
 
--- performLarge =
---   withCUDA $
---   do
---     kern <- capture 128 (reduce (+)) --  . splitUp 256) 
-
---     useVector (V.fromList [0..65535 :: Int32]) $ \i ->
---       allocaVector 256  $ \(o :: CUDAVector Int32) ->
---         allocaVector 1  $ \(o2 :: CUDAVector Int32) -> 
---         do
---           fill o 0 
---           o <== (256,kern) <> i
---           o2 <== (1,kern) <> o 
-
---           r <- peekCUDAVector o2
---           lift $ putStrLn $ show r 
-
-
-main = performSmall 
+main = do
+  performSmall
+  performSmallGeneric
+  performSmallNonGeneric
+  performSmall1stage
