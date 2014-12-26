@@ -31,7 +31,6 @@ increment2 :: (t *<=* Block, Data a, Compute t, Num a) => SPull a -> Program t (
 increment2 arr = compute $ push $ fmap (+1) arr
 
 
-
 -- Programming the Hierarchy
 incrementKernel :: Num a => DPull a -> DPush Grid a
 incrementKernel arr = asGrid $ fmap (push . increment) arr'
