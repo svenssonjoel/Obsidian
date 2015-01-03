@@ -31,6 +31,13 @@ largeReduceConf = And [ Set (Variant "large") (RuntimeArg "large")
                       , Or [ Set NoMeaning (RuntimeArg kern) | kern <- ["r1", "r2", "r3", "r4", "r5", "r6", "r7" ]]
                       , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]]
 
+
+specialReduceConf = And [ Set (Variant "SPECIAL") (RuntimeArg "SPECIAL")
+                      , Or [ Set NoMeaning (RuntimeArg (show threads)) | threads <- [32,64,128,256,512,1024]]
+                      , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [23,24,25]]
+                      , Or [ Set NoMeaning (RuntimeArg (show blocks))| blocks <- [16,32,64,128,256,512,1024]]]
+
+
 scanConf = Or [ And [ Set (Variant v) (RuntimeArg v) 
                     , Or [ Set NoMeaning (RuntimeArg (show (2^t))) | t <- [5..10]]
                     , Or [ Set NoMeaning (RuntimeArg (show (2^n))) | n <- [8..12]]
