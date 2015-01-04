@@ -97,6 +97,7 @@ all_benchmarks =
   [ (mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf1)  { progname = Just "Reduce" }
   , (mkBenchmark "ReductionBench/Reduce.cabal" [] reduceConf2)  { progname = Just "Reduce" } 
   , (mkBenchmark "ReductionBench/Reduce.cabal" [] largeReduceConf)  { progname = Just "Reduce" }
+  , (mkBenchmark "ReductionBench/Reduce.cabal" [] specialReduceConf)  { progname = Just "Reduce" }
   , (mkBenchmark "ScanBench/Scan.cabal" [] scanConf) {progname = Just "Scan" }
   , (mkBenchmark "ScanBench2/Scan2.cabal" [] scan2Conf) {progname = Just "Scan2" }
   , (mkBenchmark "ScanBench2/Scan2.cabal" [] largeScan2Conf) {progname = Just "LargeScan2" }
