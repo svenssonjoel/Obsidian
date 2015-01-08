@@ -90,13 +90,13 @@ data Pull s a = Pull {pullLen :: s,
                       pullFun :: EWord32 -> a}
 
 -- | Create a push array. 
-mkPush :: s
+mkPush :: s 
        -> ((a -> EWord32 -> TProgram ()) -> Program t ())
        -> Push t s a
 mkPush n p = Push n p 
 
 -- | Create a pull array.
-mkPull :: ASize s => s -> (EWord32 -> a) -> Pull s a
+mkPull :: s -> (EWord32 -> a) -> Pull s a
 mkPull n p = Pull n p 
 
 -- Fix this.
@@ -148,9 +148,9 @@ instance Array Pull where
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
 
   append a1 a2 = Pull (n1+n2)
-               $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
+               $ \ix -> ifThenElse (ix <* sizeConv n1)
                        (a1 ! ix) 
-                       (a2 ! (ix - (sizeConv n1)))
+                       (a2 ! (ix - sizeConv n1))
     where 
       n1 = len a1
       n2 = len a2 
@@ -238,7 +238,7 @@ instance Array (Push Grid) where
 
   -- unfortunately a Choice constraint. 
   append p1 p2  =
-    Push (n1 + n2) $ \wf ->
+    mkPush (n1 + n2) $ \wf ->
       do p1 <: wf
          p2 <: \a i -> wf a (sizeConv n1 + i) 
            where 
@@ -268,7 +268,7 @@ instance Functor (Pull s) where
 -- | Convert a pull array to a push array. 
 push ::  (t *<=* Block) => ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
-  Push n $ \wf ->
+  mkPush n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
 
 -- Keep push, user may need to annotate with a type

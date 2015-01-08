@@ -178,7 +178,7 @@ ksLocal :: Data a
 ksLocal 0 op arr = return $ push arr
 ksLocal n op arr = do
   arr2 <- compute =<< ksLocal (n-1) op arr
-  let a1   = shiftLeft (2^(n-1)) arr2
+  let a1   = drop (2^(n-1)) arr2
       oped = zipWith op arr2 a1 
       copy = take (2^(n-1)) arr2
       all  = copy `append` oped
@@ -207,7 +207,7 @@ ksLocalP :: Data a
 ksLocalP 0 op arr = return $ push arr
 ksLocalP n op arr = do
   arr2 <- compute =<< ksLocalP (n-1) op arr
-  let a1   = shiftLeft (2^(n-1)) arr2
+  let a1   = drop (2^(n-1)) arr2
       oped = push $ zipWith op arr2 a1 
       copy = push $ take (2^(n-1)) arr2
   return $ copy `concP` oped
@@ -401,9 +401,10 @@ ksLocalPPull n op arr = do
   compute $ copy `concP` oped
 
 
-
+wrapKernCin :: Data a => ScanKernel a -> 
+   Int -> (a -> a -> a) -> a -> SPull a -> Program Block (a, SPush Block a)
 wrapKernCin kern n op cin arr = do
-  arr' <- compute (applyToHead op cin arr)
+  arr'  <- compute (applyToHead op cin arr)
   arr'' <- kern n op arr'
   return (arr'' ! (fromIntegral (len arr'' - 1)), push arr'')
   where
@@ -412,19 +413,22 @@ wrapKernCin kern n op cin arr = do
           b = drop 1 arr
       in h `append` b
 
-sklanskies :: Data a => Kernel a 
+sklanskies :: Data a => CinKernel a 
 sklanskies n op acc arr = sMapAccum (wrapKernCin sklanskyLocalPull n op) acc (splitUp (2^n) arr)
 
-kss :: Data a => Kernel a 
+kss :: Data a => CinKernel a 
 kss n op acc arr = sMapAccum (wrapKernCin ksLocalPull n op) acc (splitUp (2^n) arr)
 
-ksps :: Data a => Kernel a 
+ksps :: Data a => CinKernel a 
 ksps n op acc arr = sMapAccum (wrapKernCin ksLocalPPull n op) acc (splitUp (2^n) arr)
 
-type Kernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
-                    
+type CinKernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
+type Kernel a = Int -> (a -> a -> a) -> SPull a -> SPush Block a
+
+type ScanKernel a = Int -> (a -> a -> a) -> SPull a -> Program Block (SPull a)
+
 seqChain :: (Num a, Data a )
-            => Kernel a
+            => CinKernel a
             -> Int
             -> (a -> a -> a)
             -> DPull a

@@ -85,6 +85,11 @@ instance (t *<=* Block, Compute t) => ComputeAs t Pull where
 instance (t ~ t1, Compute t) => ComputeAs t (Push t1) where
   compute =  compute_
 
+-- do
+--   rval <- unsafeWritePush False arr
+--   sync
+--   return rval
+
 compute_ :: (Data a, Compute t)
           => Push t Word32 a -> Program t (Pull Word32 a)      
 compute_ = force
