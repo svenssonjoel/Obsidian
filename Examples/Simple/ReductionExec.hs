@@ -36,8 +36,8 @@ performSmallGeneric =
   withCUDA $ do
     kern <- capture 64 (RI.reduceGrid (+))
 
-    useVector (V.fromList [0..511 :: Int32]) $ \input ->
-      allocaVector 1 $ \ o ->
+    useVector (V.fromList [0..1023 :: Int32]) $ \input ->
+      allocaVector 2 $ \ o ->
       do o <== (1,kern) <> input
          r <- peekCUDAVector o
          lift $ putStrLn $ show r
@@ -46,8 +46,8 @@ performSmallNonGeneric =
   withCUDA $ do
     kern <- capture 64 (RI.reduceGrid' (+))
 
-    useVector (V.fromList [0..511 :: Int32]) $ \input ->
-      allocaVector 1 $ \ o ->
+    useVector (V.fromList [0..1023 :: Int32]) $ \input ->
+      allocaVector 2 $ \ o ->
       do o <== (1,kern) <> input
          r <- peekCUDAVector o
          lift $ putStrLn $ show r
@@ -56,8 +56,8 @@ performSmall1stage =
   withCUDA $ do
     kern <- capture 64 (RI.reduceGrid1stage (+))
 
-    useVector (V.fromList [0..511 :: Int32]) $ \input ->
-      allocaVector 1 $ \ o ->
+    useVector (V.fromList [0..1023 :: Int32]) $ \input ->
+      allocaVector 2 $ \ o ->
       do o <== (1,kern) <> input
          r <- peekCUDAVector o
          lift $ putStrLn $ show r

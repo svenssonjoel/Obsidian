@@ -633,7 +633,8 @@ class ExecThread a where
                  => Program Thread (a Word32 e)
                  -> Push Thread Word32 e
   
-execThread' :: (t *<=* Block, Data a) => Program t a -> SPush t a
+-- execThread' :: (t *<=* Block, Data a) => Program t a -> SPush t a
+execThread' :: Data a => Program Thread a -> SPush Thread a 
 execThread' = singletonPush
 
 instance ExecThread (Push Thread) where

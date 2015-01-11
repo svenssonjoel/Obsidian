@@ -178,11 +178,12 @@ ksLocal :: Data a
 ksLocal 0 op arr = return $ push arr
 ksLocal n op arr = do
   arr2 <- compute =<< ksLocal (n-1) op arr
-  let a1   = drop (2^(n-1)) arr2
+  let a1   = drop m arr2
       oped = zipWith op arr2 a1 
-      copy = take (2^(n-1)) arr2
+      copy = take m arr2
       all  = copy `append` oped
   return $ push all
+  where m = 2^(n-1) 
 -- Little bit ugly... 
   
              
@@ -207,10 +208,11 @@ ksLocalP :: Data a
 ksLocalP 0 op arr = return $ push arr
 ksLocalP n op arr = do
   arr2 <- compute =<< ksLocalP (n-1) op arr
-  let a1   = drop (2^(n-1)) arr2
+  let a1   = drop m arr2
       oped = push $ zipWith op arr2 a1 
-      copy = push $ take (2^(n-1)) arr2
+      copy = push $ take m arr2
   return $ copy `concP` oped
+  where m = 2^(n-1) 
 
 
 ksP n op arr = asGridMap body arr -- pConcatMap body arr
@@ -360,72 +362,98 @@ mapIScan5 n f a arr = asGridMap body arr
 -- chained up scans within a block
 ---------------------------------------------------------------------------
 
-sklanskyLocalPull :: Data a
-                 => Int
-                 -> (a -> a -> a)
-                 -> SPull a
-                 -> BProgram (SPull a)
-sklanskyLocalPull 0 _ arr = return arr
-sklanskyLocalPull n op arr =
-  do 
-    let arr1 = unsafeBinSplit (n-1) (fan op) arr
-    arr2 <- compute $ push arr1
-    sklanskyLocalPull (n-1) op arr2
+-- sklanskyLocalPull :: Data a
+--                  => Int
+--                  -> (a -> a -> a)
+--                  -> SPull a
+--                  -> BProgram (SPull a)
+-- sklanskyLocalPull 0 _ arr = return arr
+-- sklanskyLocalPull n op arr =
+--   do 
+--     let arr1 = unsafeBinSplit (n-1) (fan op) arr
+--     arr2 <- compute $ push arr1
+--     sklanskyLocalPull (n-1) op arr2
 
 
-ksLocalPull :: Data a 
-        => Int -- Stages (log n) 
-        -> (a -> a -> a) -- opertor
-        -> SPull a -- input data
-        -> BProgram (SPull a) -- output computation
-ksLocalPull 0 op arr = return arr
-ksLocalPull n op arr = do
-  arr2 <- compute =<< ksLocalPull (n-1) op arr
-  let a1   = shiftLeft (2^(n-1)) arr2
-      oped = zipWith op arr2 a1 
-      copy = take (2^(n-1)) arr2
-      all  = copy `append` oped
-  return all
+-- ksLocalPull :: Data a 
+--         => Int -- Stages (log n) 
+--         -> (a -> a -> a) -- opertor
+--         -> SPull a -- input data
+--         -> BProgram (SPull a) -- output computation
+-- ksLocalPull 0 op arr = return arr
+-- ksLocalPull n op arr = do
+--   arr2 <- compute =<< ksLocalPull (n-1) op arr
+--   let a1   = shiftLeft (2^(n-1)) arr2
+--       oped = zipWith op arr2 a1 
+--       copy = take (2^(n-1)) arr2
+--       all  = copy `append` oped
+--   return all
 
-ksLocalPPull :: Data a
-            => Int -- Stages (log n) 
-            -> (a -> a -> a) -- opertor
-            -> SPull a -- input data
-            -> BProgram (SPull a) -- output computation
-ksLocalPPull 0 op arr = return arr
-ksLocalPPull n op arr = do
-  arr2 <- compute =<< ksLocalPPull (n-1) op arr
-  let a1   = shiftLeft (2^(n-1)) arr2
-      oped = push $ zipWith op arr2 a1 
-      copy = push $ take (2^(n-1)) arr2
-  compute $ copy `concP` oped
+-- ksLocalPPull :: Data a
+--             => Int -- Stages (log n) 
+--             -> (a -> a -> a) -- opertor
+--             -> SPull a -- input data
+--             -> BProgram (SPull a) -- output computation
+-- ksLocalPPull 0 op arr = return arr
+-- ksLocalPPull n op arr = do
+--   arr2 <- compute =<< ksLocalPPull (n-1) op arr
+--   let a1   = shiftLeft (2^(n-1)) arr2
+--       oped = push $ zipWith op arr2 a1 
+--       copy = push $ take (2^(n-1)) arr2
+--   compute $ copy `concP` oped
 
 
-wrapKernCin :: Data a => ScanKernel a -> 
-   Int -> (a -> a -> a) -> a -> SPull a -> Program Block (a, SPush Block a)
+wrapKernCin :: Data a
+            => ScanKernel a 
+            -> Int -> (a -> a -> a) -> a -> SPull a
+            -> Program Block (a, SPush Block a)
 wrapKernCin kern n op cin arr = do
-  arr'  <- compute (applyToHead op cin arr)
-  arr'' <- kern n op arr'
-  return (arr'' ! (fromIntegral (len arr'' - 1)), push arr'')
+  arr'  <- compute $ applyToHead op cin arr
+  arr'' <- compute $ execBlock $ kern n op arr'
+  return (last arr'', push arr'')
   where
     applyToHead op cin arr =
       let h = fmap (op cin ) $ take 1 arr
           b = drop 1 arr
       in h `append` b
 
+-- wrapKernCin :: Data a => ScanKernel a -> 
+--    Int -> (a -> a -> a) -> a -> SPull a -> Program Block (a, SPush Block a)
+-- wrapKernCin kern n op cin arr = do
+--   arr'  <- compute (applyToHead op cin arr)
+--   arr'' <- kern n op arr'
+--   return (arr'' ! (fromIntegral (len arr'' - 1)), push arr'')
+--   where
+--     applyToHead op cin arr =
+--       let h = fmap (op cin ) $ take 1 arr
+--           b = drop 1 arr
+--       in h `append` b
+
+
 sklanskies :: Data a => CinKernel a 
-sklanskies n op acc arr = sMapAccum (wrapKernCin sklanskyLocalPull n op) acc (splitUp (2^n) arr)
+sklanskies n op acc arr = sMapAccum (wrapKernCin sklansky n op) acc (splitUp (2^n) arr)
+
+-- sklanskies :: Data a => CinKernel a 
+-- sklanskies n op acc arr = sMapAccum (wrapKernCin sklanskyLocalPull n op) acc (splitUp (2^n) arr)
 
 kss :: Data a => CinKernel a 
-kss n op acc arr = sMapAccum (wrapKernCin ksLocalPull n op) acc (splitUp (2^n) arr)
+kss n op acc arr = sMapAccum (wrapKernCin ksLocal n op) acc (splitUp (2^n) arr)
+
+-- kss :: Data a => CinKernel a 
+-- kss n op acc arr = sMapAccum (wrapKernCin ksLocalPull n op) acc (splitUp (2^n) arr)
 
 ksps :: Data a => CinKernel a 
-ksps n op acc arr = sMapAccum (wrapKernCin ksLocalPPull n op) acc (splitUp (2^n) arr)
+ksps n op acc arr = sMapAccum (wrapKernCin ksLocalP n op) acc (splitUp (2^n) arr)
+
+-- ksps :: Data a => CinKernel a 
+-- ksps n op acc arr = sMapAccum (wrapKernCin ksLocalPPull n op) acc (splitUp (2^n) arr)
 
 type CinKernel a = Int -> (a -> a -> a) -> a -> SPull a -> SPush Block a
 type Kernel a = Int -> (a -> a -> a) -> SPull a -> SPush Block a
 
-type ScanKernel a = Int -> (a -> a -> a) -> SPull a -> Program Block (SPull a)
+--type ScanKernel a = Int -> (a -> a -> a) -> SPull a -> Program Block (SPull a)
+
+type ScanKernel a = Int -> (a -> a -> a) -> SPull a -> Program Block (SPush Block a)
 
 seqChain :: (Num a, Data a )
             => CinKernel a

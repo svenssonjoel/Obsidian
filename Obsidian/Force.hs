@@ -63,8 +63,8 @@ instance Forceable Block
 class (t *<=* Block, Sync t, Write t) => Compute t 
 instance Compute Thread
 instance Compute Warp
-instance Compute Block 
-
+instance Compute Block
+--instance (t *<=* Block, Sync t, Write t) => Compute t
 
 class Compute t => ComputeAs t a where
   compute :: Data e => a Word32 e -> Program t (Pull Word32 e)

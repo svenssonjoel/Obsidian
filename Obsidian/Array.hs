@@ -82,8 +82,11 @@ instance ASize (Exp Word32) where
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 -- | Push array. Parameterised over Program type and size type.
-data Push p s a =
-  Push s ((a -> EWord32 -> TProgram ()) -> Program p ())
+data Push t s a =
+  Push s (PushFun t a)
+
+type PushFun t a = Writer a -> Program t ()
+type Writer    a = a -> EWord32 -> TProgram ()
 
 -- | Pull array.
 data Pull s a = Pull {pullLen :: s, 
