@@ -17,6 +17,7 @@ import Obsidian.Array
 import Obsidian.Memory
 import Obsidian.Names
 import Obsidian.Data
+import Obsidian.Force
 import qualified Obsidian.Library as Lib 
 
 -- TODO: Rename module to something better
@@ -163,7 +164,7 @@ mapAccumR op acc =
 -- sMapAccum
 -- Generalisation of the old sConcat functionality.
 
-sMapAccum :: (t *<=* Block, Sync t, Data acc, ASize l)
+sMapAccum :: (Compute t, Data acc, ASize l)
              => (acc -> Pull l a -> Program t (acc,Push t l b))
              -> acc
              -> Pull l (Pull l a)
