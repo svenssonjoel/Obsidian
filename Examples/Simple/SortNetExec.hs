@@ -12,6 +12,7 @@ import Control.Monad.State
 
 import Data.Int
 import Data.Word
+import Data.List (sort) 
 
 import System.Exit 
 
@@ -29,6 +30,8 @@ perform =
     (inputs' :: V.Vector Word32) <- lift $ mkRandomVec 1024
     let inputs = V.map (`mod` 64) inputs'
 
+    let sorted = sort (V.toList inputs) 
+    
     transfer_start <- lift getCurrentTime 
     useVector inputs $ \i ->
       allocaVector 1024 $ \ o ->
@@ -66,6 +69,7 @@ perform =
         if isSorted r
           then
           do
+            lift $ putStrLn $ "CPU/GPU Same? "  ++ show (sorted == r)
             lift $ putStrLn "Success"
             lift $ exitSuccess 
           else
