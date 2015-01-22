@@ -23,7 +23,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Obsidian.Library
-       ( reverse
+       (logBaseI
+       , reverse
        , splitAt
        , splitUp
        , coalesce
@@ -51,6 +52,7 @@ module Obsidian.Library
        , unsafeBinSplit
        , binSplit 
        , concP
+       , unpairP 
        , load   -- RENAME THIS 
        , store  -- RENAME THIS
        -- Hierarchy programming 
@@ -63,7 +65,9 @@ module Obsidian.Library
        , liftPar -- generic hierarchy programming
        , liftSeq -- generic hierarchy programming
        , liftIn  -- generic hierarchy programming 
-
+       -- Repeat a program
+       , rep 
+        
        -- Executing programs
        , ExecProgram(..) 
        , ExecBlock(..)
@@ -97,6 +101,22 @@ import Data.Bits
 import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,zipWith3, last, take, drop)
+
+
+---------------------------------------------------------------------------
+-- Helper 
+---------------------------------------------------------------------------
+logBaseI :: Integral a => a -> a -> a
+logBaseI b x
+  = if x < b
+    then 0
+    else
+      let
+        l = 2 * logBaseI (b*b) x
+        doDiv x l = if x < b then l else doDiv (x`div`b) (l+1)
+      in
+       doDiv (x`div`(b^l)) l
+
 
 ---------------------------------------------------------------------------
 -- Reverse an array by indexing in it backwards
@@ -341,6 +361,8 @@ twoK n f = \arr ->
                   nl2   = len (f (mkPull  m (\j -> arr ! variable "X")))
                   lt    = nl2 `shiftL` n 
               in arr'
+                                          
+
 
 ---------------------------------------------------------------------------
 -- ***                          PUSHY LIBRARY                       *** ---
@@ -361,6 +383,18 @@ concP p1 p2  =
  where 
    n1 = len p1
    n2 = len p2 
+
+
+-- | Flatten a Pull array of pairs. Result is a push array
+unpairP :: ASize l => Choice a => Push t l (a,a) -> Push t l a
+unpairP arr =
+  mkPush (2 * len arr) $ \ wf ->
+  do 
+    -- even iterations
+    arr <: \ (a,_) i -> wf a ((sizeConv i) `shiftL` 1)
+    -- Odd iterations 
+    arr <: \ (_,b) i -> wf b ((sizeConv i) `shiftL` 1 + 1) 
+
 
 
 -- Implement unpair on pusharrays,
@@ -505,6 +539,31 @@ asGridMap :: ASize l => (a -> SPush Block b)
             -> Push Grid l b 
 asGridMap f = pConcat . fmap f
 
+
+---------------------------------------------------------------------------
+-- Repeat a program
+---------------------------------------------------------------------------
+
+-- | Repeat a program (iterate it) 
+rep :: Word32 -> (a -> Program t a) -> a -> Program t a
+rep 0 _ a = return a 
+rep n prg a = do
+  b <- rep (n-1) prg a
+  prg b 
+    
+
+{-
+  mkPush (n * fromIntegral rn) $ \wf ->
+  do
+    seqFor (sizeConv n) $ \bix ->
+      let p = arr ! bix -- (Push _ p) = arr ! bix
+          wf' a ix = wf a (bix * sizeConv rn + ix)              
+      in p <: wf'
+  where 
+    n  = len arr
+    rn = len $ arr ! 0
+-} 
+
 -- class LiftGrid t where
 --   -- The "a" cannot be an array.
 --   -- This needs to be made clear.. but dont know where. 
@@ -610,7 +669,6 @@ pUnCoalesce arr =
     rn = len $ arr ! 0
     s  = sizeConv rn 
     g wf a i = wf a (i `div` s + (i`mod`s)*(sizeConv n))
-
 
 ---------------------------------------------------------------------------
 -- RunPush 

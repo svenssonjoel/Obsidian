@@ -21,6 +21,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ConstraintKinds #-}
+------------------------------------------
+{- LANGUAGE FunctionalDependencies -} 
 
 module Obsidian.Program  (
   -- Hierarchy 
@@ -32,7 +34,6 @@ module Obsidian.Program  (
   TProgram, BProgram, GProgram, WProgram, 
 
   -- Class
-  Sync,
   type (*<=*),
   
   -- helpers
@@ -45,6 +46,7 @@ module Obsidian.Program  (
   -- Programming interface
   seqFor, forAll, seqWhile, sync, distrPar, forAll2,
   singleThread
+
                                             
   ) where 
  
@@ -69,20 +71,18 @@ type Warp  = Step Thread
 type Block = Step Warp
 type Grid  = Step Block
 
-class a *<=* b
-instance Thread *<=* Thread
-instance Thread *<=* Warp
-instance Thread *<=* Block
-instance Thread *<=* Grid
 
-instance Warp *<=* Warp
-instance Warp *<=* Block
-instance Warp *<=* Grid
+-- | Type level less-than-or-equal test.
+type family LessThanOrEqual a b where
+   LessThanOrEqual Thread   Thread   = True
+   LessThanOrEqual Thread   (Step m) = True
+   LessThanOrEqual (Step n) (Step m) = LessThanOrEqual n m
+   LessThanOrEqual x y               = False
+   
 
-instance Block *<=* Block
-instance Block *<=* Grid
+-- | This constraint is a more succinct way of requiring that @a@ be less than or equal to @b@.
+type a *<=* b = (LessThanOrEqual a b ~ True)
 
-instance Grid *<=* Grid 
 
 ---------------------------------------------------------------------------
 
@@ -137,18 +137,27 @@ data Program t a where
             -> Program t ()
 
   -- Allocate shared memory in each MP
+  -- Can be done from any program level.
+  -- Since the allocation happens block-wise though
+  -- it is important to figure out how many instances of
+  -- that t level program that needs memory! (messy) 
   Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
                 
-  Sync     :: Program Block ()
+  Sync     :: (t *<=* Block) => Program t ()
 
   -- Think about how to to allow multikernel programs.
 
   -- HardSync :: Program Grid () 
   -- How to decide arguments to the different kernels ? 
-  
+
+  -- Experimental zone
+  -- Skeleton 
+  -- Experimental zone ends 
+
+
   -- Monad
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
@@ -261,23 +270,26 @@ instance Applicative (Program t) where
       fmap f fa
 
 ---------------------------------------------------------------------------
--- Class Sync
+-- sync function
 ---------------------------------------------------------------------------
-class Sync t where
-  sync :: Program t () 
+sync :: (t *<=* Block) => Program t ()
+sync = Sync
 
-instance Sync Warp where
-  sync = return ()
+-- class Sync t where
+--   sync :: Program t () 
 
-instance Sync Thread where
-  sync = return ()
+-- instance Sync Warp where
+--   sync = return ()
 
-instance Sync Block where
-  sync = Sync
+-- instance Sync Thread where
+--   sync = return ()
 
-instance Sync Grid where
-  sync = error "sync: not implemented on grid computations" 
-  -- (implement this using counters and locks)
+-- instance Sync Block where
+--   sync = Sync
+
+-- instance Sync Grid where
+--   sync = error "sync: not implemented on grid computations" 
+
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)

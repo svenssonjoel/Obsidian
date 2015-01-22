@@ -3,6 +3,8 @@
              ScopedTypeVariables#-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-} 
+{-# LANGUAGE GADTs #-} 
 
 module Scan where
 

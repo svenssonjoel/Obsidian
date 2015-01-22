@@ -6,9 +6,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE GADTs #-}
+----------------------------------------
+{- LANGUAGE KindSignatures -}
+{-# LANGUAGE TypeFamilies #-}
+
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds #-} 
 
 
-{- Joel Svensson 2012, 2013 
+{- Joel Svensson 2012, 2013, 2014 
 
    Notes:
    2014-03-28: Changed API.
@@ -25,17 +31,12 @@
 -}
 
 
-module Obsidian.Force ( Forceable
-                      , force
-                      , forcePull
-                      , unsafeForce
-                      , unsafeWritePush
+module Obsidian.Force ( unsafeWritePush
                       , unsafeWritePull
                       , compute_
                       , computePull_
                       , ComputeAs(..)
-                      , Compute(..)) where
--- Write, force, forcePull, unsafeForce, unsafeWritePush) where 
+                      , Compute) where
 
 
 import Obsidian.Program
@@ -48,28 +49,32 @@ import Obsidian.Data
 
 import Data.Word
 
-{-# DEPRECATED force, forcePull, unsafeForce "Don't use these" #-}
-{-# DEPRECATED Forceable "class is phased out" #-} 
+
 ---------------------------------------------------------------------------
 --
 -------------------------------------------------------------------------
---
-class (Sync t, Write t) => Forceable t
 
-instance Forceable Thread
-instance Forceable Warp
-instance Forceable Block
+-- class (t *<=* Block,Write t) => Compute t
+-- instance Compute Block
+-- instance Compute Block => Compute Warp
+-- instance Compute Warp  => Compute Thread
 
-class (t *<=* Block, Sync t, Write t) => Compute t 
-instance Compute Thread
-instance Compute Warp
-instance Compute Block
---instance (t *<=* Block, Sync t, Write t) => Compute t
+type Compute t = (Write t, t *<=* Block)
+
+--instance Compute Thread
+--instance Compute Warp
+--instance Compute Thread 
+--instance (Compute t,Write (Step t), Step t *<=* Block)
+--         => Compute (Step t) 
+--instance Compute Block => Compute Warp
+--instance Compute Warp => Compute Thread 
+--instance (t *<=* Block,Write t) => Compute t 
+
 
 class Compute t => ComputeAs t a where
   compute :: Data e => a Word32 e -> Program t (Pull Word32 e)
   
-instance (t *<=* Block, Compute t) => ComputeAs t Pull where
+instance Compute t => ComputeAs t Pull where
   compute = computePull_ 
 
 {- 
@@ -85,28 +90,56 @@ instance (t *<=* Block, Compute t) => ComputeAs t Pull where
 instance (t ~ t1, Compute t) => ComputeAs t (Push t1) where
   compute =  compute_
 
--- do
---   rval <- unsafeWritePush False arr
---   sync
---   return rval
-
 compute_ :: (Data a, Compute t)
           => Push t Word32 a -> Program t (Pull Word32 a)      
-compute_ = force
+compute_ arr = do
+  rval <- unsafeWritePush False arr
+  sync
+  return rval
 
 computePull_ :: (t *<=* Block, Data a, Compute t)
              => Pull Word32 a -> Program t (Pull Word32 a)  
-computePull_ = unsafeForce . push 
+computePull_ arr = 
+  if (len arr <= 32)
+  then do
+    rval <- unsafeWritePush True parr
+    return rval
+  else do
+    rval <- unsafeWritePush False parr 
+    sync
+    return rval
+  where parr = push arr
+-- = unsafeForce . push 
                
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 ---------------------------------------------------------------------------
 
+
+
+
 class Write t where
   unsafeWritePush :: Storable a => Bool -> Push t Word32 a -> Program t (Pull Word32 a)
-  -- unsafeWritePull :: MemoryOps a => Pull Word32 a -> Program t (Pull Word32 a) 
-  
-instance Write Warp where
+
+-- What to do about volatile here?
+-- Ignoring that parameter for now.
+-- Thought: It does not matter.
+-- Thought: Is this function correct at all?
+--   What happens if a thread program allocates memory
+instance  Write Thread where
+  unsafeWritePush _ p =
+    do
+      (snames :: Names a)  <- names "arr" 
+
+      -- Here I know that this pattern match will succeed
+      let n = len p
+    
+      allocateArray snames  n
+      p <: threadAssignArray snames (variable "tid") n  
+      
+      return $ threadPullFrom snames (variable "tid") n
+
+instance  Write Warp where
   unsafeWritePush _ p  =
     do
       let n = len p
@@ -128,20 +161,6 @@ instance Write Block where
       p <: assignArray noms 
       return $ pullFrom noms n
 
--- What to do about volatile here?
--- Ignoring that parameter for now. 
-instance Write Thread where
-  unsafeWritePush _ p =
-    do
-      (snames :: Names a)  <- names "arr" 
-
-      -- Here I know that this pattern match will succeed
-      let n = len p
-    
-      allocateArray snames  n
-      p <: assignArray snames 
-      
-      return $ pullFrom snames n
 
 
 ---------------------------------------------------------------------------
@@ -149,41 +168,6 @@ instance Write Thread where
 ---------------------------------------------------------------------------
 unsafeWritePull :: (t *<=* Block, Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
 unsafeWritePull t = unsafeWritePush t . push
-
----------------------------------------------------------------------------
--- Force functions 
----------------------------------------------------------------------------
-
--- | It is possible to force at level T if we can Write and Sync at that level. 
-
--- | force turns a @Push@ array to a @Program@ generating a @Pull@ array.
---   The returned array represents reading from an array manifest in memory.
-force :: (Data a, Compute t)
-         => Push t Word32 a -> Program t (Pull Word32 a)      
-force arr = do
-  rval <- unsafeWritePush False arr
-  sync
-  return rval
-
--- | Make a @Pull@ array manifest in memory. 
-forcePull :: (t *<=* Block, Data a, Compute t)
-             => Pull Word32 a -> Program t (Pull Word32 a)  
-forcePull = unsafeForce . push 
-
--- | unsafeForce is dangerous on @Push@ arrays as it does not
---   insert synchronization primitives. 
-unsafeForce :: (Data a, Compute t) =>
-         Push t  Word32 a -> Program t (Pull Word32 a)      
-unsafeForce arr = 
-  if (len arr <= 32)
-  then do
-    rval <- unsafeWritePush True arr
-    return rval
-  else do
-    rval <- unsafeWritePush False arr 
-    sync
-    return rval 
-
 
 
 
