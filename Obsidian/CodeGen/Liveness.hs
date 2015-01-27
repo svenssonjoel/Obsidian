@@ -40,6 +40,9 @@ type IML = [(Statement Liveness,Liveness)]
    TODO: Can ixs contain array names ?
            (Most likely yes! think about the counting sort example)
 
+   BUG: Arrays from the "outside" needs special
+        treatment within a loop body. 
+
 -} 
            
 
@@ -114,11 +117,19 @@ cl im = mapM process im
         -- Is this correct ?  Same question, all below
         return (SCond bexp iml,ns)
 
+
+-- This needs to change. 
+-- arrays from the "outside" that  
+-- are used within the loop needs special treatment. 
     process (SSeqFor nom n im,_) = 
       do 
+        -- get names alive after loop
         s <- get
         let iml = computeLiveness1 s im 
+            -- l is liveness info "leaving" im
             l   = safeHead iml
+            -- alive at these points are those things in l 
+            -- plus the things before (s) 
             ns  = s `Set.union` l
         put ns
         return (SSeqFor nom n iml,ns) 
@@ -134,7 +145,6 @@ cl im = mapM process im
       do 
         s <- get 
         return (SBreak,s)
-
 
     process (SForAll lvl n im,_) =  
       do 

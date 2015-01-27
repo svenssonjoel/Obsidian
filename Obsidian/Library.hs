@@ -640,7 +640,7 @@ sConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
   do
     seqFor (sizeConv n) $ \bix ->
-      let p = arr ! bix -- (Push _ p) = arr ! bix
+      let p = arr ! bix 
           wf' a ix = wf a (bix * sizeConv rn + ix)              
       in p <: wf'
   where 

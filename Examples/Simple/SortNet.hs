@@ -11,11 +11,12 @@ module SortNet where
 
 import Obsidian
 
-import Data.Word
-
 import Prelude hiding (zip, reverse )
 import qualified Prelude as P 
 
+import Data.Word
+
+import Debug.Trace
 
 ---------------------------------------------------------------------------
 -- basics
@@ -95,26 +96,71 @@ test = divConq $ shexRev' cmpswap
 mapTest :: (Scalar a, Ord a) => DPull (Exp a) -> DPush Grid (Exp a) 
 mapTest arr = asGridMap test (splitUp 1024 arr)
 
--- What does this mean ? 
+-- What does this type mean ? 
+-- divConq :: forall a . Data a
+--         => (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
+--         -> SPull  a -> SPush Block  a
+-- divConq f arr = execBlock $ doIt (logLen - 1) arr
+--   where logLen = logBaseI 2 (len arr)
+--         doIt 0 arr = do
+--           return $ (f :: SPull a -> SPush Block a) arr
+
+--         -- doIt n arr = do
+--         --   arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
+--         --           $ splitUp (2^(logLen - n)) arr
+--         --   doIt (n - 1) arr'
+
+--         doIt n arr | 2^(logLen - n) > 32 = do
+--           arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
+--                   $ splitUp (2^(logLen - n)) arr
+--           doIt (n - 1) arr'
+--                    | otherwise = do
+--           arr' <- compute $ asBlockMap (f :: SPull a -> SPush Thread a)
+--                   $ splitUp (2^(logLen - n)) arr
+--           doIt (n - 1) arr'
+
+-- | divide and conquer skeleton 
 divConq :: forall a . Data a
         => (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
         -> SPull  a -> SPush Block  a
-divConq f arr = execBlock $ doIt (logLen - 1) arr
+divConq f arr = divConqParam w b f arr
+  where w = 32  -- hardcoded parameters that may not make sense. 
+        b = 256 
+
+-- | Parameterized version of divConq. 
+divConqParam :: forall a . Data a
+             => Word32
+             -> Word32 
+             -> (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
+             -> SPull  a -> SPush Block  a
+divConqParam doWarps doBlocks f arr = execBlock $ doIt (logLen - 1) arr
   where logLen = logBaseI 2 (len arr)
-        doIt 0 arr = do
-          return $ (f :: SPull a -> SPush Block a) arr
+        doIt 0 a = 
+          do 
+            return  $ (f :: SPull a -> SPush Block a) a
 
-        -- doIt n arr = do
-        --   arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
-        --           $ splitUp (2^(logLen - n)) arr
-        --   doIt (n - 1) arr'
+        doIt n a | currLen > doBlocks = blockBody 
+                 | currLen > doWarps  = warpBody  
+                 | otherwise          = threadBody
+          where
+            currLen = 2^(logLen - n)
+            arrs = splitUp currLen a
+            blockBody = 
+              do
+                arr' <- compute
+                        $ asBlockMap (f :: SPull a -> SPush Block a)
+                        $ arrs
+                doIt (n - 1) arr'
+            warpBody =          
+              do
+                arr' <- compute
+                        $ asBlockMap (f :: SPull a -> SPush Warp a)
+                        $ arrs
+                doIt (n - 1) arr'
+            threadBody =
+              do
+                arr' <- compute
+                        $ asBlockMap (f :: SPull a -> SPush Thread a)
+                        $ arrs
+                doIt (n - 1) arr'
 
-        doIt n arr | 2^(logLen - n) > 32 = do
-          arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
-                  $ splitUp (2^(logLen - n)) arr
-          doIt (n - 1) arr'
-                   | otherwise = do
-          arr' <- compute $ asBlockMap (f :: SPull a -> SPush Thread a)
-                  $ splitUp (2^(logLen - n)) arr
-          doIt (n - 1) arr'
-       

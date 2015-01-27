@@ -252,7 +252,8 @@ instance Compile P.Block where
     -- Set up the context for the compilation
     -- of the Warp code.
     -- BUG: Something like this is needed for distribution
-    -- over threads too! 
+    -- over threads too!
+    -- FIXED: Bug mentioned above should be (at least) partially fixed. 
     enterWarp n
     -- Number of active warps are stored in the context. 
     (a,im) <- compile s (f (variable "warpID"))

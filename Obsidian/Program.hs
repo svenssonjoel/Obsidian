@@ -131,6 +131,13 @@ data Program t a where
   DistrPar :: EWord32
            -> (EWord32 -> Program t ())
            -> Program (Step t) ()
+
+  -- BUG: I Need to recognize sequential distribution of
+  -- work too in order to set up storage correctly for
+  -- arrays allocated in within sequentially distributed work.
+  DistrSeq :: EWord32
+           -> (EWord32 -> Program t ())
+           -> Program t () 
   
   
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
@@ -152,11 +159,6 @@ data Program t a where
 
   -- HardSync :: Program Grid () 
   -- How to decide arguments to the different kernels ? 
-
-  -- Experimental zone
-  -- Skeleton 
-  -- Experimental zone ends 
-
 
   -- Monad
   Return :: a -> Program t a

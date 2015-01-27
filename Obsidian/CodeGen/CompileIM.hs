@@ -286,6 +286,9 @@ compileStm p c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
 compileStm p c (SSeqFor loopVar n im) = 
     [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
               { $stms:body } |]]
+-- end a sequential for loop with a sync (or begin).
+-- Maybe only if the loop is on block level (that is across all threads)
+--  __syncthreads();} |]]
   where
     body = compileIM p c im -- (compileIM p c im)
 
@@ -314,10 +317,10 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 -- DistrPar 
 ---------------------------------------------------------------------------
 compileDistr :: Platform -> Config -> Statement t -> [Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
+compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ -- ++ codeR
   -- New here is BLOCK virtualisation
   where
-    cim = compileIM PlatformCUDA c im
+    cim = compileIM PlatformCUDA c im  -- ++ [[cstm| __syncthreads();|]]
     
     numBlocks = [cexp| $id:("gridDim.x") |]
     
@@ -401,7 +404,7 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
 
 compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR 
   where
-    cim = compileIM PlatformCUDA c im
+    cim = compileIM PlatformCUDA c im -- ++ [[cstm| __syncthreads();|]]
    
     nt = configThreadsPerBlock c 
 
@@ -418,7 +421,9 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
             --  stm <- updateTid [cexp| threadIdx.x |]
             --  return $ [cstm| $id:loopVar = threadIdx.x; |] : cim 
         n -> [[cstm| for ( int i = 0; i < $int:q; ++i) { $stms:body } |], 
+                                                     --  __syncthreads(); } |], 
               [cstm| $id:("tid") = threadIdx.x; |]]
+          --    [cstm| __syncthreads();|]]
              where 
                body = [cstm|$id:("tid") =  i*$int:nt + threadIdx.x; |] : cim
    

@@ -30,6 +30,11 @@
 
 -}
 
+{-
+ Warning: This module is full of magic! 
+-} 
+
+
 
 module Obsidian.Force ( unsafeWritePush
                       , unsafeWritePull
@@ -109,14 +114,11 @@ computePull_ arr =
     sync
     return rval
   where parr = push arr
--- = unsafeForce . push 
+
                
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 ---------------------------------------------------------------------------
-
-
-
 
 class Write t where
   unsafeWritePush :: Storable a => Bool -> Push t Word32 a -> Program t (Pull Word32 a)
@@ -126,6 +128,7 @@ class Write t where
 -- Thought: It does not matter.
 -- Thought: Is this function correct at all?
 --   What happens if a thread program allocates memory
+-- DONE: The above problem has been fixed! 
 instance  Write Thread where
   unsafeWritePush _ p =
     do

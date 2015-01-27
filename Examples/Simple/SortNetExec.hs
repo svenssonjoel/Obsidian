@@ -18,6 +18,8 @@ import System.Exit
 
 import Data.Time.Clock
 
+import Prelude hiding (reverse) 
+import qualified Prelude as P 
 
 perform :: IO ()
 perform =
@@ -29,6 +31,7 @@ perform =
 
     (inputs' :: V.Vector Word32) <- lift $ mkRandomVec 1024
     let inputs = V.map (`mod` 64) inputs'
+--    let inputs = V.fromList (P.reverse [0..1023::Word32])
 
     let sorted = sort (V.toList inputs) 
     
@@ -36,6 +39,7 @@ perform =
     useVector inputs $ \i ->
       allocaVector 1024 $ \ o ->
       do
+        fill o 0
         transfer_done <- lift getCurrentTime
 
         t0 <- lift getCurrentTime
@@ -70,11 +74,11 @@ perform =
           then
           do
             lift $ putStrLn $ "CPU/GPU Same? "  ++ show (sorted == r)
-            lift $ putStrLn "Success"
+            lift $ putStrLn "Sorting: Success"
             lift $ exitSuccess 
           else
           do
-            lift $ putStrLn "Failure"
+            lift $ putStrLn "Sorting: Failure"
             lift $ exitFailure
                
 
