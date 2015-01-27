@@ -2,6 +2,11 @@
 {- Joel Svensson 2012, 2013
 
    Notes:
+     Jan-27-2015: Bug fix related to arrays alive when
+                  entering into loops.
+                  Fix seems to solve the problem.
+                  Need to investigate that it still frees arrays
+                  as soon as possible. 
      Nov-25-2014: Changes to memory management
   
      Jan-21-2013: Added a SeqFor case 
@@ -304,9 +309,6 @@ mmIMLoop conf nonfreeable im memory memmap = r im (memory,memmap)
                 (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
 
     -- Boilerplate
-    -- BUG: Bug in memory management related to seqloops
-    --      It may be better to try to fix this bug here.
-    --      A special mmIM for the loop case may be needed. 
     process conf (SSeqFor _ n im,alive) m mm = mmIMLoop conf (nonfreeable `Set.union` alive) im m mm
     process conf (SSeqWhile b im,_) m mm = mmIMLoop conf nonfreeable im m mm 
     process conf (SForAll _ n im,_) m mm = mmIMLoop conf nonfreeable im m mm
