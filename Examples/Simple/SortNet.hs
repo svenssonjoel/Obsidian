@@ -96,28 +96,15 @@ test = divConq $ shexRev' cmpswap
 mapTest :: (Scalar a, Ord a) => DPull (Exp a) -> DPush Grid (Exp a) 
 mapTest arr = asGridMap test (splitUp 1024 arr)
 
--- What does this type mean ? 
--- divConq :: forall a . Data a
---         => (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
---         -> SPull  a -> SPush Block  a
--- divConq f arr = execBlock $ doIt (logLen - 1) arr
---   where logLen = logBaseI 2 (len arr)
---         doIt 0 arr = do
---           return $ (f :: SPull a -> SPush Block a) arr
 
---         -- doIt n arr = do
---         --   arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
---         --           $ splitUp (2^(logLen - n)) arr
---         --   doIt (n - 1) arr'
+testParam :: forall a . (Scalar a, Ord a) => Word32 -> Word32 -> SPull (Exp a) -> SPush Block (Exp a) 
+testParam w b = divConqParam w b  $ shexRev' cmpswap
 
---         doIt n arr | 2^(logLen - n) > 32 = do
---           arr' <- compute $ asBlockMap (f :: SPull a -> SPush Warp a)
---                   $ splitUp (2^(logLen - n)) arr
---           doIt (n - 1) arr'
---                    | otherwise = do
---           arr' <- compute $ asBlockMap (f :: SPull a -> SPush Thread a)
---                   $ splitUp (2^(logLen - n)) arr
---           doIt (n - 1) arr'
+mapTestParam :: (Scalar a, Ord a) => Word32 -> Word32 -> DPull (Exp a) -> DPush Grid (Exp a) 
+mapTestParam w b arr = asGridMap (testParam w b) (splitUp 1024 arr)
+
+
+
 
 -- | divide and conquer skeleton 
 divConq :: forall a . Data a
