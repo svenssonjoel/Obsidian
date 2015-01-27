@@ -40,6 +40,9 @@ import Obsidian.Exp
 import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.Liveness
 
+import Debug.Trace 
+
+
 import qualified Data.Map as Map 
 ---------------------------------------------------------------------------
 -- Planned improvements
@@ -247,7 +250,8 @@ mmIM conf im memory memmap = r im (memory,memmap)
             case freeableAddrs of
               (Just as) -> freeAll m' (map fst as)
               Nothing   -> m'
-      in r xs (mNew,mm')
+      in -- trace ("freeable: " ++ show freeable   ++ "\n") $ 
+         r xs (mNew,mm')
     
     process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
     process conf (SAllocate name size t,_) m mm = (m',mm') 
@@ -298,7 +302,10 @@ mmIMLoop conf nonfreeable im memory memmap = r im (memory,memmap)
             case freeableAddrs of
               (Just as) -> freeAll m' (map fst as)
               Nothing   -> m'
-      in r xs (mNew,mm')
+      in --trace ("freeable': " ++ show freeable' ++ "\n" ++
+         --       "freeable: " ++ show freeable   ++ "\n" ++ 
+         --       "nonfreeable: " ++ show nonfreeable) $
+         r xs (mNew,mm')
     
     process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
     process conf (SAllocate name size t,_) m mm = (m',mm') 
