@@ -179,7 +179,7 @@ sMapAccum f acc arr =
     (noms :: Names acc) <- names "v"
     --(noms2 :: Names acc) <- names "APA"
     
-    allocateScalar noms
+    allocateSharedScalar noms
    -- allocateScalar noms2
     -- a single thread in the group, performs an assignment
     -- May need synchronization! 

@@ -1,7 +1,7 @@
 {-|
 Module      : Types
 Description : Type information, used internally by Obsídian.
-Copyright   : (c) Joel Svensson, 2014
+Copyright   : (c) Joel Svensson, 2014, 2015
 License     : BSD
 Maintainer  : bo.joel.svensson@gmail.com
 Stability   : experimental
@@ -42,6 +42,7 @@ data Type
 
             
 -- Used by CUDA, C And OpenCL generators
+  | Shared Type 
   | Volatile Type  -- For warp local computations. 
   | Pointer Type   -- Pointer to a @type@ 
   | Global Type    -- OpenCL thing
@@ -59,5 +60,6 @@ typeSize Word32 = 4
 typeSize Word64 = 8
 typeSize Bool = 4
 typeSize Float = 4
-typeSize Double = 8 
+typeSize Double = 8
+typeSize (Shared t) = typeSize t 
 typeSize t = error $ "typeSize: this is bad!: " ++ show t 

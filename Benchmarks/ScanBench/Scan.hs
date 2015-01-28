@@ -414,6 +414,15 @@ wrapKernCin :: Data a
             -> Int -> (a -> a -> a) -> a -> SPull a
             -> Program Block (a, SPush Block a)
 wrapKernCin kern n op cin arr = do
+  arr' <- compute $ execBlock $ liftM (fmap (op cin)) $ kern n op arr
+  return (last arr', push arr') 
+
+{- 
+wrapKernCin :: Data a
+            => ScanKernel a 
+            -> Int -> (a -> a -> a) -> a -> SPull a
+            -> Program Block (a, SPush Block a)
+wrapKernCin kern n op cin arr = do
   arr'  <- compute $ applyToHead op cin arr
   arr'' <- compute $ execBlock $ kern n op arr'
   return (last arr'', push arr'')
@@ -422,6 +431,7 @@ wrapKernCin kern n op cin arr = do
       let h = fmap (op cin ) $ take 1 arr
           b = drop 1 arr
       in h `append` b
+-} 
 
 -- wrapKernCin :: Data a => ScanKernel a -> 
 --    Int -> (a -> a -> a) -> a -> SPull a -> Program Block (a, SPush Block a)

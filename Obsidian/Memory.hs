@@ -38,7 +38,8 @@ class Storable a where
   
   -- Scalar operations 
   assignScalar   :: Names a -> a -> Program Thread ()
-  allocateScalar :: Names a ->  Program t () 
+  allocateScalar :: Names a ->  Program t ()
+  allocateSharedScalar :: Names a -> Program t () 
   readFrom       :: Names a -> a
   
   -- Warp level operations   
@@ -81,7 +82,10 @@ instance Scalar a => Storable (Exp a) where
   
   -- Scalar ops 
   allocateScalar (Single name) =
-    Declare name (typeOf (undefined :: Exp a)) 
+    Declare name (typeOf (undefined :: Exp a))
+  allocateSharedScalar (Single name) =
+    Declare name (Shared $ typeOf (undefined :: Exp a))
+  
   assignScalar (Single name) a    = Assign name [] a
   readFrom  (Single name) = variable name
 
@@ -124,6 +128,11 @@ instance (Storable a, Storable b) => Storable (a, b) where
   allocateScalar (Tuple ns1 ns2) =
       allocateScalar ns1 >> 
       allocateScalar ns2
+
+  allocateSharedScalar (Tuple ns1 ns2) =
+      allocateSharedScalar ns1 >> 
+      allocateSharedScalar ns2
+  
       
   assignArray (Tuple ns1 ns2) (a,b) ix =
       assignArray ns1 a ix >>
@@ -187,7 +196,13 @@ instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
       allocateScalar ns1 >>
       allocateScalar ns2 >>
       allocateScalar ns3
-      
+
+  allocateSharedScalar (Triple ns1 ns2 ns3) =
+      allocateSharedScalar ns1 >>
+      allocateSharedScalar ns2 >>
+      allocateSharedScalar ns3
+
+
   assignArray (Triple ns1 ns2 ns3) (a,b,c) ix =
       assignArray ns1 a ix >>
       assignArray ns2 b ix >>
@@ -260,6 +275,13 @@ instance (Storable a, Storable b, Storable c, Storable d) => Storable (a, b, c, 
       allocateScalar ns2 >>
       allocateScalar ns3 >>
       allocateScalar ns4
+
+  allocateSharedScalar (Quadruple ns1 ns2 ns3 ns4) =
+      allocateSharedScalar ns1 >>
+      allocateSharedScalar ns2 >>
+      allocateSharedScalar ns3 >>
+      allocateSharedScalar ns4
+
 
   assignArray (Quadruple ns1 ns2 ns3 ns4) (a,b,c,d) ix =
       assignArray ns1 a ix >>

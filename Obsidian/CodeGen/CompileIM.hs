@@ -217,7 +217,7 @@ compileType (Vec3 Word32) = [cty| uint3|]
 compileType (Vec4 Word32) = [cty| uint4|]
 
 
-
+compileType (Shared t) = [cty| __shared__ $ty:(compileType t) |]
 compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
 compileType t = error $ "compileType: Not implemented " ++ show t

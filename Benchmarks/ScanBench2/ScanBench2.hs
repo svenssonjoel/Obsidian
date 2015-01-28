@@ -245,7 +245,7 @@ large iscan scan blocks elements threads = do
             case (r == cpuresult) of
               False ->
                 do lift $ putStrLn "WARNING: GPU and CPU results don't match "
-                   --lift $ putStrLn $ show $ P.zip (V.toList cpuresult) (V.toList r )
+                   lift $ putStrLn $ show $ P.zip (V.toList cpuresult) (V.toList r )
                    --lift $ putStrLn $ show $ r_reds
                    --lift $ putStrLn $ show $ r_reds2
               True -> lift $ putStrLn "GREAT! GPU and CPU results match!"
