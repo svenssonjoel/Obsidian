@@ -15,7 +15,7 @@ import Data.Bits
 
 import Control.Monad
 
-import Prelude hiding (map,zipWith,zip,sum,replicate,take,drop,iterate,last)
+import Prelude hiding (map,zipWith,zip,sum,replicate,take,drop,iterate,last, head, tail)
 
 
 ---------------------------------------------------------------------------
@@ -325,9 +325,13 @@ mapScanCIn5 n op cins arr =
 wrapI scan n op a arr =
   do
     arr' <- scan n op arr
-    let i = execBlock' (return a)
-    return $ i `concP` arr'
-    -- Output array is one element longer than input. 
+    let i = singleton a -- execBlock' (return a)
+    return $ i `concP` (initP arr')
+    where
+      -- unsafe operation on push arrays in general
+      -- but in this case we know what kind of array we are dealing with
+      initP parr = mkPush (len parr - 1) (pushApp parr)
+    -- Output array is !not! one element longer than input. 
 
 
 -- Horrible code duplication!!! 

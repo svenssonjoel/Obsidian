@@ -39,6 +39,8 @@ module Obsidian.Library
        , first
        , take
        , drop
+       , head
+       , tail 
        , fold1
        , shiftLeft
        , unzip
@@ -100,7 +102,7 @@ import Control.Monad
 import Data.Bits 
 import Data.Word
 
-import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,zipWith3, last, take, drop)
+import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,zipWith3, last, take, drop, head, tail)
 
 
 ---------------------------------------------------------------------------
@@ -220,6 +222,17 @@ take n arr = setSize n arr
 -- | Drop the first @n@ elements from a Pull array
 drop :: ASize l => l -> Pull l a -> Pull l a
 drop n arr = setSize (len arr - n) $ ixMap (\ix -> ix + sizeConv n) arr
+
+---------------------------------------------------------------------------
+-- Head and Tail  on pull arrays
+---------------------------------------------------------------------------
+
+head :: ASize l =>  Pull l a -> a
+head arr = arr ! 0
+
+tail :: ASize l => Pull l a -> Pull l a
+tail = drop 1 
+
 
 ---------------------------------------------------------------------------
 -- fold (sequential , unrolled)  
@@ -382,8 +395,7 @@ concP p1 p2  =
     p2 <: \a i -> wf a (sizeConv n1 + i) 
  where 
    n1 = len p1
-   n2 = len p2 
-
+   n2 = len p2
 
 -- | Flatten a Pull array of pairs. Result is a push array
 unpairP :: ASize l => Choice a => Push t l (a,a) -> Push t l a

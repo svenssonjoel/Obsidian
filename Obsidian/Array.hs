@@ -18,7 +18,8 @@
 -}
 
 module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
---                        Pushable, 
+--                        Pushable,
+                      , pushApp
                       , mkPull
                       , mkPush
                       , push
@@ -107,6 +108,7 @@ mkPull n p = Pull n p
 --   * you can shorten pull arrays safely.  
 setSize :: ASize l => l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
+
 
 ---------------------------------------------------------------------------
 -- Array Class 

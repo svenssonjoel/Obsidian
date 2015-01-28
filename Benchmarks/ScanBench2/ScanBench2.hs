@@ -199,8 +199,7 @@ large iscan scan blocks elements threads = do
 
     transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
-      allocaVector (fromIntegral blocks+1) $ \ (reds :: CUDAVector Word32) ->
-       allocaVector (fromIntegral blocks+1) $ \ (reds2 :: CUDAVector Word32) -> 
+      allocaVector (fromIntegral blocks) $ \ (reds :: CUDAVector Word32) ->
         allocaVector (fromIntegral (e * blocks)) $ \ (o :: CUDAVector Word32) ->
           -- allocaVector 1 $ \ (zero :: CUDAVector Word32) ->
         
@@ -213,8 +212,8 @@ large iscan scan blocks elements threads = do
             forM_ [0..999] $ \_ -> do
               -- fill zero 0 
               reds <== (blocks,captRed) <> i
-              reds2 <== (1,captIScan) <> (0 :: Word32) <> reds
-              o <== (blocks,captScan) <> reds2 <> i
+              reds <== (1,captIScan) <> (0 :: Word32) <> reds
+              o <== (blocks,captScan) <> reds <> i
               syncAll
             
             cnt1 <- lift rdtsc
@@ -222,8 +221,6 @@ large iscan scan blocks elements threads = do
 
 
             r <- copyOut o
-            r_reds <- copyOut reds
-            r_reds2 <- copyOut reds2 
             t_end <- lift getCurrentTime
             
 
@@ -249,8 +246,8 @@ large iscan scan blocks elements threads = do
               False ->
                 do lift $ putStrLn "WARNING: GPU and CPU results don't match "
                    --lift $ putStrLn $ show $ P.zip (V.toList cpuresult) (V.toList r )
-                   lift $ putStrLn $ show $ r_reds
-                   lift $ putStrLn $ show $ r_reds2
+                   --lift $ putStrLn $ show $ r_reds
+                   --lift $ putStrLn $ show $ r_reds2
               True -> lift $ putStrLn "GREAT! GPU and CPU results match!"
 
 
