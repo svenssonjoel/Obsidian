@@ -108,7 +108,7 @@ mapTestParam w b arr = asGridMap (testParam w b) (splitUp 1024 arr)
 
 -- | divide and conquer skeleton 
 divConq :: forall a . Data a
-        => (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
+        => (forall  t . (Array (Push t), Compute t) => SPull a -> SPush t a)
         -> SPull  a -> SPush Block  a
 divConq f arr = divConqParam w b f arr
   where w = 32  -- hardcoded parameters that may not make sense. 
@@ -118,7 +118,7 @@ divConq f arr = divConqParam w b f arr
 divConqParam :: forall a . Data a
              => Word32
              -> Word32 
-             -> (SPull a -> forall  t . (Array (Push t), Compute t) => SPush t a)
+             -> (forall  t . (Array (Push t), Compute t) => SPull a -> SPush t a)
              -> SPull  a -> SPush Block  a
 divConqParam doWarps doBlocks f arr = execBlock $ doIt (logLen - 1) arr
   where logLen = logBaseI 2 (len arr)

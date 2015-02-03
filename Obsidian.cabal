@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.3.0.0
+Version:        0.4.0.0
 
 
 License:                BSD3
@@ -8,7 +8,7 @@ Stability:              Beta
 Maintainer:		Joel Svensson<svenssonjoel@yahoo.se>
 Author:			Joel Svensson<svenssonjoel@yahoo.se>
 
-Copyright:              Copyright (c) 2011-2014 Joel Svensson 		  			
+Copyright:              Copyright (c) 2011-2015 Joel Svensson 		  			
   
 Synopsis:               Embedded language for GPU Programming 
 HomePage:               https://github.com/svenssonjoel/Obsidian

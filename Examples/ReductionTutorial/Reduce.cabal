@@ -10,7 +10,7 @@ name:                Reduce
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.3.0.0
+version:             0.4.0.0
 
 -- A short (one-line) description of the package.
 synopsis:            examples of reductions 
@@ -65,7 +65,7 @@ executable Reduce.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0
+               , Obsidian >= 0.4.0.0
               
              
   -- Directories containing source files.

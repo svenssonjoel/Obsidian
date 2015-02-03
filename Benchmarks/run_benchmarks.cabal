@@ -18,6 +18,6 @@ Executable run_benchmarks
                    GenericPretty >= 1.2.1,
                    hsbencher >= 1.6.1,
                    hsbencher-fusion, 
-                   Obsidian >= 0.3.0.0
+                   Obsidian >= 0.4.0.0
     ghc-options: -threaded
     default-language:  Haskell2010

@@ -8,6 +8,7 @@
 module Fractals where
 
 import Obsidian
+import Obsidian.CodeGen.CUDA
 
 import Data.Word
 

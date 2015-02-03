@@ -10,7 +10,7 @@ name:                Simple
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.3.0.0
+version:             0.4.0.0
 
 -- A short (one-line) description of the package.
 -- synopsis:            
@@ -64,7 +64,7 @@ executable FractalsExec.exe
                , mtl >= 2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -88,7 +88,7 @@ executable HistogramExec.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0
+               , Obsidian >= 0.4.0.0
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -111,7 +111,7 @@ executable MatMulExec.exe
                , mtl >=2.0 
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -135,7 +135,7 @@ executable ReductionExec.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -158,7 +158,7 @@ executable ScanExec.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -181,7 +181,7 @@ executable Increment.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
           
   default-language:    Haskell2010
@@ -206,7 +206,7 @@ executable SortNetExec.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
                , time >= 1.4.2
           
@@ -232,7 +232,7 @@ executable AsBlockMapExec.exe
                , mtl >=2.0
                , random >=1.0 && <1.1
                , bytestring >=0.10 && <0.11
-               , Obsidian >= 0.3.0.0 
+               , Obsidian >= 0.4.0.0 
                , rdtsc >= 1.3
                , time >= 1.4.2
           
