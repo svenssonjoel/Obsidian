@@ -197,7 +197,7 @@ large iscan scan blocks elements threads = do
     let inputs = V.fromList $ P.take (fromIntegral (e*blocks)) (P.repeat 1)
         cpuresult = V.scanl1 (+) inputs 
 
-    transfer_start <- lift getCrrentTime
+    transfer_start <- lift getCurrentTime
     useVector inputs $ \i ->
       allocaVector (fromIntegral blocks) $ \ (reds :: CUDAVector Word32) ->
         allocaVector (fromIntegral (e * blocks)) $ \ (o :: CUDAVector Word32) ->
