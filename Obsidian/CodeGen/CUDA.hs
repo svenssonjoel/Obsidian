@@ -49,7 +49,6 @@ genKernelParams  sm_conf nt kn prg = prgStr
     prgStr = pretty 75
              $ ppr
              $ compileDeclsTop
-                PlatformCUDA
                 (Config nt bytesShared)
                 name_loc
                 kn (a,im) 
