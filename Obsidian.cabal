@@ -38,7 +38,8 @@ Library
                , rdtsc            == 1.3.0.0  
   -- Less-stable packages, upper bounds on next major version:
   build-depends: value-supply     >= 0.6      && < 0.7
-               , language-c-quote >= 0.7.2    && < 0.9
+               , language-c-quote >= 0.10.1.3 && < 0.11
+-- >= 0.7.2    && < 0.9
                , mainland-pretty  >= 0.2.6    && < 0.3
                , mwc-random       >= 0.13.1.1 && < 0.14
                , cuda             >= 0.5.1.1  && < 0.7

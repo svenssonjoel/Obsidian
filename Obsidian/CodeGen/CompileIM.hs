@@ -5,18 +5,15 @@
 
 {-
 
-   Joel Svensson 2013, 2014
+   Joel Svensson 2013..2015
 
 -} 
 
 module Obsidian.CodeGen.CompileIM where 
-
-import Language.C.Quote hiding (Block)
-import Language.C.Quote.CUDA as CU
-
+import Language.C.Quote.CUDA hiding (Block)
 import qualified Language.C.Quote.OpenCL as CL 
 
-import qualified "language-c-quote" Language.C.Syntax as C 
+import qualified "language-c-quote" Language.C.Syntax as C
 
 import Obsidian.Exp (IExp(..),IBinOp(..),IUnOp(..))
 import Obsidian.Types as T
@@ -26,7 +23,7 @@ import Obsidian.CodeGen.Program
 import Data.Word
 
 {- TODOs:
-    
+
    * Pass a target "platform" to code generator.
       - CUDA
       - OpenCL
@@ -55,7 +52,7 @@ data Config = Config { configThreadsPerBlock :: Word32,
 ---------------------------------------------------------------------------
 -- compileExp (maybe a bad name)
 ---------------------------------------------------------------------------
-compileExp :: IExp -> Exp 
+compileExp :: IExp -> C.Exp 
 compileExp (IVar name t) = [cexp| $id:name |]
 
 
@@ -222,8 +219,6 @@ compileType (Pointer t) = [cty| $ty:(compileType t)* |]
 compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
 compileType t = error $ "compileType: Not implemented " ++ show t
 
---compileType' (Volatile t) = [cty| volatile $ty:(compileType t)|] 
---compileType' t = compileType t 
 
 {-
 
@@ -268,7 +263,7 @@ compileType t = error $ "compileType: Not implemented " ++ show t
 ---------------------------------------------------------------------------
 
 
-compileStm :: Platform -> Config -> Statement t -> [Stm]
+compileStm :: Platform -> Config -> Statement t -> [C.Stm]
 compileStm p c (SAssign name [] e) =
    [[cstm| $(compileExp name) = $(compileExp e);|]]
 compileStm p c (SAssign name [ix] e) = 
@@ -316,7 +311,7 @@ compileStm _ _ a = error  $ "compileStm: missing case "
 ---------------------------------------------------------------------------
 -- DistrPar 
 ---------------------------------------------------------------------------
-compileDistr :: Platform -> Config -> Statement t -> [Stm] 
+compileDistr :: Platform -> Config -> Statement t -> [C.Stm] 
 compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
   -- New here is BLOCK virtualisation
   where
@@ -372,7 +367,7 @@ compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
-compileForAll :: Platform -> Config -> Statement t -> [Stm]
+compileForAll :: Platform -> Config -> Statement t -> [C.Stm]
 compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
   where
     nt = 32
@@ -460,7 +455,7 @@ compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
-compileIM :: Platform -> Config -> IMList a -> [Stm]
+compileIM :: Platform -> Config -> IMList a -> [C.Stm]
 compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 
 ---------------------------------------------------------------------------
@@ -468,7 +463,7 @@ compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
 ---------------------------------------------------------------------------
 type Parameters = [(String,T.Type)]
 
-compile :: Platform -> Config -> String -> (Parameters,IMList a) -> Definition
+compile :: Platform -> Config -> String -> (Parameters,IMList a) -> C.Definition
 compile pform config kname (params,im)
   = go pform 
   where
@@ -484,24 +479,24 @@ compile pform config kname (params,im)
 
     cudabody = (if (configSharedMem config > 0)
                 -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
-                then [BlockDecl [cdecl| __shared__  typename uint8_t sbase[$uint:(configSharedMem config)]; |]] 
+                then [C.BlockDecl [cdecl| __shared__  typename uint8_t  sbase[$uint:(configSharedMem config)] ; |]] 
                 else []) ++
                 --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
                 --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                 --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
 --                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
                (if (usesGid im) 
-                then [BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
                 else []) ++ 
                (if (usesBid im) 
-                then [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
                 else []) ++ 
                (if (usesTid im) 
-                then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
                 else []) ++
                (if (usesWarps im) 
-                then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
-                       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
+                then  [C.BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                       C.BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
                 else []) ++
                 -- All variables used will be unique and can be declared 
                 -- at the top level 
@@ -509,14 +504,14 @@ compile pform config kname (params,im)
                 -- Not sure if I am using language.C correctly. 
                 -- Maybe compileSTM should create BlockStms ?
                 -- TODO: look how Nikola does it. 
-                map BlockStm stms
+                map C.BlockStm stms
 
     cbody = -- add memory allocation 
-            map BlockStm stms
+            map C.BlockStm stms
 
 -- Declare variables. 
-declares :: (Statement t,t) -> [BlockItem]
-declares (SDeclare name t,_) = [BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
+declares :: (Statement t,t) -> [C.BlockItem]
+declares (SDeclare name t,_) = [C.BlockDecl [cdecl| $ty:(compileType t)  $id:name;|]]
 declares (SCond _ im,_) = concatMap declares im 
 declares (SSeqWhile _ im,_) = concatMap declares im
 declares (SForAll _ _ im,_) = concatMap declares im
@@ -528,7 +523,7 @@ declares _ = []
 --------------------------------------------------------------------------- 
 -- Parameter lists for functions  (kernel head) 
 ---------------------------------------------------------------------------
-compileParams :: Platform -> Parameters -> [Param]
+compileParams :: Platform -> Parameters -> [C.Param]
 compileParams PlatformOpenCL = map go
   where
     go (name,Pointer t) = [CL.cparam| global  $ty:(compileType t) $id:name |]
@@ -545,7 +540,7 @@ compileParams _ = map go
 ---------------------------------------------------------------------------
 -- CODE DUPLICATION FOR NOW
 
-compileDeclsTop :: Platform -> Config -> [(String,((Word32,Word32),T.Type))] -> String -> (Parameters,IMList a) -> Definition
+compileDeclsTop :: Platform -> Config -> [(String,((Word32,Word32),T.Type))] -> String -> (Parameters,IMList a) -> C.Definition
 compileDeclsTop pform config toplevelarrs kname (params,im)
   = go pform 
   where
@@ -561,24 +556,24 @@ compileDeclsTop pform config toplevelarrs kname (params,im)
 
     cudabody = (if (configSharedMem config > 0)
                 -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
-                then [BlockDecl [cdecl| __shared__  typename uint8_t sbase[$uint:(configSharedMem config)]; |]] 
+                then [C.BlockDecl [cdecl| __shared__ typename uint8_t sbase[$uint:(configSharedMem config)]; |]] 
                 else []) ++
                 --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
                 --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
                 --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
 --                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
                (if (usesGid im) 
-                then [BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t gid = blockIdx.x * blockDim.x + threadIdx.x; |]]
                 else []) ++ 
                (if (usesBid im) 
-                then [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]]
                 else []) ++ 
                (if (usesTid im) 
-                then [BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
+                then [C.BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]]
                 else []) ++
                (if (usesWarps im) 
-                then  [BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
-                       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
+                then  [C.BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
+                       C.BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] 
                 else []) ++
                 -- declare all arrays used
                 concatMap declareArr toplevelarrs ++
@@ -588,12 +583,12 @@ compileDeclsTop pform config toplevelarrs kname (params,im)
                 -- Not sure if I am using language.C correctly. 
                 -- Maybe compileSTM should create BlockStms ?
                 -- TODO: look how Nikola does it. 
-                map BlockStm stms
+                map C.BlockStm stms
 
     cbody = -- add memory allocation 
-            map BlockStm stms
+            map C.BlockStm stms
 
 
-declareArr :: (String, ((Word32,Word32),T.Type)) -> [BlockItem]
+declareArr :: (String, ((Word32,Word32),T.Type)) -> [C.BlockItem]
 declareArr (arr,((_,addr),t)) =
-  [BlockDecl [cdecl| $ty:(compileType t) $id:arr = ($ty:(compileType t))(sbase + $int:addr);|]]
+  [C.BlockDecl [cdecl| $ty:(compileType t) $id:arr = ($ty:(compileType t))(sbase + $int:addr);|]]

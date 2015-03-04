@@ -172,6 +172,7 @@ sharedMemConfig props = SharedMemConfig sm_bytes num_banks True
 ---------------------------------------------------------------------------
 -- | An environment to perform CUDA computations within.
 data CUDAState = CUDAState { csIdent :: Int,
+
                              csCtx   :: CUDA.Context,
                              csProps :: CUDA.DeviceProperties}
 
@@ -207,7 +208,7 @@ class KernelO a where
 instance KernelI Int32 where
   type KInput Int32 = Exp Int32
   addInParam (KernelT f t s i o) a =
-    KernelT f t s (i ++ [CUDA.IArg $ fromIntegral a]) o 
+    KernelT f t s (i ++ [CUDA.IArg $ fromIntegral a]) o
 
 instance KernelI Word32 where
   type KInput Word32 = Exp Word32
