@@ -9,7 +9,6 @@
 -}
 
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -17,12 +16,17 @@
 {-# LANGUAGE TypeOperators #-} 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-} 
+{-# LANGUAGE ExplicitNamespaces #-}
 
-
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ConstraintKinds #-}
+------------------------------------------
+{- LANGUAGE FunctionalDependencies -} 
 
 module Obsidian.Program  (
   -- Hierarchy 
-  Thread, Block, Grid, Warp, DirectlyAbove, 
+  Thread, Block, Grid, Warp, Step, 
   --  Step, Zero,
   -- Program type
   -- CoreProgram(..),
@@ -30,8 +34,7 @@ module Obsidian.Program  (
   TProgram, BProgram, GProgram, WProgram, 
 
   -- Class
-  Sync,
-  
+  type (*<=*),
   
   -- helpers
   printPrg,
@@ -41,7 +44,10 @@ module Obsidian.Program  (
   allocate, declare,
   atomicOp, 
   -- Programming interface
-  seqFor, forAll, seqWhile, sync, distrPar, forAll2
+  seqFor, forAll, seqWhile, sync, distrPar, forAll2,
+  singleThread
+
+                                            
   ) where 
  
 import Data.Word
@@ -59,11 +65,24 @@ import Control.Applicative
 ---------------------------------------------------------------------------
 
 data Thread
-data DirectlyAbove t 
+data Step t 
 
-type Warp = DirectlyAbove Thread
-type Block = DirectlyAbove Warp
-type Grid  = DirectlyAbove Block
+type Warp  = Step Thread
+type Block = Step Warp
+type Grid  = Step Block
+
+
+-- | Type level less-than-or-equal test.
+type family LessThanOrEqual a b where
+   LessThanOrEqual Thread   Thread   = True
+   LessThanOrEqual Thread   (Step m) = True
+   LessThanOrEqual (Step n) (Step m) = LessThanOrEqual n m
+   LessThanOrEqual x y               = False
+   
+
+-- | This constraint is a more succinct way of requiring that @a@ be less than or equal to @b@.
+type a *<=* b = (LessThanOrEqual a b ~ True)
+
 
 ---------------------------------------------------------------------------
 
@@ -101,9 +120,9 @@ data Program t a where
   Break  :: Program Thread () 
 
   -- use threads along one level
-  -- Warp, Block, Grid.
+  -- Thread, Warp, Block.
   -- Make sure Code generation works when t ~ Thread
-  ForAll :: EWord32 
+  ForAll :: (t *<=* Block) => EWord32 
             -> (EWord32 -> Program Thread ())
             -> Program t () 
 
@@ -111,25 +130,36 @@ data Program t a where
   -- Distribute over Blocks yielding a Grid 
   DistrPar :: EWord32
            -> (EWord32 -> Program t ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
+
+  -- BUG: I Need to recognize sequential distribution of
+  -- work too in order to set up storage correctly for
+  -- arrays allocated in within sequentially distributed work.
+  DistrSeq :: EWord32
+           -> (EWord32 -> Program t ())
+           -> Program t () 
   
   
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
             -> Program t ()
 
   -- Allocate shared memory in each MP
+  -- Can be done from any program level.
+  -- Since the allocation happens block-wise though
+  -- it is important to figure out how many instances of
+  -- that t level program that needs memory! (messy) 
   Allocate :: Name -> Word32 -> Type -> Program t () 
 
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
                 
-  Sync     :: Program Block ()
+  Sync     :: (t *<=* Block) => Program t ()
 
   -- Think about how to to allow multikernel programs.
 
   -- HardSync :: Program Grid () 
   -- How to decide arguments to the different kernels ? 
-  
+
   -- Monad
   Return :: a -> Program t a
   Bind   :: Program t a -> (a -> Program t b) -> Program t b
@@ -158,8 +188,8 @@ uniqueNamed_ pre = do id <- Identifier
 ---------------------------------------------------------------------------
 -- Memory 
 ---------------------------------------------------------------------------
--- assign :: Scalar a => Name -> [Exp Word32] -> (Exp a) -> Program Thread ()
--- assign nom ix e = Assign nom ix e 
+assign :: Scalar a => Name -> [Exp Word32] -> Exp a -> Program Thread ()
+assign nom ix e = Assign nom ix e 
 
 allocate :: Name -> Word32 -> Type -> Program t () 
 allocate nom l t = Allocate nom l t 
@@ -180,25 +210,32 @@ atomicOp nom ix atop = AtomicOp nom ix atop
 ---------------------------------------------------------------------------
 -- forAll 
 ---------------------------------------------------------------------------
-forAll :: EWord32
+forAll :: (t *<=* Block) => EWord32
           -> (EWord32 -> Program Thread ())
           -> Program t ()
 forAll n f = ForAll n f
   
-forAll2 :: EWord32
+forAll2 :: (t *<=* Block) => EWord32
            -> EWord32
            -> (EWord32 -> EWord32 -> Program Thread ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
 forAll2 b n f =
   DistrPar b $ \bs ->
     ForAll n $ \ix -> f bs ix 
 
 distrPar :: EWord32
            -> (EWord32 -> Program t ())
-           -> Program (DirectlyAbove t) ()
+           -> Program (Step t) ()
 distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------
+-- Let a single thread perform  of a block/Warp perform a given
+-- Thread program 
+---------------------------------------------------------------------------
+singleThread :: (t *<=* Block) => Program Thread () -> Program t ()
+singleThread p =
+  forAll 1 (\_ -> p) 
+
 -- seqFor
 ---------------------------------------------------------------------------
 seqFor :: EWord32 -> (EWord32 -> Program t ()) -> Program t ()
@@ -235,23 +272,26 @@ instance Applicative (Program t) where
       fmap f fa
 
 ---------------------------------------------------------------------------
--- Class Sync
+-- sync function
 ---------------------------------------------------------------------------
-class Sync t where
-  sync :: Program t () 
+sync :: (t *<=* Block) => Program t ()
+sync = Sync
 
-instance Sync Warp where
-  sync = return ()
+-- class Sync t where
+--   sync :: Program t () 
 
-instance Sync Thread where
-  sync = return ()
+-- instance Sync Warp where
+--   sync = return ()
 
-instance Sync Block where
-  sync = Sync
+-- instance Sync Thread where
+--   sync = return ()
 
-instance Sync Grid where
-  sync = error "sync: not implemented on grid computations" 
-  -- (implement this using counters and locks)
+-- instance Sync Block where
+--   sync = Sync
+
+-- instance Sync Grid where
+--   sync = error "sync: not implemented on grid computations" 
+
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
@@ -265,7 +305,9 @@ runPrg i (Return a) = (a,i)
 runPrg i (Bind m f) =
   let (a,i') = runPrg i m
   in runPrg i' (f a)
-     
+
+-- All other constructors have () result 
+
 runPrg i (Sync) = ((),i)
 runPrg i (ForAll n ixf) =
   let (p,i') = runPrg i (ixf (variable "tid")) 
@@ -274,11 +316,11 @@ runPrg i (DistrPar n f) =
   let (p,i') = runPrg i (f (variable "DUMMY"))
   in (p,i')
 -- What can this boolean depend upon ? its quite general!
---  (we know p returns a ()... ) 
+-- p here is a Program Thread () 
 runPrg i (Cond b p) = ((),i) 
 runPrg i (Declare _ _) = ((),i)
 runPrg i (Allocate _ _ _ ) = ((),i)
-runPrg i (Assign _ _ a) = ((),i) -- Probaby wrong.. 
+runPrg i (Assign _ _ a) = ((),i) 
 runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 
 {- What do I want from runPrg ?

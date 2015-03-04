@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-} 
-{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE GADTs #-}
+
 module Reduction where
 
 import Obsidian
@@ -26,7 +29,7 @@ sumUp' arr
   | len arr == 1 = return (arr ! 0)
   | otherwise    = do
       let (a1,a2) = halve arr
-      arr' <-  forcePull (zipWith (+) a1 a2)
+      arr' <-  compute (zipWith (+) a1 a2)
       sumUp' arr' 
 
 -- sequential (but expressively so) 
@@ -35,7 +38,7 @@ sumUpT arr
   | len arr == 1 = return (arr ! 0)
   | otherwise    = do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith (+) a1 a2)
+      arr' <- compute (zipWith (+) a1 a2)
       sumUpT arr' 
 
 
@@ -43,7 +46,7 @@ sumUpT arr
 mapSumUp :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
 mapSumUp arr = asGrid (fmap body arr)
   where
-    body a = singletonPush (return (sumUp a)) :: Push Block Word32 EWord32 
+    body a = execBlock' (return (sumUp a)) :: Push Block Word32 EWord32 
 
 mapSumUp' :: Pull EWord32 (SPull EWord32) -> Push Grid EWord32 EWord32
 mapSumUp' arr = asGrid (fmap body arr)
@@ -56,14 +59,14 @@ mapSumUpT :: Pull EWord32 (SPull (SPull EWord32)) -> Push Grid EWord32 EWord32
 mapSumUpT arr = asGrid (fmap body arr)
   where
     body a = asBlock (fmap bodyThread a) 
-    bodyThread a = singletonPush (sumUpT a)
+    bodyThread a = execThread' (sumUpT a)
 
 
 
 ---------------------------------------------------------------------------
 --
 ---------------------------------------------------------------------------
-reduceLocal :: (Forceable t, Storable a)
+reduceLocal :: (t *<=* Block, Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t (SPush t a)
@@ -76,7 +79,7 @@ reduceLocal f arr
       reduceLocal f arr'
 
 
-reduceBlock :: forall a. Storable a 
+reduceBlock :: forall a. Data a 
           => (a -> a -> a)
           -> SPull a -> Program Block (SPush Block a)
 reduceBlock f arr =
@@ -85,7 +88,7 @@ reduceBlock f arr =
   where
     body a = execWarp (reduceLocal f a)
 
-reduceGrid :: forall a. Storable a 
+reduceGrid :: forall a. Data a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduceGrid f arr = asGrid $ fmap body (splitUp 4096 arr) 
@@ -93,7 +96,7 @@ reduceGrid f arr = asGrid $ fmap body (splitUp 4096 arr)
       body a = execBlock (reduceBlock f a)
 
 
-reduce :: Storable a 
+reduce :: Data a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
 reduce = reduceGrid
@@ -102,7 +105,7 @@ reduce = reduceGrid
 input :: DPull EInt32
 input = undefinedGlobal (variable "X")
 
-reduceLocal' :: (Forceable t, Storable a)
+reduceLocal' :: (t *<=* Block, Compute t, Data a)
                => (a -> a -> a)
                -> SPull a
                -> Program t a

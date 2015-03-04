@@ -17,10 +17,23 @@ import Control.Monad.State
 import Data.Word
 
 
+-- perform =
+--   withCUDA $
+--   do
+--     kern <- capture 256  (sklansky 10 (+) . splitUp 1024) 
+
+--     useVector (V.fromList [0..1023 :: Word32]) $ \i -> 
+--       allocaVector 1024 $ \ (o :: CUDAVector Word32) ->
+--       do
+--         fill o 0
+--         o <== (1,kern) <> i 
+--         r <- peekCUDAVector o
+--         lift $ putStrLn $ show r 
+
 perform =
   withCUDA $
   do
-    kern <- capture 256  (sklansky 10 (+) . splitUp 1024) 
+    kern <- capture 512  (sklanskies' 9 (+) 0 . splitUp 1024) 
 
     useVector (V.fromList [0..1023 :: Word32]) $ \i -> 
       allocaVector 1024 $ \ (o :: CUDAVector Word32) ->
@@ -29,6 +42,7 @@ perform =
         o <== (1,kern) <> i 
         r <- peekCUDAVector o
         lift $ putStrLn $ show r 
+
 
 
 performKS =

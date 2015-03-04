@@ -2,6 +2,7 @@
              FlexibleInstances,
              GADTs  #-}
 {-# LANGUAGE TypeOperators #-} 
+{-# LANGUAGE FlexibleContexts #-}
 
 {- Joel Svensson 2012
 
@@ -16,19 +17,28 @@
     2012-12-10: Drastically shortened. 
 -}
 
-module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush,
---                        Pushable, 
-                       mkPull,
-                       mkPush,
-                       push,
-                       setSize,
-                       (!),
-                       (<:),
-                       Array(..),
-                       ArrayLength(..),
-                       ASize(..),
-                       namedGlobal,
-                       undefinedGlobal) where
+module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
+--                        Pushable,
+                      , pushApp
+                      , mkPull
+                      , mkPush
+                      , push
+                      , pushThread
+                      , pushWarp
+                      , pushBlock
+                      , setSize
+                      , (!)
+                      , (<:)
+                      , Array(..)
+                      , ArrayLength(..)
+                      , ASize(..)
+                      , namedGlobal
+                      , undefinedGlobal
+                      -- , AsThread(..)
+                      -- , AsWarp(..)
+                      -- , AsBlock(..)
+                      -- , AsGrid(..)
+                      ) where
 
 import Obsidian.Exp 
 import Obsidian.Program
@@ -73,21 +83,24 @@ instance ASize (Exp Word32) where
 -- Push and Pull arrays
 ---------------------------------------------------------------------------
 -- | Push array. Parameterised over Program type and size type.
-data Push p s a =
-  Push s ((a -> EWord32 -> TProgram ()) -> Program p ())
+data Push t s a =
+  Push s (PushFun t a)
+
+type PushFun t a = Writer a -> Program t ()
+type Writer    a = a -> EWord32 -> TProgram ()
 
 -- | Pull array.
 data Pull s a = Pull {pullLen :: s, 
                       pullFun :: EWord32 -> a}
 
 -- | Create a push array. 
-mkPush :: s
+mkPush :: s 
        -> ((a -> EWord32 -> TProgram ()) -> Program t ())
        -> Push t s a
 mkPush n p = Push n p 
 
 -- | Create a pull array.
-mkPull :: ASize s => s -> (EWord32 -> a) -> Pull s a
+mkPull :: s -> (EWord32 -> a) -> Pull s a
 mkPull n p = Pull n p 
 
 -- Fix this.
@@ -95,6 +108,7 @@ mkPull n p = Pull n p
 --   * you can shorten pull arrays safely.  
 setSize :: ASize l => l -> Pull l a -> Pull l a
 setSize n (Pull _ ixf) = mkPull n ixf
+
 
 ---------------------------------------------------------------------------
 -- Array Class 
@@ -139,9 +153,9 @@ instance Array Pull where
   ixMap  f (Pull n ixf) = Pull n (ixf . f) 
 
   append a1 a2 = Pull (n1+n2)
-               $ \ix -> ifThenElse (ix <* (sizeConv n1)) 
+               $ \ix -> ifThenElse (ix <* sizeConv n1)
                        (a1 ! ix) 
-                       (a2 ! (ix - (sizeConv n1)))
+                       (a2 ! (ix - sizeConv n1))
     where 
       n1 = len a1
       n2 = len a2 
@@ -151,7 +165,7 @@ instance Array Pull where
   fromDyn n (Pull _ ixf) = Pull n ixf 
    
   
-instance  Array (Push t) where
+instance Array (Push Thread) where
   iota s = Push s $ \wf ->
     do
       forAll (sizeConv s) $ \ix -> wf ix ix 
@@ -173,12 +187,80 @@ instance  Array (Push t) where
    -- technicalities
   toDyn (Push n p) = Push (fromIntegral n) p 
   fromDyn n (Push _ p) = Push n p 
- 
+
+instance Array (Push Warp) where
+  iota s = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf ix ix 
+  replicate s e = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf e ix 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+
+instance Array (Push Block) where
+  iota s = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf ix ix 
+  replicate s e = Push s $ \wf ->
+    do
+      forAll (sizeConv s) $ \ix -> wf e ix 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    Push (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+instance Array (Push Grid) where
+  iota s = error "iota: not supported as Grid" 
+  replicate s e = error "replicate: not supported as Grid" 
+  aMap   f (Push s p) = Push s $ \wf -> p (\e ix -> wf (f e) ix)
+  ixMap  f (Push s p) = Push s $ \wf -> p (\e ix -> wf e (f ix))
+
+  -- unfortunately a Choice constraint. 
+  append p1 p2  =
+    mkPush (n1 + n2) $ \wf ->
+      do p1 <: wf
+         p2 <: \a i -> wf a (sizeConv n1 + i) 
+           where 
+             n1 = len p1
+             n2 = len p2 
+
+   -- technicalities
+  toDyn (Push n p) = Push (fromIntegral n) p 
+  fromDyn n (Push _ p) = Push n p 
+
+
+
 
 ---------------------------------------------------------------------------
 -- Functor instance Pull/Push arrays
 ---------------------------------------------------------------------------
-instance  Functor (Push t s) where 
+instance  Array (Push t) => Functor (Push t s) where 
   fmap = aMap
 
 instance Functor (Pull s) where
@@ -188,10 +270,123 @@ instance Functor (Pull s) where
 ---------------------------------------------------------------------------
 -- Pushable
 ---------------------------------------------------------------------------
-push ::  ASize s => Pull s e -> Push t s e 
+-- | Convert a pull array to a push array. 
+push ::  (t *<=* Block) => ASize s => Pull s e -> Push t s e 
 push (Pull n ixf) =
-  Push n $ \wf ->
+  mkPush n $ \wf ->
     forAll (sizeConv n) $ \i -> wf (ixf i) i
+
+-- Keep push, user may need to annotate with a type
+-- Add specific
+--   pushThread
+--   pushWarp 
+--   pushBlock
+pushThread :: ASize s => Pull s e -> Push Thread s e 
+pushThread = push 
+
+pushWarp :: ASize s => Pull s e ->  Push Warp s e
+pushWarp = push
+
+pushBlock :: ASize s => Pull s e -> Push Block s e
+pushBlock = push 
+
+
+------------------------------------------------------------
+-- I think these are strange and should go away.
+-- They are always id for Push arrays and push for pull arrays.
+-- Most instances are nonsense. which is Weird.
+-- 
+-- class AsGrid a where
+--   asGrid :: ASize s => a s e -> Push Grid s e
+
+-- instance AsGrid Pull where
+--   asGrid = error $ "asGrid: Trying to compute a pull array as a grid.\n" ++ 
+--                    "This operation is not supported, there are too many choises\n" ++
+--                    "involved that we just should not make automatically"
+-- instance AsGrid (Push Grid) where
+--   asGrid = id
+
+-- instance AsGrid (Push Block) where
+--   asGrid _ = error $ "asGrid: Trying to convert a Block to a Grid.\n" ++
+--                      "This operation is not supported!"
+               
+-- instance AsGrid (Push Warp) where 
+--   asGrid _ = error $ "asGrid: Trying to convert a Warp to a Grid.\n" ++
+--                      "This operation is not supported!"
+
+-- instance AsGrid (Push Thread) where 
+--   asGrid _ = error $ "asGrid: Trying to convert a Thread to a Grid.\n" ++
+--                      "This operation is not supported!"
+
+
+-- class AsBlock a where
+--   asBlock :: a Word32 e -> SPush Block e
+
+-- instance AsBlock Pull where
+--   asBlock = push
+
+-- instance AsBlock (Push Block) where
+--   asBlock = id
+
+-- instance AsBlock (Push Grid) where
+--   asBlock _ = error $ "asBlock: Trying to convert a Grid to a Block.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsBlock (Push Warp) where 
+--   asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsBlock (Push Thread) where
+--   asBlock _ = error $ "asBlock: Trying to convert a Thread to a Block.\n" ++
+--                       "This operation is not supported!"
+
+
+-- class AsWarp a where
+--   asWarp :: a Word32 e -> SPush Warp e
+
+-- instance AsWarp Pull where
+--   asWarp = push
+
+-- instance AsWarp (Push Warp) where
+--   asWarp = id
+
+-- instance AsWarp (Push Grid) where
+--   asWarp _ = error $ "asWarp: Trying to convert a Grid to a Warp.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsWarp (Push Block) where 
+--   asWarp _ = error $ "asWarp: Trying to convert a Block to a Warp.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsWarp (Push Thread) where
+--   asWarp _ = error $ "asBlock: Trying to convert a Thread to a Warp.\n" ++
+--                       "This operation is not supported!"
+
+
+-- class AsThread a where
+--   asThread :: a Word32 e -> SPush Thread e
+
+-- instance AsThread Pull where
+--   asThread = push
+
+-- instance AsThread (Push Thread) where
+--   asThread = id
+
+-- instance AsThread (Push Grid) where
+--   asThread _ = error $ "asThread: Trying to convert a Grid to a Thread.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsThread (Push Block) where 
+--   asThread _ = error $ "asThread: Trying to convert a Block to a Thread.\n" ++
+--                       "This operation is not supported!"
+
+-- instance AsThread (Push Warp) where
+--   asThread _ = error $ "asThread: Trying to convert a Warp to a Thread.\n" ++
+--                       "This operation is not supported!"
+
+
+
+
 
 -- class Pushable t where
 --   push :: ASize s => Pull s e -> Push t s e 
@@ -248,3 +443,6 @@ infixl 9 !
 (!) arr = pullFun arr 
 
 
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------

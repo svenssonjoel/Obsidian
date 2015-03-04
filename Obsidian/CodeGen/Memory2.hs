@@ -2,6 +2,11 @@
 {- Joel Svensson 2012, 2013
 
    Notes:
+     Jan-27-2015: Bug fix related to arrays alive when
+                  entering into loops.
+                  Fix seems to solve the problem.
+                  Need to investigate that it still frees arrays
+                  as soon as possible. 
      Nov-25-2014: Changes to memory management
   
      Jan-21-2013: Added a SeqFor case 
@@ -34,6 +39,9 @@ import Obsidian.Globs
 import Obsidian.Exp 
 import Obsidian.CodeGen.Program
 import Obsidian.CodeGen.Liveness
+
+import Debug.Trace 
+
 
 import qualified Data.Map as Map 
 ---------------------------------------------------------------------------
@@ -242,34 +250,82 @@ mmIM conf im memory memmap = r im (memory,memmap)
             case freeableAddrs of
               (Just as) -> freeAll m' (map fst as)
               Nothing   -> m'
-      in r xs (mNew,mm')
+      in -- trace ("freeable: " ++ show freeable   ++ "\n") $ 
+         r xs (mNew,mm')
+    
+    process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
+    process conf (SAllocate name size t,_) m mm = (m',mm') 
+      where (m',addr) = allocate conf m size
+            mm' =
+              case Map.lookup name mm of
+                Nothing -> Map.insert name (addr,t) mm
+                (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
 
-
-process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
-process conf (SAllocate name size t,_) m mm = (m',mm') 
-  where (m',addr) = allocate conf m size
-        mm' =
-          case Map.lookup name mm of
-            Nothing -> Map.insert name (addr,t) mm
-            (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
-
--- Boilerplate
-process conf (SSeqFor _ n im,_) m mm = mmIM conf im m mm
-process conf (SSeqWhile b im,_) m mm = mmIM conf im m mm 
-process conf (SForAll _ n im,_) m mm = mmIM conf im m mm
--- 2014-Nov-25:
---   This one used mmIM' which was identical to mmIM.
---   This must have been a leftover from when I thought
---   warp memory needed some special attention here. 
-process conf (SDistrPar Warp n im,_) m mm = mmIM conf im m mm 
-process conf (SDistrPar Block n im,_) m mm = mmIM conf im m mm 
-process conf (_,_) m mm = (m,mm) 
+    -- Boilerplate
+    -- BUG: Bug in memory management related to seqloops
+    --      It may be better to try to fix this bug here.
+    --      A special mmIM for the loop case may be needed. 
+    process conf (SSeqFor _ n im,alive) m mm = mmIMLoop conf alive im m mm
+    process conf (SSeqWhile b im,_) m mm = mmIM conf im m mm 
+    process conf (SForAll _ n im,_) m mm = mmIM conf im m mm
+    -- 2014-Nov-25:
+    --   This one used mmIM' which was identical to mmIM.
+    --   This must have been a leftover from when I thought
+    --   warp memory needed some special attention here. 
+    process conf (SDistrPar Warp n im,_) m mm = mmIM conf im m mm 
+    process conf (SDistrPar Block n im,_) m mm = mmIM conf im m mm 
+    process conf (_,_) m mm = (m,mm) 
 
 -- Friday (2013 Mars 29, discovered bug)
 -- 2014-Nov-25: was the "l" the bug ? (some details help)
 getFreeableSet :: (Statement Liveness,Liveness) -> IML -> Liveness 
 getFreeableSet (_,l) [] = Set.empty -- not l ! 
 getFreeableSet (_,l) ((_,l1):_) = l Set.\\ l1
+
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
+mmIMLoop conf nonfreeable im memory memmap = r im (memory,memmap)
+  where 
+    r [] m = m
+    r (x:xs) (m,mm) =
+      let
+          (m',mm') = process conf x m mm
+           
+          freeable' = getFreeableSet x xs
+          freeable  = freeable' Set.\\ nonfreeable
+          freeableAddrs = mapM (flip Map.lookup mm') (filter dontMap (Set.toList freeable))
+          dontMap name = not ((List.isPrefixOf "input" name) || 
+                              (List.isPrefixOf "output" name))
+          mNew =
+            case freeableAddrs of
+              (Just as) -> freeAll m' (map fst as)
+              Nothing   -> m'
+      in --trace ("freeable': " ++ show freeable' ++ "\n" ++
+         --       "freeable: " ++ show freeable   ++ "\n" ++ 
+         --       "nonfreeable: " ++ show nonfreeable) $
+         r xs (mNew,mm')
+    
+    process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
+    process conf (SAllocate name size t,_) m mm = (m',mm') 
+      where (m',addr) = allocate conf m size
+            mm' =
+              case Map.lookup name mm of
+                Nothing -> Map.insert name (addr,t) mm
+                (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
+
+    -- Boilerplate
+    process conf (SSeqFor _ n im,alive) m mm = mmIMLoop conf (nonfreeable `Set.union` alive) im m mm
+    process conf (SSeqWhile b im,_) m mm = mmIMLoop conf nonfreeable im m mm 
+    process conf (SForAll _ n im,_) m mm = mmIMLoop conf nonfreeable im m mm
+    -- 2014-Nov-25:
+    --   This one used mmIM' which was identical to mmIM.
+    --   This must have been a leftover from when I thought
+    --   warp memory needed some special attention here. 
+    process conf (SDistrPar Warp n im,_) m mm = mmIMLoop conf nonfreeable im m mm 
+    process conf (SDistrPar Block n im,_) m mm = mmIMLoop conf nonfreeable im m mm 
+    process conf (_,_) m mm = (m,mm) 
 
 
 

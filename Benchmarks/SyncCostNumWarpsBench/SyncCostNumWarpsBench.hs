@@ -9,7 +9,6 @@ import qualified Prelude as P
 
 import Obsidian
 import Obsidian.Run.CUDA.Exec
--- import Obsidian.Run.CUDA.SC
 
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
@@ -26,21 +25,21 @@ import Control.DeepSeq
 -- ######################################################################
 -- Nonsense Kernel 
 -- ######################################################################
-nonsense :: (Storable a, Num a)
+nonsense :: (Data a, Num a)
             => Bool
             -> Pull Word32 a
             -> BProgram (Push Block Word32 a)
 nonsense sync arr = loopit 10 arr  
   where loopit 0 arr = return $ push arr
         loopit n arr | sync = do
-          arr' <- forcePull $ fmap (+1) arr
+          arr' <- compute $ fmap (+1) arr
           loopit (n-1) arr'
                      | otherwise = do
           arr' <- unsafeWritePull False $ fmap (+1) arr
           loopit (n-1) arr' 
 
 
-mapNonsense :: (Storable a, Num a)  => Word32 -> Bool -> DPull a -> DPush Grid a
+mapNonsense :: (Data a, Num a)  => Word32 -> Bool -> DPull a -> DPush Grid a
 mapNonsense blocksize sync arr = asGridMap body arr'
   where
     body = execBlock . (nonsense sync)
@@ -115,5 +114,9 @@ main = do
               lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral results_size * sizeOf (undefined :: EWord32))
               lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
               lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+
+              lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show data_size
+              lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show grid_size
+              lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show block_size
               lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 

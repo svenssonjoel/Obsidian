@@ -20,18 +20,16 @@ import Data.Int
 import Data.ByteString as BS
 
 
+perform :: IO ()
 perform =
   withCUDA $
   do
     kern <- capture 256 mandel
-    
     allocaVector (512*512) $ \o -> 
       do
-        o <== (1024,kern) 
-
+        o <== (256,kern) 
         r <- copyOut o 
 
-        -- Still going via list !!! 
         lift $ BS.writeFile "fractal.out" (pack (V.toList r))
 
 

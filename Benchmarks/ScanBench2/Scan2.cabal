@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                Fractals
+name:                Scan2
 
 -- The package version.  See the Haskell package versioning policy (PVP) 
 -- for standards guiding when and how versions should be incremented.
@@ -13,7 +13,7 @@ name:                Fractals
 version:             0.4.0.0
 
 -- A short (one-line) description of the package.
-synopsis:            Fractals benchmarks 
+synopsis:            More Scan benchmarks 
 
 -- A longer description of the package.
 -- description:         
@@ -48,8 +48,8 @@ cabal-version:       >=1.10
 
 --executable Simple
 
-executable FractalsBench.exe 
-  main-is: FractalsBench.hs 
+executable ScanBench2.exe 
+  main-is: ScanBench2.hs 
   
   other-extensions: ScopedTypeVariables
                   , MultiParamTypeClasses
@@ -60,13 +60,14 @@ executable FractalsBench.exe
                   , FlexibleContexts
   
   -- Other library packages from which modules are imported.
-  build-depends: base >=4.6 && <5
-               , vector >=0.10 && <0.11
-               , mtl >=2.1 && <2.2
-               , random 
+  build-depends: base >= 4 && <5 
+               , vector >= 0.10.9.1
+               , mtl >= 2.0
+               , random
                , bytestring >=0.10 && <0.11
                , Obsidian >= 0.4.0.0
-               , rdtsc >= 1.3, time >= 1.4
+               , rdtsc >= 1.3
+               , time >= 1.4
                , deepseq >= 1.3.0.2
   -- Directories containing source files.
   -- hs-source-dirs:      

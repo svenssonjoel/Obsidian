@@ -21,6 +21,8 @@ import Data.Word
 -- Generate CUDA kernels
 ---------------------------------------------------------------------------
 
+-- | Generates kernel C code as a String
+--   while assuming there is 48KB of shared mem in 32 banks
 genKernel :: ToProgram prg
              => Word32
              -> String
@@ -34,7 +36,8 @@ genKernel = genKernelParams sm_conf
 
 
 
-
+-- | Generates kernel C code as a String,
+--   Programmer passes in the Shared memory configuration
 genKernelParams :: ToProgram prg
                    => SharedMemConfig
                    -> Word32

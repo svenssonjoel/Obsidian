@@ -25,23 +25,23 @@ import Control.DeepSeq
 -- ######################################################################
 -- Reduction Kernel 
 -- ######################################################################
-red3 :: Storable a
-           => Word32 
-           -> (a -> a -> a)
-           -> Pull Word32 a
-           -> Program Block (SPush Block a)
+red3 :: Data a
+        => Word32 
+        -> (a -> a -> a)
+        -> Pull Word32 a
+        -> Program Block (SPush Block a)
 red3 cutoff f  arr
   | len arr == cutoff =
     return $ push $ fold1 f arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- forcePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red3 cutoff f arr'   
 
 
-mapRed3 :: Storable a => Word32 -> Word32 -> (a -> a -> a) -> DPull a -> DPush Grid a
-mapRed3 blocksize seq_depth f arr = asGridMap (asBlockMap body) arr' --arr' 
+mapRed3 :: Data a => Word32 -> Word32 -> (a -> a -> a) -> DPull a -> DPush Grid a
+mapRed3 blocksize seq_depth f arr = asGridMap (asBlockMap body) arr'
   -- pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
     body arr = execBlock (red3 2 f arr)
@@ -51,7 +51,7 @@ mapRed3 blocksize seq_depth f arr = asGridMap (asBlockMap body) arr' --arr'
 -- ######################################################################
 -- Nonsense Kernel 
 -- ######################################################################
-nonsense :: (Storable a, Num a) =>
+nonsense :: (Data a, Num a) =>
             Int
             -> Bool 
             -> Pull Word32 a
@@ -60,16 +60,16 @@ nonsense depth sync arr = do
   arr' <- loop depth arr    
   return $ push arr'
   where
-    loop :: (Storable a, Num a) => Int -> Pull Word32 a -> BProgram (Pull Word32 a)
+    loop :: (Data a, Num a) => Int -> Pull Word32 a -> BProgram (Pull Word32 a)
     loop 0 ain = return ain
     loop n ain = do
       a' <- force' $ fmap (+1) ain
       loop (n-1) a' 
 
-    force' arr | sync = forcePull arr
+    force' arr | sync = compute arr
                | otherwise = unsafeWritePull False arr
 
-mapNonsense :: (Storable a, Num a)  => Int -> Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
+mapNonsense :: (Data a, Num a)  => Int -> Bool -> Word32 -> Word32 -> DPull a -> DPush Grid a
 mapNonsense depth sync blocksize seq_depth arr =
   asGridMap (asBlockMap body) arr'
   --pConcat $ fmap sConcat (fmap (fmap body) arr')
@@ -81,23 +81,22 @@ mapNonsense depth sync blocksize seq_depth arr =
 -- arith intensive Kernel 
 -- ######################################################################
 
-arith :: (Storable a, Num a) =>
+arith :: (Data a, Num a) =>
             Int 
             -> Pull Word32 a
             -> Push Block Word32 a
 arith iters arr = asBlockMap tf arr -- $ fmap tf arr 
   where
-    tf :: (Storable a, Num a) => a -> Push Thread Word32 a 
+    tf :: (Data a, Num a) => a -> Push Thread Word32 a 
     tf a = execThread' 
           $ seqIterate (fromIntegral iters) 
                        (\_ val -> val + 1)
                        a 
   
   
-mapArith :: (Storable a, Num a)  => Int  -> Word32 -> Word32 -> DPull a -> DPush Grid a
+mapArith :: (Data a, Num a)  => Int  -> Word32 -> Word32 -> DPull a -> DPush Grid a
 mapArith depth blocksize seq_depth arr =
   asGridMap (asBlockMap body) arr' 
-  --pConcat $ fmap sConcat (fmap (fmap body) arr')
   where
     body = arith depth
     arr' =  fmap (splitUp (blocksize `div` seq_depth)) (splitUp blocksize arr)
@@ -106,7 +105,7 @@ mapArith depth blocksize seq_depth arr =
 -- ######################################################################
 -- Sklansky Kernel 
 -- ######################################################################
-sklansky :: (Choice a, Storable a)
+sklansky :: Data a 
             => Int
             -> (a -> a -> a)
             -> Pull Word32 a
@@ -114,12 +113,12 @@ sklansky :: (Choice a, Storable a)
 sklansky 0 op arr = return (push arr)
 sklansky n op arr =
   do 
-    let arr1 = binSplit (n-1) (fan op) arr
-    arr2 <- forcePull arr1
+    let arr1 = unsafeBinSplit (n-1) (fan op) arr
+    arr2 <- compute arr1
     sklansky (n-1) op arr2
 
 
-fan :: Choice a
+fan :: Data a
        => (a -> a -> a)
        -> SPull a
        -> SPull a
@@ -130,7 +129,7 @@ fan op arr =  a1 `append` fmap (op c) a2
 
 -- pushM = liftM push
 
-mapScan1 :: (Choice a, Storable a) => Word32 -> Word32 -> Int -> (a -> a -> a) -> DPull a -> DPush Grid a
+mapScan1 :: Data a => Word32 -> Word32 -> Int -> (a -> a -> a) -> DPull a -> DPush Grid a
 mapScan1 blocksize seq_depth n f arr =
   asGridMap (asBlockMap body) arr'
   --pConcat $ fmap sConcat (fmap (fmap body) arr') 
@@ -246,6 +245,12 @@ main = do
               lift $ putStrLn $ "BYTES_FROM_DEVICE: " ++ show (fromIntegral results_size * sizeOf (undefined :: EWord32))
               lift $ putStrLn $ "TRANSFER_TO_DEVICE: " ++ show (diffUTCTime transfer_done transfer_start)
               lift $ putStrLn $ "TRANSFER_FROM_DEVICE: " ++ show (diffUTCTime t_end t1)
+
+              lift $ putStrLn $ "ELEMENTS_PROCESSED: " ++ show data_size
+              lift $ putStrLn $ "NUMBER_OF_BLOCKS: " ++ show g_size
+              lift $ putStrLn $ "ELEMENTS_PER_BLOCK: " ++ show blocksize 
+              
+              
               lift $ putStrLn $ show $ P.take 10 (V.toList r) 
 
 

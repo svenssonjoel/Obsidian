@@ -184,7 +184,7 @@ instance Vector Vector4 where
   getW (Literal (Vector4 _ _ _ w)) = Literal w
   getW v = UnOp GetW v 
 
-  
+
 ---------------------------------------------------------------------------
 -- Expressions 
 data Exp a where

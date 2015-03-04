@@ -3,6 +3,8 @@
              FlexibleInstances  #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ConstraintKinds     #-}
+{-# LANGUAGE DataKinds           #-}
 
 {- CodeGen.Program.
 
@@ -84,6 +86,7 @@ data Statement t = SAssign IExp [IExp] IExp
 --------------------------------------------------------------------------- 
 -- Collect and pass around data during first step compilation
 data Context = Context { ctxNWarps :: Maybe Word32,
+                         ctxNThreads :: Maybe Word32, 
                          ctxGLBUsesTid :: Bool,
                          ctxGLBUsesWid :: Bool}
 
@@ -106,16 +109,24 @@ setUsesWid = modify $ \ctx -> ctx { ctxGLBUsesWid = True }
 enterWarp :: Word32 -> CM ()
 enterWarp  n = modify $ \ctx -> ctx { ctxNWarps = Just n }
 
+enterThread :: Word32 -> CM ()
+enterThread n = modify $ \ctx -> ctx {ctxNThreads = Just n} 
+
 clearWarp :: CM ()
 clearWarp = modify $ \ctx -> ctx {ctxNWarps = Nothing}
 
 getNWarps :: CM (Maybe Word32)
 getNWarps = do
   ctx <- get
-  return $ ctxNWarps ctx 
+  return $ ctxNWarps ctx
+
+getNThreads :: CM (Maybe Word32)
+getNThreads = do
+  ctx <- get
+  return $ ctxNThreads ctx 
 
 emptyCtx :: Context
-emptyCtx = Context Nothing False False
+emptyCtx = Context Nothing Nothing False False
 ---------------------------------------------------------------------------
 
 
@@ -175,14 +186,30 @@ instance Compile P.Thread  where
       (a,im) <-  compile i2 p
 
       return ((),out $ SSeqFor nom (expToIExp n) im)
-                             
+  compile s (P.Allocate nom n t) = do
+    (Just nt) <- getNThreads -- must be a Just at this point
+    nw' <- getNWarps
+
+    let nw = case nw' of
+          Nothing -> 1
+          Just i  -> i
+    
+    return ((),out $ SAllocate nom (nt*nw*n) t)
+  compile _ (P.Sync) =
+    return ((),[])
+
   compile s p = cs s p 
 
 -- Compile Warp program
 instance Compile P.Warp where
   compile s (P.DistrPar n f) =
     error "Currently not supported to distribute over the threads, use ForAll instead!"
-  compile s (P.ForAll n f) = do
+  compile s (P.ForAll n@(Literal n') f) = do
+
+    -- setup context to know number of threads
+    -- executing 
+    enterThread n'
+    
     let p = f (variable "warpIx") 
     (a,im) <- compile s p 
     return (a, out $ SForAll Warp (expToIExp n) im)
@@ -197,37 +224,53 @@ instance Compile P.Warp where
     return (b,(im1 ++ im2))
   compile s (P.Return a) = return (a,[])
   compile s (P.Identifier) = return (supplyValue s, [])
-
+  compile s (P.Sync) = return ((),[])
+  -- Why no fallthrough here ?
+  -- Adding (must have been a horrible mistake!)
+  compile s p = cs s p
+  
 -- Compile Block program 
 instance Compile P.Block where
-  compile s (P.ForAll n f) = do
+  compile s (P.ForAll n@(Literal n') f) = do
+
+    -- Set up the context to know the number of
+    -- concurrent thread programs that are executing. 
+    enterThread n'
+    setUsesTid
+    
     let nom = "tid"
         v   = variable nom
         p   = f v
-    setUsesTid 
+    
     (a,im) <-  compile s p
     -- in this case a could be () (since it is guaranteed to be anyway). a
     return (a,out (SForAll Block (expToIExp n) im))
     
   compile s (P.DistrPar n'@(Literal n) f) = do
     
-    {- Distribute work over warps! -} 
+    {- Distribute work over warps! -}
+    -- Set up the context for the compilation
+    -- of the Warp code.
+    -- BUG: Something like this is needed for distribution
+    -- over threads too!
+    -- FIXED: Bug mentioned above should be (at least) partially fixed. 
     enterWarp n
-    -- Need to generate some IM here that the backend can read the
-    -- Number of desired warps from. 
+    -- Number of active warps are stored in the context. 
     (a,im) <- compile s (f (variable "warpID"))
     return (a, out (SDistrPar Warp (expToIExp n') im))
+  compile s (P.Allocate id n t) = return ((),out (SAllocate id n t))
+  compile s (P.Sync) = return ((),out (SSynchronize))
   compile s p = cs s p
 
 -- Compile a Grid Program 
 instance Compile P.Grid where
-  compile s (P.ForAll n f) = do
+  -- compile s (P.ForAll n f) = do
     
-    -- Incorrect, need to compute global thread ids and apply 
-    let p = f gid -- (BlockIdx X)
-        gid = variable "gid" 
-    (a,im) <- compile s p 
-    return (a, out (SForAll Grid (expToIExp n) im))
+  --   -- Incorrect, need to compute global thread ids and apply 
+  --   let p = f gid -- (BlockIdx X)
+  --       gid = variable "gid" 
+  --   (a,im) <- compile s p 
+  --   return (a, out (SForAll Grid (expToIExp n) im))
 
   {- Distribute over blocks -}
   compile s (P.DistrPar n f) = do
@@ -236,6 +279,7 @@ instance Compile P.Grid where
     
     (a, im) <- compile s p -- (f (BlockIdx X)) 
     return (a, out (SDistrPar Block (expToIExp n) im))
+  compile s (P.Allocate _ _ _) = error "Allocate at level Grid" 
   compile s p = cs s p
 
 
@@ -291,10 +335,12 @@ cs i (P.SeqWhile b p) = do
 
 cs i (P.Break) = return ((), out SBreak)
 
-cs i (P.Allocate id n t) = return ((),out (SAllocate id n t))
+-- This (Allocate) should be covered by the Hierarchy instances
+-- above and should be removed from here. 
+--cs i (P.Allocate id n t) = return ((),out (SAllocate id n t))
 cs i (P.Declare  id t)   = return ((),out (SDeclare id t))
 
-cs i (P.Sync)            = return ((),out (SSynchronize))
+-- cs i (P.Sync)            = return ((),out (SSynchronize))
 
 
 cs i (P.Bind p f) = do 

@@ -34,10 +34,11 @@
     + Atomic operations on mutable arrays.
 
 * TODOs
+  + Automatic lookup table generation. Use constant memory 
+    for lookup tables. 
   + Implement a memory manager that uses the optimal memory layout. 
     This is possible, all information is there. 
-  + come up with better name for forcePull, computePull?, or overload compute. 
-    Don't know if even more type classes is a good thing though.
+  
   + Enhance and improve the library for programming with mutable arrays. 
     Make mutable arrays more accessible to the programmer and make them a 
     more integrated part of the programming style. 

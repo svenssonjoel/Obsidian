@@ -38,7 +38,8 @@ class Storable a where
   
   -- Scalar operations 
   assignScalar   :: Names a -> a -> Program Thread ()
-  allocateScalar :: Names a ->  Program t () 
+  allocateScalar :: Names a ->  Program t ()
+  allocateSharedScalar :: Names a -> Program t () 
   readFrom       :: Names a -> a
   
   -- Warp level operations   
@@ -49,6 +50,14 @@ class Storable a where
                       -> EWord32
                       -> Program Thread ()
   warpPullFrom      :: Names a -> EWord32 -> Word32 -> Pull Word32 a
+
+  threadAssignArray :: Names a
+                       -> EWord32
+                       -> Word32
+                       -> a
+                       -> EWord32
+                       -> Program Thread ()
+  threadPullFrom :: Names a -> EWord32 -> Word32 -> Pull Word32 a 
   
   -- Extra
   allocateVolatileArray :: Names a -> Word32 -> Program t ()
@@ -73,16 +82,26 @@ instance Scalar a => Storable (Exp a) where
   
   -- Scalar ops 
   allocateScalar (Single name) =
-    Declare name (typeOf (undefined :: Exp a)) 
+    Declare name (typeOf (undefined :: Exp a))
+  allocateSharedScalar (Single name) =
+    Declare name (Shared $ typeOf (undefined :: Exp a))
+  
   assignScalar (Single name) a    = Assign name [] a
   readFrom  (Single name) = variable name
 
   -- Warp ops   
-  warpAssignArray (Single name) warpID step a ix =
-    Assign name [warpID * fromIntegral step + ix] a 
+  warpAssignArray (Single name) warpId step a ix =
+    Assign name [warpId * fromIntegral step + ix] a 
 
-  warpPullFrom (Single name) warpID n
-    = mkPull n (\i -> index name (warpID * fromIntegral n + i))
+  warpPullFrom (Single name) warpId n
+    = mkPull n (\i -> index name (warpId * fromIntegral n + i))
+
+  -- Thread ops
+  threadAssignArray (Single name) threadId step a ix =
+    Assign name [threadId * fromIntegral step + ix] a
+
+  threadPullFrom (Single name) threadId n
+    = mkPull n (\i -> index name (threadId * fromIntegral n + i)) 
 
   -- Extra 
   allocateVolatileArray (Single name) n = 
@@ -109,6 +128,11 @@ instance (Storable a, Storable b) => Storable (a, b) where
   allocateScalar (Tuple ns1 ns2) =
       allocateScalar ns1 >> 
       allocateScalar ns2
+
+  allocateSharedScalar (Tuple ns1 ns2) =
+      allocateSharedScalar ns1 >> 
+      allocateSharedScalar ns2
+  
       
   assignArray (Tuple ns1 ns2) (a,b) ix =
       assignArray ns1 a ix >>
@@ -117,6 +141,10 @@ instance (Storable a, Storable b) => Storable (a, b) where
   warpAssignArray (Tuple ns1 ns2) warpID step (a,b) ix =
       warpAssignArray ns1 warpID step a ix >>
       warpAssignArray ns2 warpID step b ix
+
+  threadAssignArray (Tuple ns1 ns2) threadId step (a,b) ix =
+    threadAssignArray ns1 threadId step a ix >> 
+    threadAssignArray ns2 threadId step b ix 
       
   
   assignScalar (Tuple ns1 ns2) (a,b) =
@@ -131,7 +159,12 @@ instance (Storable a, Storable b) => Storable (a, b) where
   warpPullFrom (Tuple ns1 ns2) warpID n
     = let p1 = warpPullFrom ns1 warpID n
           p2 = warpPullFrom ns2 warpID n
-      in mkPull n (\ix -> (p1 ! ix, p2 ! ix)) 
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix))
+
+  threadPullFrom (Tuple ns1 ns2) threadId n
+    = let p1 = threadPullFrom ns1 threadId n
+          p2 = threadPullFrom ns2 threadId n
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix))
 
   readFrom (Tuple ns1 ns2)  =
     let p1 = readFrom ns1
@@ -163,7 +196,13 @@ instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
       allocateScalar ns1 >>
       allocateScalar ns2 >>
       allocateScalar ns3
-      
+
+  allocateSharedScalar (Triple ns1 ns2 ns3) =
+      allocateSharedScalar ns1 >>
+      allocateSharedScalar ns2 >>
+      allocateSharedScalar ns3
+
+
   assignArray (Triple ns1 ns2 ns3) (a,b,c) ix =
       assignArray ns1 a ix >>
       assignArray ns2 b ix >>
@@ -172,8 +211,13 @@ instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
   warpAssignArray (Triple ns1 ns2 ns3) warpID step (a,b,c) ix =
       warpAssignArray ns1 warpID step a ix >>
       warpAssignArray ns2 warpID step b ix >>
-      warpAssignArray ns3 warpID step c ix 
-  
+      warpAssignArray ns3 warpID step c ix
+
+  threadAssignArray (Triple ns1 ns2 ns3) threadID step (a,b,c) ix =
+    threadAssignArray ns1 threadID step a ix >>
+    threadAssignArray ns2 threadID step b ix >>
+    threadAssignArray ns3 threadID step c ix
+
 
   assignScalar (Triple ns1 ns2 ns3) (a,b,c) =
       assignScalar ns1 a >>
@@ -191,6 +235,13 @@ instance (Storable a, Storable b, Storable c) => Storable (a, b, c) where
           p2 = warpPullFrom ns2 warpID n
           p3 = warpPullFrom ns3 warpID n
       in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix)) 
+
+  threadPullFrom (Triple ns1 ns2 ns3) threadId n
+    = let p1 = threadPullFrom ns1 threadId n
+          p2 = threadPullFrom ns2 threadId n
+          p3 = threadPullFrom ns3 threadId n 
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix,p3 ! ix))
+
 
   readFrom (Triple ns1 ns2 ns3)  =
     let p1 = readFrom ns1
@@ -225,6 +276,13 @@ instance (Storable a, Storable b, Storable c, Storable d) => Storable (a, b, c, 
       allocateScalar ns3 >>
       allocateScalar ns4
 
+  allocateSharedScalar (Quadruple ns1 ns2 ns3 ns4) =
+      allocateSharedScalar ns1 >>
+      allocateSharedScalar ns2 >>
+      allocateSharedScalar ns3 >>
+      allocateSharedScalar ns4
+
+
   assignArray (Quadruple ns1 ns2 ns3 ns4) (a,b,c,d) ix =
       assignArray ns1 a ix >>
       assignArray ns2 b ix >>
@@ -237,6 +295,12 @@ instance (Storable a, Storable b, Storable c, Storable d) => Storable (a, b, c, 
       warpAssignArray ns3 warpID step c ix >>
       warpAssignArray ns4 warpID step d ix
 
+  threadAssignArray (Quadruple ns1 ns2 ns3 ns4) threadID step (a,b,c,d) ix =
+    threadAssignArray ns1 threadID step a ix >>
+    threadAssignArray ns2 threadID step b ix >>
+    threadAssignArray ns3 threadID step c ix >>
+    threadAssignArray ns4 threadID step d ix
+  
 
   assignScalar (Quadruple ns1 ns2 ns3 ns4) (a,b,c,d) =
       assignScalar ns1 a >>
@@ -256,6 +320,13 @@ instance (Storable a, Storable b, Storable c, Storable d) => Storable (a, b, c, 
          p2 = warpPullFrom ns2 warpID n
          p3 = warpPullFrom ns3 warpID n
          p4 = warpPullFrom ns4 warpID n
+      in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix, p4 ! ix))
+
+  threadPullFrom (Quadruple ns1 ns2 ns3 ns4) threadID n
+   = let p1 = threadPullFrom ns1 threadID n
+         p2 = threadPullFrom ns2 threadID n
+         p3 = threadPullFrom ns3 threadID n
+         p4 = threadPullFrom ns4 threadID n
       in mkPull n (\ix -> (p1 ! ix, p2 ! ix, p3 ! ix, p4 ! ix))
 
   readFrom (Quadruple ns1 ns2 ns3 ns4)  =
