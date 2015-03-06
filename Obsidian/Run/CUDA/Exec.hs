@@ -176,7 +176,7 @@ data CUDAState = CUDAState { csIdent :: Int,
                              csCtx   :: CUDA.Context,
                              csProps :: CUDA.DeviceProperties}
 
-type CUDA a =  StateT CUDAState IO a
+type CUDA a = StateT CUDAState IO a
 
 
 -- Change so that the type parameter to KernelT
@@ -473,12 +473,12 @@ fill (CUDAVector dptr n) a =
 -- Peek in a CUDAVector (Simple "copy back")
 ---------------------------------------------------------------------------
 -- | Copy a vector from the device to the host
---   as a list.
+--   as a list. (SLOW!)
 peekCUDAVector :: V.Storable a => CUDAVector a -> CUDA [a]
 peekCUDAVector (CUDAVector dptr n) = 
     lift $ CUDA.peekListArray (fromIntegral n) dptr
 
--- | Copy a vector from the device to the host.
+-- | Copy a vector from the device to the host. (FAST!)
 copyOut :: V.Storable a => CUDAVector a -> CUDA (V.Vector a)
 copyOut (CUDAVector dptr n) =
   do

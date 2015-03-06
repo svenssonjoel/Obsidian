@@ -1,6 +1,6 @@
 
 
-{- Joel Svensson 2012, 2013
+{- Joel Svensson 2012..2015
 
    notes:
      added case for SeqFor  Jan-21-2013
@@ -118,6 +118,7 @@ cl im = mapM process im
         return (SCond bexp iml,ns)
 
 
+-- *** THIS IS FIXED *** 
 -- This needs to change. 
 -- arrays from the "outside" that  
 -- are used within the loop needs special treatment. 

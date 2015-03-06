@@ -14,7 +14,7 @@
 {-# LANGUAGE ConstraintKinds #-} 
 
 
-{- Joel Svensson 2012, 2013, 2014 
+{- Joel Svensson 2012..2015
 
    Notes:
    2014-03-28: Changed API.
@@ -59,23 +59,10 @@ import Data.Word
 --
 -------------------------------------------------------------------------
 
--- class (t *<=* Block,Write t) => Compute t
--- instance Compute Block
--- instance Compute Block => Compute Warp
--- instance Compute Warp  => Compute Thread
-
+-- | Compute constraint. 
 type Compute t = (Write t, t *<=* Block)
 
---instance Compute Thread
---instance Compute Warp
---instance Compute Thread 
---instance (Compute t,Write (Step t), Step t *<=* Block)
---         => Compute (Step t) 
---instance Compute Block => Compute Warp
---instance Compute Warp => Compute Thread 
---instance (t *<=* Block,Write t) => Compute t 
-
-
+-- | Arrays can be computed at level t if level t allows compute.
 class Compute t => ComputeAs t a where
   compute :: Data e => a Word32 e -> Program t (Pull Word32 e)
   

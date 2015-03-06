@@ -24,7 +24,16 @@ import Data.Word
 
 {- Notes:
 
-  * Generate only cuda
+  * Generate only CUDA
+
+  * TODOs
+    - Currently inserts some pointless code
+      The values of tid,wid etc are updated before certain code blocks
+      and reset to a standard value after, often to just be updated again to
+      something else. It may result in prettier code if all code blocks
+      that use a variable sets it to what it should be rather than expecting "standard".
+      *** probably has no effect on performance *** 
+
 
 -} 
 
@@ -46,21 +55,21 @@ compileExp (IVar name t) = [cexp| $id:name |]
 
 
 -- TODO: Fix all this! 
-compileExp (IBlockIdx X) = [cexp| $id:("bid")|] -- [cexp| $id:("blockIdx.x") |]
-compileExp (IBlockIdx Y) = [cexp| $id:("blockIdx.y") |]
-compileExp (IBlockIdx Z) = [cexp| $id:("blockIdx.z") |]
+-- compileExp (IBlockIdx X) = [cexp| $id:("bid")|] -- [cexp| $id:("blockIdx.x") |]
+-- compileExp (IBlockIdx Y) = [cexp| $id:("blockIdx.y") |]
+-- compileExp (IBlockIdx Z) = [cexp| $id:("blockIdx.z") |]
 
-compileExp (IThreadIdx X) = [cexp| $id:("threadIdx.x") |]
-compileExp (IThreadIdx Y) = [cexp| $id:("threadIdx.y") |]
-compileExp (IThreadIdx Z) = [cexp| $id:("threadIdx.z") |]
+-- compileExp (IThreadIdx X) = [cexp| $id:("threadIdx.x") |]
+-- compileExp (IThreadIdx Y) = [cexp| $id:("threadIdx.y") |]
+-- compileExp (IThreadIdx Z) = [cexp| $id:("threadIdx.z") |]
 
-compileExp (IBlockDim X) = [cexp| $id:("blockDim.x") |]
-compileExp (IBlockDim Y) = [cexp| $id:("blockDim.y") |]
-compileExp (IBlockDim Z) = [cexp| $id:("blockDim.z") |]
+-- compileExp (IBlockDim X) = [cexp| $id:("blockDim.x") |]
+-- compileExp (IBlockDim Y) = [cexp| $id:("blockDim.y") |]
+-- compileExp (IBlockDim Z) = [cexp| $id:("blockDim.z") |]
 
-compileExp (IGridDim X) = [cexp| $id:("GridDim.x") |]
-compileExp (IGridDim Y) = [cexp| $id:("GridDim.y") |]
-compileExp (IGridDim Z) = [cexp| $id:("GridDim.z") |]
+-- compileExp (IGridDim X) = [cexp| $id:("GridDim.x") |]
+-- compileExp (IGridDim Y) = [cexp| $id:("GridDim.y") |]
+-- compileExp (IGridDim Z) = [cexp| $id:("GridDim.z") |]
 
 compileExp (IBool True) = [cexp|1|]
 compileExp (IBool False) = [cexp|0|]
@@ -210,7 +219,7 @@ compileType t = error $ "compileType: Not implemented " ++ show t
 
 
 {-
-
+  *** THIS IS SOLVED ! *** 
   Solve the volatile issue.
   When operating in a warp without syncs Add Volatile to pointers
   and only there!
@@ -234,23 +243,8 @@ compileType t = error $ "compileType: Not implemented " ++ show t
 -} 
 
 ---------------------------------------------------------------------------
--- **     
--- Compile IM
--- ** 
---------------------------------------------------------------------------- 
-
--- newtype CInfo a = CInfo (State CInfoState a)
---                 deriving (Monad, MonadState CInfoState) 
-
--- data CInfoState = CInfoState { cInfoTid  :: (Bool,Exp),
---                                cInfoWarpID     :: (Bool,Exp),
---                                cInfoWarpIx     :: (Bool,Exp) } 
--- evalCInfo (CInfo s) = evalState s                     
-
----------------------------------------------------------------------------
 -- Statement t to Stm
 ---------------------------------------------------------------------------
-
 
 compileStm :: Config -> Statement t -> [C.Stm]
 compileStm c (SAssign name [] e) =
@@ -270,9 +264,6 @@ compileStm c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
 compileStm c (SSeqFor loopVar n im) = 
     [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
               { $stms:body } |]]
--- end a sequential for loop with a sync (or begin).
--- Maybe only if the loop is on block level (that is across all threads)
---  __syncthreads();} |]]
   where
     body = compileIM c im -- (compileIM p c im)
 
@@ -352,7 +343,7 @@ compileDistr c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR
                    [cstm| __syncthreads();|]]
 
 ---------------------------------------------------------------------------
--- ForAll is compiled differently for different platforms
+-- ForAll 
 ---------------------------------------------------------------------------
 compileForAll :: Config -> Statement t -> [C.Stm]
 compileForAll c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR

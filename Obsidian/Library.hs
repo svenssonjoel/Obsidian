@@ -1,4 +1,4 @@
-{- Joel Svensson 2012, 2013, 2014 
+{- Joel Svensson 2012..2015 
    Mary Sheeran  2012
 
    Notes:
@@ -564,42 +564,127 @@ rep n prg a = do
   prg b 
     
 
-{-
-  mkPush (n * fromIntegral rn) $ \wf ->
-  do
-    seqFor (sizeConv n) $ \bix ->
-      let p = arr ! bix -- (Push _ p) = arr ! bix
-          wf' a ix = wf a (bix * sizeConv rn + ix)              
-      in p <: wf'
-  where 
-    n  = len arr
-    rn = len $ arr ! 0
--} 
+---------------------------------------------------------------------------
+-- RunPush 
+---------------------------------------------------------------------------
 
--- class LiftGrid t where
---   -- The "a" cannot be an array.
---   -- This needs to be made clear.. but dont know where. 
---   liftGrid :: ASize l => Pull l (SPush t a) ->
---             Push Grid l a
---   liftGridMap :: ASize l => (a -> SPush t b) 
---               -> Pull l a
---               -> Push Grid l b 
+class ExecProgram t a  where
+  exec :: Data e
+        => Program t (a Word32 e)
+        -> Push t Word32 e 
 
+instance (t *<=* Block) => ExecProgram t Pull where
+  exec = runPush . liftM push 
 
--- instance LiftGrid Thread where
---   liftGrid = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
---   liftGridMap = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
+instance ExecProgram t (Push t) where
+  exec = runPush 
+
+        
+class ExecThread a where
+  execThread  :: Data e
+                 => Program Thread (a Word32 e)
+                 -> Push Thread Word32 e
   
--- instance LiftGrid Block where
---   liftGrid = pConcat
---   liftGridMap f = pConcat . fmap f
 
--- instance LiftGrid Warp where
---   liftGrid = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
---   liftGridMap = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
+execThread' :: Data a => Program Thread a -> SPush Thread a 
+execThread' = singletonPush
+
+instance ExecThread (Push Thread) where
+  execThread = runPush
+
+instance ExecThread Pull where
+  execThread = execThread . liftM pushThread
+
+class ExecBlock a where
+  execBlock :: Data e
+               => Program Block (a Word32 e)
+               -> Push Block Word32 e
+
+execBlock' :: Data a => Program Block a -> SPush Block a
+execBlock' = singletonPush 
+
+instance ExecBlock (Push Block) where
+  execBlock = runPush
+
+instance ExecBlock Pull where
+  execBlock = execBlock . liftM pushBlock
+
+class ExecWarp a where
+  execWarp :: Data e
+               => Program Warp (a Word32 e)
+               -> Push Warp Word32 e
+
+execWarp' :: Data a => Program Warp a -> SPush Warp a
+execWarp' = singletonPush 
+
+instance ExecWarp (Push Warp) where
+  execWarp = runPush
+
+instance ExecWarp Pull where
+  execWarp = execWarp . liftM pushWarp
+
+
+-- | Fuses the program that computes a Push array into the Push array. 
+runPush :: Program t (Push t s a) -> Push t s a
+runPush prg =
+  mkPush n $ \wf -> do
+    parr <- prg
+    parr <: wf
+    -- It is a bit scary that I need to "evaluate" programs here. 
+  where n = len $ fst $ runPrg 0 prg
+
+-- | Lifts @runPush@ to one input functions.
+runPush1 :: (a -> Program t (Push t s b)) -> a -> Push t s b
+runPush1 f a = runPush (f a)
+
+-- | Lifts @runPush@ to two input functions.
+runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
+runPush2 f a b = runPush (f a b)  
+
+-- | Converts a program computing a pull Array to a Push array
+runPull :: (t *<=* Block, ASize s) => Program t (Pull s a) -> Push t s a
+runPull = runPush . liftM push 
+
+-- | Lifts @runPull@ to one input functions.
+runPull1 :: (t *<=* Block, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
+runPull1 f a = runPull (f a)
+
+-- | Lifts @runPull@ to two input functions.
+runPull2 :: (t *<=* Block, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
+runPull2 f a b = runPull (f a b)
+
+---------------------------------------------------------------------------
+-- 
+---------------------------------------------------------------------------
+pushPrg :: (t *<=* Block) => Program t a -> SPush t a
+pushPrg = singletonPush
+
+
+---------------------------------------------------------------------------
+-- Singleton push arrays 
+---------------------------------------------------------------------------
+
+-- Danger! use only with Scalar a's 
+-- -- | Create a singleton Push array.
+--singletonPush :: a -> SPush t a
+--singletonPush = singletonPushP . return 
+
+-- | Monadic version of @singleton@.
+singletonPush :: (t *<=* Block) => Program t a -> SPush t a
+singletonPush prg =
+  mkPush 1 $ \wf -> do
+    a <- prg
+    forAll 1 $ \_ -> 
+      wf a 0
+
+
+
+
+
 
 ---------------------------------------------------------------------------
 -- Old stuff that should nolonger be exported!
+--  * It is still used internally 
 ---------------------------------------------------------------------------
 
 -- | A way to enter into the hierarchy
@@ -681,132 +766,3 @@ pUnCoalesce arr =
     rn = len $ arr ! 0
     s  = sizeConv rn 
     g wf a i = wf a (i `div` s + (i`mod`s)*(sizeConv n))
-
----------------------------------------------------------------------------
--- RunPush 
----------------------------------------------------------------------------
-
-class ExecProgram t a  where
-  exec :: Data e
-        => Program t (a Word32 e)
-        -> Push t Word32 e 
-
-instance (t *<=* Block) => ExecProgram t Pull where
-  exec = runPush . liftM push 
-
-instance ExecProgram t (Push t) where
-  exec = runPush 
-
-        
-class ExecThread a where
-  execThread  :: Data e
-                 => Program Thread (a Word32 e)
-                 -> Push Thread Word32 e
-  
--- execThread' :: (t *<=* Block, Data a) => Program t a -> SPush t a
-execThread' :: Data a => Program Thread a -> SPush Thread a 
-execThread' = singletonPush
-
-instance ExecThread (Push Thread) where
-  execThread = runPush
-
-instance ExecThread Pull where
-  execThread = execThread . liftM pushThread
-
-class ExecBlock a where
-  execBlock :: Data e
-               => Program Block (a Word32 e)
-               -> Push Block Word32 e
-
-execBlock' :: Data a => Program Block a -> SPush Block a
-execBlock' = singletonPush 
-
-instance ExecBlock (Push Block) where
-  execBlock = runPush
-
-instance ExecBlock Pull where
-  execBlock = execBlock . liftM pushBlock
-
-class ExecWarp a where
-  execWarp :: Data e
-               => Program Warp (a Word32 e)
-               -> Push Warp Word32 e
-
-execWarp' :: Data a => Program Warp a -> SPush Warp a
-execWarp' = singletonPush 
-
-instance ExecWarp (Push Warp) where
-  execWarp = runPush
-
-instance ExecWarp Pull where
-  execWarp = execWarp . liftM pushWarp
-
--- execThread :: Program Thread (Push Thread s a) -> Push Thread s a
--- execThread = runPush
-
--- execThread' :: Data a => Program Thread a -> SPush Thread a
--- execThread' = singletonPush 
-
--- execWarp :: Program Warp (Push Warp s a) -> Push Warp s a
--- execWarp = runPush
-
--- execWarp' :: Data a => Program Warp a -> SPush Warp a
--- execWarp' = singletonPush
-
--- execBlock :: Program Block (Push Block s a) -> Push Block s a
--- execBlock = runPush
-
-
--- | Fuses the program that computes a Push array into the Push array. 
-runPush :: Program t (Push t s a) -> Push t s a
-runPush prg =
-  mkPush n $ \wf -> do
-    parr <- prg
-    parr <: wf
-    -- It is a bit scary that I need to "evaluate" programs here. 
-  where n = len $ fst $ runPrg 0 prg
-
--- | Lifts @runPush@ to one input functions.
-runPush1 :: (a -> Program t (Push t s b)) -> a -> Push t s b
-runPush1 f a = runPush (f a)
-
--- | Lifts @runPush@ to two input functions.
-runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
-runPush2 f a b = runPush (f a b)  
-
--- | Converts a program computing a pull Array to a Push array
-runPull :: (t *<=* Block, ASize s) => Program t (Pull s a) -> Push t s a
-runPull = runPush . liftM push 
-
--- | Lifts @runPull@ to one input functions.
-runPull1 :: (t *<=* Block, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
-runPull1 f a = runPull (f a)
-
--- | Lifts @runPull@ to two input functions.
-runPull2 :: (t *<=* Block, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
-runPull2 f a b = runPull (f a b)
-
----------------------------------------------------------------------------
--- 
----------------------------------------------------------------------------
-pushPrg :: (t *<=* Block) => Program t a -> SPush t a
-pushPrg = singletonPush
-
-
----------------------------------------------------------------------------
--- Singleton push arrays 
----------------------------------------------------------------------------
-
--- Danger! use only with Scalar a's 
--- -- | Create a singleton Push array.
---singletonPush :: a -> SPush t a
---singletonPush = singletonPushP . return 
-
--- | Monadic version of @singleton@.
-singletonPush :: (t *<=* Block) => Program t a -> SPush t a
-singletonPush prg =
-  mkPush 1 $ \wf -> do
-    a <- prg
-    forAll 1 $ \_ -> 
-      wf a 0
-

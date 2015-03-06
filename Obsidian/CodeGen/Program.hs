@@ -8,7 +8,7 @@
 
 {- CodeGen.Program.
 
-   Joel Svensson 2012, 2013
+   Joel Svensson 2012..2015
 
    Notes:
      2013-03-17: Codegeneration is changing
@@ -70,11 +70,6 @@ data Statement t = SAssign IExp [IExp] IExp
                  | SForAll HLevel IExp    (IMList t)
                  | SDistrPar HLevel IExp  (IMList t)
                    
---                 | SForAllBlocks IExp (IMList t)
---                 | SNWarps IExp (IMList t)
---                 | SWarpForAll  IExp (IMList t)                    
---                 | SWarpForAll String   String IExp (IMList t) 
-
     -- Memory Allocation..
                  | SAllocate Name Word32 Type
                  | SDeclare  Name Type
@@ -264,24 +259,17 @@ instance Compile P.Block where
 
 -- Compile a Grid Program 
 instance Compile P.Grid where
-  -- compile s (P.ForAll n f) = do
-    
-  --   -- Incorrect, need to compute global thread ids and apply 
-  --   let p = f gid -- (BlockIdx X)
-  --       gid = variable "gid" 
-  --   (a,im) <- compile s p 
-  --   return (a, out (SForAll Grid (expToIExp n) im))
-
   {- Distribute over blocks -}
   compile s (P.DistrPar n f) = do
     -- Need to generate IM here that the backend can read desired number of blocks from
-    let p = f (BlockIdx X) 
+    let p = f (variable "bid") -- "blockIdx.x") -- (BlockIdx X) 
     
     (a, im) <- compile s p -- (f (BlockIdx X)) 
     return (a, out (SDistrPar Block (expToIExp n) im))
   compile s (P.Allocate _ _ _) = error "Allocate at level Grid" 
   compile s p = cs s p
 
+  {- ForAll cannot happen here! -}
 
 
 
@@ -296,27 +284,14 @@ cs i (P.Assign name ix e) =
 cs i (P.AtomicOp name ix atom) =
   case atom of
     AtomicInc -> return $ ((),out (SAtomicOp (IVar name Word32) (expToIExp ix) AtInc))
-    AtomicAdd e -> undefined
-    AtomicSub e -> undefined
-    AtomicExch e -> undefined 
-  -- (vres, out im)
-  -- where
-  --   res = "a" ++ show (supplyValue i)
-  --   vres = IVar res (typeOf (undefined :: a))
-  --   vname = IVar name (typeOf (undefined :: a))
-  --   im = SAtomicOp vres vname ix atom
-
---cs i (P.AtomicOp name ix at) = (v,out im)
---  where 
---    nom = "a" ++ show (supplyValue i)
---    v = variable nom
---    im = SAtomicOp nom name ix at
+    AtomicAdd e -> error $ "CodeGen.Program: AtomicAdd is not implemented"
+    AtomicSub e -> error $ "CodeGen.Program: AtomicSub is not implemented" 
+    AtomicExch e -> error $ "CodeGen.Program: AtomicExch is not implemented" 
       
 cs i (P.Cond bexp p) = do
   ((),im) <-  compile i p
   return ((),out (SCond (expToIExp bexp) im)) 
  
-
 cs i (P.SeqFor n f) = do
   let (i1,i2) = split2 i
       nom = "i" ++ show (supplyValue i1)
@@ -335,13 +310,9 @@ cs i (P.SeqWhile b p) = do
 
 cs i (P.Break) = return ((), out SBreak)
 
--- This (Allocate) should be covered by the Hierarchy instances
--- above and should be removed from here. 
---cs i (P.Allocate id n t) = return ((),out (SAllocate id n t))
+cs i (P.Allocate id n t) = error $ "CodeGen.Program: Allocate without a hierarchy designation" 
+
 cs i (P.Declare  id t)   = return ((),out (SDeclare id t))
-
--- cs i (P.Sync)            = return ((),out (SSynchronize))
-
 
 cs i (P.Bind p f) = do 
   let (s1,s2) = split2 i
@@ -355,10 +326,10 @@ cs i (P.Return a) = return (a,[])
 
 
 -- Unhandled cases 
-cs i p = error $ "#Program.hs# unhandled in cs: " ++ P.printPrg p -- compile i p 
+cs i p = error $ "CodeGen.Program: unhandled in cs: " ++ P.printPrg p -- compile i p 
 
 ---------------------------------------------------------------------------
--- Turning IM to strings
+-- Turning IM to strings (outdated and broken) 
 ---------------------------------------------------------------------------
 
 printIM :: Show a => IMList a -> String 
@@ -405,20 +376,6 @@ printStm (SForAll Grid n im,m) =
 printStm (SDistrPar lvl n im,m) = 
   "forAll gid in [0.." ++ show n ++"] do" ++ meta m ++
   concatMap printStm im ++ "\ndone;\n"
-
--- printStm (SWarpForAll n im ,m) =
---   "forAll(InWarp) tid" ++ "  in [0.." ++ show n ++"] do" ++ meta m ++
---   concatMap printStm im ++ "\ndone;\n"
-
--- printStm (SNWarps n im,m) = "Run " ++ show n++ " Warps {\n" ++
---                             printIM im ++ "\n }"
---printStm (SForAllThreads n im,m) =
---  "forAllThreads i in [0.." ++ show n ++"] do" ++ meta m ++ 
---  concatMap printStm im ++ "\ndone;\n"
-
-
-  
--- printStm (a,m) = error $ show m 
 
 meta :: Show a => a -> String
 meta m = "\t//" ++ show m ++ "\n" 

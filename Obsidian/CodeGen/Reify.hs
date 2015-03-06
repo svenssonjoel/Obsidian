@@ -34,9 +34,15 @@ import Obsidian.CodeGen.CompileIM
 import Data.Word
       
 ---------------------------------------------------------------------------
--- New approach (hopefully)
----------------------------------------------------------------------------
 -- "reify" Haskell functions into CG.Programs
+---------------------------------------------------------------------------
+
+{- TODO:
+   needs to be revamped to support more than one output array
+   from a single program.
+     * needs a class for "outputs" generation.
+-} 
+
 
 
 ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 
-{- Joel Svensson 2012, 2013
+{- Joel Svensson 2012..2015
 
    Notes:
      Jan-27-2015: Bug fix related to arrays alive when

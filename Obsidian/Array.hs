@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-} 
 {-# LANGUAGE FlexibleContexts #-}
 
-{- Joel Svensson 2012
+{- Joel Svensson 2012..2015
 
    Notes:
     2014-04-08: Experimenting with API 
@@ -18,7 +18,6 @@
 -}
 
 module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
---                        Pushable,
                       , pushApp
                       , mkPull
                       , mkPush
@@ -34,10 +33,6 @@ module Obsidian.Array (Pull, Push, SPull, DPull, SPush, DPush
                       , ASize(..)
                       , namedGlobal
                       , undefinedGlobal
-                      -- , AsThread(..)
-                      -- , AsWarp(..)
-                      -- , AsBlock(..)
-                      -- , AsGrid(..)
                       ) where
 
 import Obsidian.Exp 

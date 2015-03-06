@@ -1,4 +1,4 @@
-{- Joel Svensson 2012,2013,2014
+{- Joel Svensson 2012..2015
 
    Notes:
    2014      : starting a big overhauling
@@ -27,10 +27,8 @@
 module Obsidian.Program  (
   -- Hierarchy 
   Thread, Block, Grid, Warp, Step, 
-  --  Step, Zero,
-  -- Program type
-  -- CoreProgram(..),
-  Program(..), -- all exported.. for now
+
+  Program(..), 
   TProgram, BProgram, GProgram, WProgram, 
 
   -- Class
@@ -43,6 +41,7 @@ module Obsidian.Program  (
 
   allocate, declare,
   atomicOp, 
+
   -- Programming interface
   seqFor, forAll, seqWhile, sync, distrPar, forAll2,
   singleThread
@@ -67,6 +66,7 @@ import Control.Applicative
 data Thread
 data Step t 
 
+-- I would like these to be "somehow" closed. 
 type Warp  = Step Thread
 type Block = Step Warp
 type Grid  = Step Block
@@ -229,7 +229,7 @@ distrPar :: EWord32
 distrPar b f = DistrPar b $ \bs -> f bs
 
 ---------------------------------------------------------------------------
--- Let a single thread perform  of a block/Warp perform a given
+-- Let a single thread of a block/Warp perform a given
 -- Thread program 
 ---------------------------------------------------------------------------
 singleThread :: (t *<=* Block) => Program Thread () -> Program t ()
@@ -276,22 +276,6 @@ instance Applicative (Program t) where
 ---------------------------------------------------------------------------
 sync :: (t *<=* Block) => Program t ()
 sync = Sync
-
--- class Sync t where
---   sync :: Program t () 
-
--- instance Sync Warp where
---   sync = return ()
-
--- instance Sync Thread where
---   sync = return ()
-
--- instance Sync Block where
---   sync = Sync
-
--- instance Sync Grid where
---   sync = error "sync: not implemented on grid computations" 
-
 
 ---------------------------------------------------------------------------
 -- runPrg (RETHINK!) (Works for Block programs, but all?)
