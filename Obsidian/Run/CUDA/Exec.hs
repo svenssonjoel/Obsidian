@@ -120,8 +120,8 @@ mkRandomVec k = withSystemRandom $ \g -> uniformVector g k :: IO (V.Vector a)
 -- An array located in GPU memory
 ---------------------------------------------------------------------------
 -- | Represents vectors (arrays) in GPU memory.
-data CUDAVector a = CUDAVector {cvPtr :: CUDA.DevicePtr a,
-                                cvLen :: Word32} 
+data CUDAVector a = CUDAVector {cvPtr :: !(CUDA.DevicePtr a),
+                                cvLen :: !Word32} 
 
 ---------------------------------------------------------------------------
 -- Get a list of devices from the CUDA driver
@@ -184,11 +184,11 @@ type CUDA a = StateT CUDAState IO a
 
 -- | A representation of a CUDA kernel. This represents the
 --   kernel after it has been loaded from an Object file. 
-data KernelT a = KernelT {ktFun :: CUDA.Fun,
-                          ktThreadsPerBlock :: Word32,
-                          ktSharedBytes :: Word32,
-                          ktInputs :: [CUDA.FunParam],
-                          ktOutput :: [CUDA.FunParam] }
+data KernelT a = KernelT {ktFun             :: !CUDA.Fun,
+                          ktThreadsPerBlock :: !Word32,
+                          ktSharedBytes     :: !Word32,
+                          ktInputs          :: ![CUDA.FunParam],
+                          ktOutput          :: ![CUDA.FunParam] }
 
 ---------------------------------------------------------------------------
 -- Kernel Input and Output classes
