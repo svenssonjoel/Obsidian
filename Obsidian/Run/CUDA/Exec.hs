@@ -2,7 +2,8 @@
              ScopedTypeVariables,
              TypeFamilies,
              TypeSynonymInstances,
-             FlexibleInstances #-} 
+             FlexibleInstances #-}
+{-# LANGUAGE BangPatterns #-} 
 
 module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , CUDAVector
@@ -17,6 +18,9 @@ module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , syncAll
                               , exec
                               , withCUDA
+                              , withCUDA'
+                              , Context(..)
+                              , initialise
                               , capture
                               , captureIO
                               , useVector
@@ -318,6 +322,26 @@ newIdent =
     modify (\s -> s {csIdent = i+1 }) 
     return i
 
+data Context = Context {context :: !CUDA.Context,
+                        props :: !CUDA.DeviceProperties} 
+
+initialise :: IO (Context) 
+initialise =
+  do CUDA.initialise []
+     devs <- getDevices
+    
+     case devs of
+         [] -> error "No CUDA device found!"
+         (x:_) ->
+           do ctx <- CUDA.create (fst x) [CUDA.SchedAuto]
+              return (Context ctx (snd x)) 
+
+       
+withCUDA' :: Context -> CUDA a -> IO a
+withCUDA' (Context ctx props)  p =
+  do
+    (a,_) <- runStateT p (CUDAState 0 ctx props)
+    return a
 
 ---------------------------------------------------------------------------
 -- Run a CUDA computation
@@ -331,7 +355,7 @@ withCUDA p =
       [] -> error "No CUDA device found!" 
       (x:_) ->
         do 
-          ctx <- CUDA.create (fst x) [CUDA.SchedAuto] 
+          !ctx <- CUDA.create (fst x) [CUDA.SchedAuto] 
           (a,_) <- runStateT p (CUDAState 0 ctx (snd x)) 
           CUDA.destroy ctx
           return a
