@@ -26,6 +26,11 @@ module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , useVector
                               , allocaVector
                               , allocaFillVector
+                              , withVector
+                              , withFillVector 
+                              , allocaVector_
+                              , mallocVector
+                              , freeVector
                               , fill
                               , peekCUDAVector
                               , copyOut
@@ -454,10 +459,12 @@ useVector v f =
     lift $ CUDA.free dptr
     return b
 
+-- THESE SHOULD BE RENAMED -- 
 ---------------------------------------------------------------------------
 -- allocaVector: allocates room for a vector in the GPU Global mem
 ---------------------------------------------------------------------------
--- | allocate a vector in GPU Device memory 
+{-# DEPRECATED allocaVector "Use withVector instead" #-}    
+-- | allocate a vector in GPU Device memory
 allocaVector :: V.Storable a => 
                 Int -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaVector n f =
@@ -466,14 +473,39 @@ allocaVector n f =
     let cvector = CUDAVector dptr (fromIntegral n)
     b <- f cvector -- dptr
     lift $ CUDA.free dptr
-    return b 
+    return b
+
+withVector :: V.Storable a =>
+              Int -> (CUDAVector a -> CUDA b) -> CUDA b
+withVector n f = allocaVector n f 
+              
+              
+---------------------------------------------------------------------------
+-- Low level memory allocation/deallocation
+---------------------------------------------------------------------------
+{-# DEPRECATED allocaVector_ "Use mallocVector instead" #-}    
+-- | allocate a vector in GPU Device memory 
+allocaVector_ :: V.Storable a =>
+                 Int -> CUDA (CUDAVector a)  
+allocaVector_ n =
+  do
+    dptr <- lift $ CUDA.mallocArray n
+    return $ CUDAVector dptr (fromIntegral n)
+
+mallocVector :: V.Storable a =>
+                Int -> CUDA (CUDAVector a)
+mallocVector = allocaVector_
+
+freeVector :: CUDAVector a -> CUDA ()
+freeVector (CUDAVector dptr _) = lift $ CUDA.free dptr
+
 
 ---------------------------------------------------------------------------
 -- Allocate and fill with default value
 ---------------------------------------------------------------------------
 -- | Allocate and Fill a vector in GPU Device memory
 allocaFillVector :: V.Storable a => 
-                Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b                
+                    Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b                
 allocaFillVector n a f =
   do
     dptr <- lift $ CUDA.mallocArray n
@@ -482,6 +514,11 @@ allocaFillVector n a f =
     b <- f cvector -- dptr
     lift $ CUDA.free dptr
     return b 
+
+withFillVector :: V.Storable a => 
+                  Int -> a -> (CUDAVector a -> CUDA b) -> CUDA b
+withFillVector = allocaFillVector
+
 
 ---------------------------------------------------------------------------
 -- Fill a Vector
