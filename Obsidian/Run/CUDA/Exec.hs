@@ -19,6 +19,7 @@ module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , exec
                               , withCUDA
                               , withCUDA'
+                              , destroyCtx
                               , Context(..)
                               , initialise
                               , capture
@@ -344,6 +345,9 @@ initialise =
          (x:_) ->
            do ctx <- CUDA.create (fst x) [CUDA.SchedAuto]
               return (Context ctx (snd x)) 
+
+destroyCtx :: Context -> IO ()
+destroyCtx (Context ctx props) = CUDA.destroy ctx
 
        
 withCUDA' :: Context -> CUDA a -> IO a
