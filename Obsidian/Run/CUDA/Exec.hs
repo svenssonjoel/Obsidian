@@ -30,10 +30,14 @@ module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , withFillVector 
                               , allocaVector_
                               , mallocVector
+                              , mallocVectorIO
                               , freeVector
+                              , freeVectorIO
                               , fill
                               , peekCUDAVector
                               , copyOut
+                              , copyInIO
+                              , copyOutIO
                               ) where
 
 ---------------------------------------------------------------------------
@@ -496,8 +500,41 @@ mallocVector :: V.Storable a =>
                 Int -> CUDA (CUDAVector a)
 mallocVector = allocaVector_
 
+mallocVectorIO :: V.Storable a =>
+                  Int -> IO (CUDAVector a)
+mallocVectorIO n =
+  do
+    dptr <- CUDA.mallocArray n
+    return $ CUDAVector dptr (fromIntegral n) 
+
 freeVector :: CUDAVector a -> CUDA ()
 freeVector (CUDAVector dptr _) = lift $ CUDA.free dptr
+
+freeVectorIO :: CUDAVector a -> IO ()
+freeVectorIO (CUDAVector dptr _) = CUDA.free dptr 
+
+copyInIO :: V.Storable a =>
+            V.Vector a -> IO (CUDAVector a) 
+copyInIO v =
+  do
+    let (hfptr,n) = V.unsafeToForeignPtr0 v
+    
+    dptr <- CUDA.mallocArray n
+    let hptr = unsafeForeignPtrToPtr hfptr
+    CUDA.pokeArray n hptr dptr
+    let cvector = CUDAVector dptr (fromIntegral (V.length v)) 
+    -- b <- f cvector -- dptr
+    -- lift $ CUDA.free dptr
+    return cvector
+
+copyOutIO :: V.Storable a => CUDAVector a -> IO (V.Vector a)
+copyOutIO (CUDAVector dptr n) =
+  do
+    (fptr :: ForeignPtr a) <- mallocForeignPtrArray (fromIntegral n)
+    let ptr = unsafeForeignPtrToPtr fptr
+    CUDA.peekArray (fromIntegral n) dptr ptr
+    return $ V.unsafeFromForeignPtr fptr 0 (fromIntegral n)
+
 
 
 ---------------------------------------------------------------------------
