@@ -155,6 +155,8 @@ data Program t a where
                 
   Sync     :: (t *<=* Block) => Program t ()
 
+
+  -- WarpShuffle ::  ... -> Program Warp () 
   -- Think about how to to allow multikernel programs.
 
   -- HardSync :: Program Grid () 
