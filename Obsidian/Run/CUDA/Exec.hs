@@ -5,6 +5,15 @@
              FlexibleInstances #-}
 {-# LANGUAGE BangPatterns #-} 
 
+{-
+    Gah!
+    Most of this needs to be improved.
+
+    # Add functionality to pass arrays of tuples in and out
+      from kernels. 
+-} 
+
+
 module Obsidian.Run.CUDA.Exec ( mkRandomVec
                               , CUDAVector
                               , getDevices

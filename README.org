@@ -44,8 +44,15 @@
     more integrated part of the programming style. 
   + Testing: Many changes lately, a test-suite is needed. 
     Example programs and benchmarks seem to work, but more is needed. 
-  + Multikernel programs expressed within Obsidian. 
-
+  + Multikernel programs expressed within Obsidian.
+  + Possibility of expressing dynamic parallelism.
+  + Multidimensional arrays 
+  + Long term: New implementation that avoids the "Program" type. 
+  + PRIORITY: Expand Obsidian.Run.CUDA.Exec capabilities to launch kernels 
+    with arrays of tuples as output and input.
+    This will very likely be a complete redesign of Obsidian.Run.CUDA.Exec.
+    
+    
 * Versioning Policy (from Apr 14 2014 with the release of version 0.1.0.0) 
   + A.B.C.D  
   + A.B changes when API Changes (in a disruptive way) 
