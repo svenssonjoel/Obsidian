@@ -75,8 +75,9 @@ seqIterate n f init =
 -- 
 ---------------------------------------------------------------------------
 -- | iterate a function until a condition holds. Results in a while loop
--- with a break in the generated code. 
+-- with a break in the generated code.
 seqUntil :: Storable a
+-- The comment above seems to not desribe reality ! 
             => (a -> a)
             -> (a -> EBool)
             -> a

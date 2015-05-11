@@ -361,7 +361,7 @@ compileForAll c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
         1 -> cim
         n -> [[cstm| for ( int vw = 0; vw < $int:q; ++vw) { $stms:body } |], 
               [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
-              -- [cstm| __syncthreads();|]]
+              --[cstm| __syncthreads();|]]
              where 
                body = [cstm|$id:("warpIx") = vw*$int:nt + (threadIdx.x % 32); |] : cim
                --body = [cstm|$id:("warpIx") = (threadIdx.x % 32) * q + vw; |] : cim

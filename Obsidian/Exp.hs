@@ -737,6 +737,14 @@ instance (Choice a, Choice b, Choice c) => Choice (a,b,c) where
                                               ifThenElse b e1' e2',
                                               ifThenElse b e1'' e2'')
 
+instance (Choice a, Choice b, Choice c, Choice d)
+         => Choice (a,b,c,d) where
+  ifThenElse b (e1,e1',e1'',e1''') (e2,e2',e2'',e2''')
+       = (ifThenElse b e1 e2,
+          ifThenElse b e1' e2',
+          ifThenElse b e1'' e2'',
+          ifThenElse b e1''' e2''')
+
   
 ---------------------------------------------------------------------------
 -- Print Expressions
@@ -779,6 +787,7 @@ printOp Max = " Max "
 
 printOp Sin = " Sin " 
 printOp Cos = " Cos "
+printOp Sqrt = " Sqrt " 
 
 printOp BitwiseAnd = " & "
 printOp BitwiseOr  = " | " 

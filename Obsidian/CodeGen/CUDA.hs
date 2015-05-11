@@ -6,7 +6,7 @@
                 
 -} 
 
-module Obsidian.CodeGen.CUDA (genKernel, genKernelParams, SharedMemConfig(..)) where 
+module Obsidian.CodeGen.CUDA (genKernel, genKernelParams, SharedMemConfig(..),ToProgram(..)) where 
 
 
 import Obsidian.CodeGen.Reify

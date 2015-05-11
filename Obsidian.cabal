@@ -46,7 +46,8 @@ Library
              
   exposed-modules: Obsidian
                  ,  Obsidian.CodeGen.CUDA
-                 ,  Obsidian.Run.CUDA.Exec                    
+                 ,  Obsidian.Run.CUDA.Exec
+           
             
   other-modules:  Obsidian.Array
                ,  Obsidian.Atomic
