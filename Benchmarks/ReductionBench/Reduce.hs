@@ -165,7 +165,7 @@ red5' :: Data a
            -> Program Block (SPush Block a) 
 red5' n f arr =
   do arr' <- compute $ asBlockMap (execThread' . seqReduce f)
-                                    (coalesce n arr)
+                                  (coalesce n arr)
      red3 2 f arr' 
 
 red6 = red5' 16 
