@@ -70,7 +70,8 @@ instance Compute t => ComputeAs t Pull where
   compute = computePull_ 
 
 {- 
-   The key to this instance is that the typechecker
+   The key to this instance is that when matching up instances the
+   -whatever matcher that does that-
    matches only against the head, ignoring the constraint.
    meaning that all variations of t, t1 is caught by this
    instance. Though, those where t and t1 are not equal
