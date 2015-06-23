@@ -585,7 +585,7 @@ instance (t *<=* Block) => ExecProgram t Pull where
 
 -- Here we also want the type error behaviour.
 --  it is a type error to try to "execute" a push t at any level different from t 
-instance (t ~ t1) => ExecProgram t (Push t) where
+instance (t ~ t1) => ExecProgram t (Push t1) where
   exec = runPush 
 
 
