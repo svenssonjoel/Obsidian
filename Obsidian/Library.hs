@@ -72,12 +72,16 @@ module Obsidian.Library
         
        -- Executing programs
        , ExecProgram(..) 
-       , ExecBlock(..)
-       , ExecWarp(..)
-       , ExecThread(..)
-       , execThread'
-       , execWarp'
+--       , ExecBlock(..)
+--        , ExecWarp(..)
+--       , ExecThread(..)
+       , execBlock
        , execBlock'
+       , execThread
+       , execThread'
+       , execWarp
+       , execWarp'
+
 --       , execBlock
 --       , execThread
 --       , execWarp
@@ -576,52 +580,74 @@ class ExecProgram t a  where
 instance (t *<=* Block) => ExecProgram t Pull where
   exec = runPush . liftM push 
 
-instance ExecProgram t (Push t) where
+--instance ExecProgram t (Push t) where
+--  exec = runPush
+
+-- Here we also want the type error behaviour.
+--  it is a type error to try to "execute" a push t at any level different from t 
+instance (t ~ t1) => ExecProgram t (Push t) where
   exec = runPush 
 
-        
-class ExecThread a where
-  execThread  :: Data e
-                 => Program Thread (a Word32 e)
-                 -> Push Thread Word32 e
-  
+
+execThread :: (ExecProgram Thread a, Data e)
+        => Program Thread (a Word32 e)
+        -> Push Thread Word32 e 
+execThread = exec
 
 execThread' :: Data a => Program Thread a -> SPush Thread a 
 execThread' = singletonPush
 
-instance ExecThread (Push Thread) where
-  execThread = runPush
-
-instance ExecThread Pull where
-  execThread = execThread . liftM pushThread
-
-class ExecBlock a where
-  execBlock :: Data e
-               => Program Block (a Word32 e)
-               -> Push Block Word32 e
+execBlock :: (ExecProgram Block a, Data e)
+          => Program Block (a Word32 e)
+          -> Push Block Word32 e         
+execBlock = exec 
 
 execBlock' :: Data a => Program Block a -> SPush Block a
 execBlock' = singletonPush 
 
-instance ExecBlock (Push Block) where
-  execBlock = runPush
-
-instance ExecBlock Pull where
-  execBlock = execBlock . liftM pushBlock
-
-class ExecWarp a where
-  execWarp :: Data e
-               => Program Warp (a Word32 e)
-               -> Push Warp Word32 e
+execWarp :: (ExecProgram Warp a, Data e)
+         => Program Warp (a Word32 e)
+         -> Push Warp Word32 e
+execWarp = exec 
 
 execWarp' :: Data a => Program Warp a -> SPush Warp a
 execWarp' = singletonPush 
 
-instance ExecWarp (Push Warp) where
-  execWarp = runPush
 
-instance ExecWarp Pull where
-  execWarp = execWarp . liftM pushWarp
+-- class ExecThread a where
+--   execThread  :: Data e
+--                  => Program Thread (a Word32 e)
+--                  -> Push Thread Word32 e
+  
+-- instance ExecThread (Push Thread) where
+--   execThread = runPush
+
+-- instance ExecThread Pull where
+--   execThread = execThread . liftM pushThread
+
+
+-- class ExecBlock a where
+--   execBlock :: Data e
+--                => Program Block (a Word32 e)
+--                -> Push Block Word32 e
+
+
+-- instance ExecBlock (Push Block) where
+--   execBlock = runPush
+
+-- instance ExecBlock Pull where
+--   execBlock = execBlock . liftM pushBlock
+
+-- class ExecWarp a where
+--   execWarp :: Data e
+--                => Program Warp (a Word32 e)
+--                -> Push Warp Word32 e
+
+-- instance ExecWarp (Push Warp) where
+--   execWarp = runPush
+
+-- instance ExecWarp Pull where
+--   execWarp = execWarp . liftM pushWarp
 
 
 -- | Fuses the program that computes a Push array into the Push array. 

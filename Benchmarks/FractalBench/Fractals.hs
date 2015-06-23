@@ -15,7 +15,7 @@ import Data.Word
 
 import Control.Monad.State
 
-import Prelude hiding (zipWith,sum,replicate,take,drop,iterate)
+import Prelude hiding (zipWith,sum,replicate,take,drop,iterate,(<*))
 
 
 ---------------------------------------------------------------------------
