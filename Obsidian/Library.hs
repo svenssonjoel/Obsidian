@@ -151,12 +151,6 @@ halve arr = splitAt n2 arr
     n = len arr
     n2 = n `div` 2
 
-halve' :: (Integral i, ASize l) => i -> Pull l a -> (Pull l a, Pull l a) 
-halve' arr = (mkPull m (\ix -> arr ! ix), 
-                 mkPull  (len arr - m) (\ix -> arr ! (ix + pos)))
-  where pos = fromIntegral n
-        m   = fromIntegral n
-
 
 -- | Splits a Pull array into chunks of size n. Result is a Pull of Pull arrays.
 splitUp :: (ASize l, ASize s, Integral s) => s -> Pull l a -> Pull l (Pull s a)
