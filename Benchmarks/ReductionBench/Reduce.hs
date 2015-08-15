@@ -75,11 +75,11 @@ getRed2 = putStrLn $
 red3 :: Data a
      => Word32 
      -> (a -> a -> a)
-     -> Pull Word32 a
+     -> Pull Word32 a 
      -> Program Block (SPush Block a)
 red3 cutoff f  arr
   | len arr == cutoff =
-    return $ push $ fold1 f arr
+    return $ push $ singleton $ f (arr ! 0) (arr ! 1) -- fold1 f arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
