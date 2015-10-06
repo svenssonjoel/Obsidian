@@ -135,11 +135,10 @@ data Program t a where
   -- BUG: I Need to recognize sequential distribution of
   -- work too in order to set up storage correctly for
   -- arrays allocated in within sequentially distributed work.
-  DistrSeq :: EWord32
-           -> (EWord32 -> Program t ())
-           -> Program t () 
+  -- This has been "fixed" (a bit of a hack) in CodeGen/Memory2.hs
   
-  
+
+  -- Sequential for loop
   SeqFor :: EWord32 -> (EWord32 -> Program t ())
             -> Program t ()
 
