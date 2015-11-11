@@ -1,5 +1,7 @@
 
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables,
+             FlexibleContexts,
+             GADTs #-}
 
 module Main where
 

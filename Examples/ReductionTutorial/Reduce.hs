@@ -1,6 +1,7 @@
 
 {-# LANGUAGE NoMonomorphismRestriction,
-             ScopedTypeVariables#-}
+             ScopedTypeVariables,
+             GADTs #-}
 
 module Reduce where
 
@@ -35,22 +36,37 @@ red1 f arr
   | otherwise    = 
     do
       let (a1,a2) = evenOdds arr
-      imm <- computePull (zipWith f a1 a2)
+      imm <- compute (zipWith f a1 a2)
       red1 f imm   
 
+reduce :: Data a
+      => (a -> a -> a)
+      -> Pull Word32 a
+      -> Push Block Word32 a
+reduce f arr = execBlock (body f arr)
+ where
+   body f arr
+     | len arr == 1 = return $ push $ arr 
+     | otherwise    = 
+       do
+         let (a1,a2) = halve arr
+         imm <- compute (zipWith f a1 a2)
+         body f imm   
+
+
 mapRed1 :: Data a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
-mapRed1 f arr = liftGridMap body arr
+mapRed1 f arr = asGrid (fmap body arr)
   where
     body arr = execBlock (red1 f arr) 
 
-getRed1 = putStrLn $
-          genKernel 256 "red1"
-            (mapRed1 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed1 = putStrLn $
+--           genKernel 256 "red1"
+--             (mapRed1 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
----------------------------------------------------------------------------
--- Kernel2 (Thread acceses element tid and tid+n )
----------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- -- Kernel2 (Thread acceses element tid and tid+n )
+-- ---------------------------------------------------------------------------
 
 red2 :: Data a 
         => (a -> a -> a)
@@ -61,22 +77,22 @@ red2 f arr
   | otherwise    = 
     do
       let (a1,a2) = halve arr
-      arr' <- computePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red2 f arr'   
 
 mapRed2 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed2 f arr = liftGridMap body arr
+mapRed2 f arr = asGrid (fmap  body arr)
   where
     body arr = execBlock (red2 f arr)
 
-getRed2 = putStrLn $ 
-          genKernel 256 "red2"
-            (mapRed2 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed2 = putStrLn $ 
+--           genKernel 256 "red2"
+--             (mapRed2 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
----------------------------------------------------------------------------
--- Kernel3 (Thread acceses element tid and tid+n + last op optimisation
----------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- -- Kernel3 (Thread acceses element tid and tid+n + last op optimisation
+-- ---------------------------------------------------------------------------
 
 red3 :: Data a 
         => Word32 
@@ -89,28 +105,29 @@ red3 cutoff f  arr
   | otherwise = 
     do
       let (a1,a2) = halve arr
-      arr' <- computePull (zipWith f a1 a2)
+      arr' <- compute (zipWith f a1 a2)
       red3 cutoff f arr'   
 
 
 mapRed3 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed3 f arr = liftGridMap body arr
+mapRed3 f arr = asGrid (fmap body arr)
   where
     body arr = execBlock (red3 2 f arr)
 
-getRed3 = putStrLn $ 
-          genKernel 256 "red3"
-            (mapRed3 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed3 = putStrLn $ 
+--           genKernel 256 "red3"
+--             (mapRed3 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
 
----------------------------------------------------------------------------
--- Kernel4 (Thread performs sequential computations)
--- seqReduce is a built-in primitive that results in a for loop.
--- An alternative is to use fold1 and get an unrolled loop in the
--- generated code. 
----------------------------------------------------------------------------
-seqReducePush f = singletonPush . seqReduce f 
+-- ---------------------------------------------------------------------------
+-- -- Kernel4 (Thread performs sequential computations)
+-- -- seqReduce is a built-in primitive that results in a for loop.
+-- -- An alternative is to use fold1 and get an unrolled loop in the
+-- -- generated code. 
+-- ---------------------------------------------------------------------------
+
+seqRed f = singletonPush . seqReduce f 
 
 red4 :: Data a
         => (a -> a -> a)
@@ -118,23 +135,23 @@ red4 :: Data a
         -> Program Block (SPush Block a)
 red4 f arr =
   do
-    arr' <- compute $ liftBlockMap (seqReducePush f) (splitUp 8 arr)
+    arr' <- compute (asBlock (fmap (seqRed f) (splitUp 8 arr)))
     red3 2 f arr'
     
 mapRed4 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed4 f arr = liftGridMap body arr
+mapRed4 f arr = asGrid (fmap  body arr)
   where
     body arr = execBlock (red4 f arr) 
 
-getRed4 = putStrLn $
-          genKernel 256 "red4"
-            (mapRed4 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed4 = putStrLn $
+--           genKernel 256 "red4"
+--             (mapRed4 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
  
----------------------------------------------------------------------------
--- Kernel5 (Thread performs sequential computations, in a coalesced fashion) 
----------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- -- Kernel5 (Thread performs sequential computations, in a coalesced fashion) 
+-- ---------------------------------------------------------------------------
 
 red5 :: Data a
         => (a -> a -> a)
@@ -142,25 +159,25 @@ red5 :: Data a
         -> Program Block (SPush Block a)
 red5 f arr =
   do
-    arr' <- compute $ liftBlockMap (seqReducePush f)
-                                 (coalesce 8 arr)
+    arr' <- compute (asBlock (fmap (seqRed f)
+                                   (coalesce 8 arr)))
     red3 2 f arr' 
   
 
 mapRed5 :: Data a  => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed5 f arr = liftGridMap body arr
+mapRed5 f arr = asGrid (fmap body arr)
   where
     body arr = execBlock (red5 f arr) 
 
-getRed5 = putStrLn $
-          genKernel 256 "red5"
-            (mapRed5 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed5 = putStrLn $
+--           genKernel 256 "red5"
+--             (mapRed5 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
 
----------------------------------------------------------------------------
--- Kernel6 More sequential work 
----------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- -- Kernel6 More sequential work 
+-- ---------------------------------------------------------------------------
 
 red5' :: Data a 
            => Word32
@@ -169,36 +186,36 @@ red5' :: Data a
            -> Program Block (SPush Block a)
 red5' n f arr =
   do
-    arr' <- compute $ liftBlockMap (seqReducePush f) (coalesce n arr)
+    arr' <- compute (asBlock (fmap (seqRed f) (coalesce n arr)))
     red3 2 f arr' 
 
 red6 = red5' 16 
 
 mapRed6 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed6 f arr = liftGridMap body arr
+mapRed6 f arr = asGrid (fmap body arr)
   where
     body arr = execBlock (red6 f arr) 
 
-getRed6 = putStrLn $ 
-          genKernel 256 "red6"
-            (mapRed6 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed6 = putStrLn $ 
+--           genKernel 256 "red6"
+--             (mapRed6 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
 
----------------------------------------------------------------------------
--- Kernel7 Even more sequential work 
----------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- -- Kernel7 Even more sequential work 
+-- ---------------------------------------------------------------------------
 
 red7 = red5' 32  
 
 mapRed7 :: Data a => (a -> a -> a) -> DPull (SPull a) -> DPush Grid a
-mapRed7 f arr = liftGridMap body arr
+mapRed7 f arr = asGrid (fmap body arr)
   where
     body arr = execBlock (red7 f arr)
 
-getRed7 = putStrLn $
-          genKernel 256 "red7"
-            (mapRed7 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
+-- getRed7 = putStrLn $
+--           genKernel 256 "red7"
+--             (mapRed7 (+) . splitUp 512 :: DPull EInt32 -> DPush Grid EInt32)
 
 
 
