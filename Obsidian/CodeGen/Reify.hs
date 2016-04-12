@@ -1,6 +1,5 @@
 
 {-# LANGUAGE FlexibleInstances,
-             OverlappingInstances,
              UndecidableInstances,
              FlexibleContexts,
              MultiParamTypeClasses,
@@ -8,6 +7,8 @@
              TypeFamilies ,
              ScopedTypeVariables
              #-}
+
+{-              OverlappingInstances,-}
 
 {- Joel Svensson 2012, 2013
    Niklas Ulvinge 2013

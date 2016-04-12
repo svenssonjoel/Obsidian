@@ -82,16 +82,16 @@ reduceLocal f arr
 reduceBlock :: forall a. Data a 
           => (a -> a -> a)
           -> SPull a -> Program Block (SPush Block a)
-reduceBlock f arr =
-  do imm <- compute $ asBlock (fmap body (splitUp 32 arr))
-     reduceLocal f imm
-  where
-    body a = execWarp (reduceLocal f a)
+reduceBlock f arr = reduceLocal f arr 
+  -- do imm <- compute $ asBlock (fmap body (splitUp 32 arr))
+  --    reduceLocal f imm
+  -- where
+  --   body a = execWarp (reduceLocal f a)
 
 reduceGrid :: forall a. Data a 
           => (a -> a -> a)
           -> DPull a -> DPush Grid a
-reduceGrid f arr = asGrid $ fmap body (splitUp 4096 arr) 
+reduceGrid f arr = asGrid $ fmap body (splitUp 256 arr) 
     where
       body a = execBlock (reduceBlock f a)
 

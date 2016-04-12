@@ -3,9 +3,9 @@
              FlexibleContexts,
              FlexibleInstances, 
              UndecidableInstances,
-             OverlappingInstances,
              RankNTypes #-} 
-{-# LANGUAGE CPP #-} 
+{-# LANGUAGE CPP #-}
+{-              OverlappingInstances, -} 
 
 {- Joel Svensson 2012, 2013, 2014 -} 
 

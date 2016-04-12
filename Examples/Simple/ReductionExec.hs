@@ -11,7 +11,9 @@ import Prelude as P
 
 import Obsidian
 import Obsidian.Run.CUDA.Exec
--- import Obsidian.Run.CUDA.SC
+
+-- For OpenCL printing 
+import qualified Obsidian.CodeGen.OpenCL as CL 
 
 import qualified Data.Vector.Storable as V
 import Control.Monad.State
@@ -64,7 +66,13 @@ performSmall1stage =
 
 
 main = do
-  performSmall
-  performSmallGeneric
-  performSmallNonGeneric
-  performSmall1stage
+
+  let str = CL.genKernel 128 "reduce" (reduce (+) :: DPull (EInt32) -> DPush Grid (EInt32) )
+  
+  --performSmall
+
+  putStrLn str 
+
+  --performSmallGeneric
+  --performSmallNonGeneric
+  --performSmall1stage
