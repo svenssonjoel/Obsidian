@@ -43,15 +43,36 @@ reduce :: Data a
       => (a -> a -> a)
       -> Pull Word32 a
       -> Push Block Word32 a
-reduce f arr = execBlock (body f arr)
+reduce f arr = execBlock (red f arr)
  where
-   body f arr
-     | len arr == 1 = return $ push $ arr 
+   red f arr
+     | len arr == 1 = return (push arr)
      | otherwise    = 
        do
          let (a1,a2) = halve arr
          imm <- compute (zipWith f a1 a2)
-         body f imm   
+         red f imm   
+
+
+reduce' :: Data a
+        => Word32 
+        -> (a -> a -> a)
+        -> Pull Word32 a
+        -> Push Block Word32 a
+reduce' n f arr =
+  do
+    execBlock $ do
+      arr' <- compute (asBlock (fmap (seqRed f) (splitUp n arr)))
+      red f arr'
+ where
+   red f arr
+     | len arr == 1 = return (push arr) 
+     | otherwise    = 
+       do
+         let (a1,a2) = halve arr
+         imm <- compute (zipWith f a1 a2)
+         red f imm   
+
 
 
 mapRed1 :: Data a => (a -> a -> a) -> Pull EWord32 (SPull a) -> Push Grid EWord32 a
