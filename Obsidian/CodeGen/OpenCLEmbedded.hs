@@ -6,11 +6,11 @@
                 
 -} 
 
-module Obsidian.CodeGen.OpenCL (genKernel, genKernelParams, SharedMemConfig(..),ToProgram(..)) where 
+module Obsidian.CodeGen.OpenCLEmbedded (genKernel, genKernelParams, SharedMemConfig(..),ToProgram(..)) where 
 
 
 import Obsidian.CodeGen.Reify
-import Obsidian.CodeGen.CompileIMOpenCL
+import Obsidian.CodeGen.CompileIMOpenCLEmbedded
 import Obsidian.CodeGen.Liveness
 import Obsidian.CodeGen.Memory2
 import Text.PrettyPrint.Mainland

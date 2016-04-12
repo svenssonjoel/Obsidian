@@ -13,7 +13,7 @@ import Obsidian
 import Obsidian.Run.CUDA.Exec
 
 -- For OpenCL printing 
-import qualified Obsidian.CodeGen.OpenCL as CL 
+import qualified Obsidian.CodeGen.OpenCLEmbedded as CL 
 
 import qualified Data.Vector.Storable as V
 import Control.Monad.State

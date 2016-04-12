@@ -7,9 +7,28 @@
 
    Joel Svensson 2013..2016
 
+   * Todo:
+
+     - Make sure generated code makes sense in Vivado_HLS
+
+     - See what happens to the Workgroup interface generated
+       by Vivado_HLS when using these:
+       * get_num_groups()
+       * get_local_size()
+       * get_group_id()
+       * get_local_id()
+       * get_global_id()
+       * get_global_size()
+
+       get_num_groups and get_global_size are interesting as I have
+       not seen these communicated to a Vivado_HLS opencl workgroup.
+       It may be that interface is only generated when these functions
+       are used. 
+
+
 -} 
 
-module Obsidian.CodeGen.CompileIMOpenCL where
+module Obsidian.CodeGen.CompileIMOpenCLEmbedded where
 
 import Language.C.Quote.OpenCL
 
@@ -296,21 +315,21 @@ compileDistr c (SDistrPar Block n im) =  codeQ ++ codeR
   where
     cim = compileIM c im  -- ++ [[cstm| __syncthreads();|]]
     
-    numBlocks = [cexp| $id:("gridDim.x") |]
+    numBlocks = [cexp| get_num_groups(0) |]
     
     blocksQ = [cexp| $exp:(compileExp n) / $exp:numBlocks|]
     blocksR = [cexp| $exp:(compileExp n) % $exp:numBlocks|] 
     
     codeQ = [[cstm| for (int b = 0; b < $exp:blocksQ; ++b) { $stms:bodyQ }|]]
                 
-    bodyQ = [cstm| $id:("bid") = blockIdx.x * $exp:blocksQ + b;|] : cim  ++  
-            [[cstm| bid = blockIdx.x;|],
-             [cstm| __syncthreads();|]] -- yes no ? 
+    bodyQ = [cstm| $id:("bid") = $exp:blockIdx_x * $exp:blocksQ + b;|] : cim  ++  
+            [[cstm| bid = $exp:blockIdx_x;|],
+             [cstm| barrier(CLK_LOCAL_MEM_FENCE);|]] -- yes no ? 
          
-    codeR = [[cstm| bid = ($exp:numBlocks * $exp:blocksQ) + blockIdx.x;|], 
-             [cstm| if (blockIdx.x < $exp:blocksR) { $stms:cim }|],
-             [cstm| bid = blockIdx.x;|], 
-             [cstm| __syncthreads();|]] -- yes no ? 
+    codeR = [[cstm| bid = ($exp:numBlocks * $exp:blocksQ) + $exp:blockIdx_x;|], 
+             [cstm| if ($exp:blockIdx_x < $exp:blocksR) { $stms:cim }|],
+             [cstm| bid = $exp:blockIdx_x;|], 
+             [cstm| barrier(CLK_LOCAL_MEM_FENCE);|]] -- yes no ? 
                     
 -- Can I be absolutely sure that 'n' here is statically known ? 
 -- I must look over the functions that can potentially create this IM. 
@@ -455,19 +474,11 @@ compile config kname (params,im)
     
     ps = compileParams params
     go = [cedecl| extern "C" __kernel void $id:kname($params:ps) {$items:cudabody} |]
-    -- go PlatformOpenCL
-    --   = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
-    -- go PlatformC
-    --   = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
 
     cudabody = (if (configSharedMem config > 0)
-                -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
-                then [C.BlockDecl [cdecl| __local  typename uint8_t  sbase[$uint:(configSharedMem config)] ; |]] 
+                then [C.BlockDecl
+                      [cdecl| __local  typename uint8_t  sbase[$uint:(configSharedMem config)] ; |]] 
                 else []) ++
-                --[BlockDecl [cdecl| typename uint32_t tid = threadIdx.x; |]] ++
-                --[BlockDecl [cdecl| typename uint32_t warpID = threadIdx.x / 32; |],
-                --       BlockDecl [cdecl| typename uint32_t warpIx = threadIdx.x % 32; |]] ++
---                [BlockDecl [cdecl| typename uint32_t bid = blockIdx.x; |]] ++
                (if (usesGid im) 
                 then [C.BlockDecl [cdecl| typename uint32_t gid = $exp:blockIdx_x * $exp:blockDim_x + $exp:threadIdx_x; |]]
                 else []) ++ 
@@ -512,13 +523,14 @@ declares _ = []
 compileParams :: Parameters -> [C.Param]
 -- compileParams PlatformOpenCL = map go
 --   where
---     go (name,Pointer t) = [CL.cparam| global  $ty:(compileType t) $id:name |]
---     go (name, t)        = [CL.cparam| $ty:(compileType t) $id:name |]
 
 -- C or CUDA 
 compileParams = map go
   where
-    go (name,t) = [cparam| $ty:(compileType t) $id:name |]
+    go (name,Pointer t) = [cparam| global  $ty:(compileType t) $id:name |]
+    go (name, t)        = [cparam| $ty:(compileType t) $id:name |]
+    
+
  
 
 ---------------------------------------------------------------------------
