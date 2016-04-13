@@ -588,4 +588,4 @@ compileDeclsTop config toplevelarrs kname (params,im)
 
 declareArr :: (String, ((Word32,Word32),T.Type)) -> [C.BlockItem]
 declareArr (arr,((_,addr),t)) =
-  [C.BlockDecl [cdecl| $ty:(compileType t) $id:arr = ($ty:(compileType t))(sbase + $int:addr);|]]
+  [C.BlockDecl [cdecl| $ty:(compileType (Shared t)) $id:arr = ( $ty:(compileType (Shared t)))(sbase + $int:addr);|]]
