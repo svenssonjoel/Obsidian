@@ -527,7 +527,7 @@ compileParams :: Parameters -> [C.Param]
 -- C or CUDA 
 compileParams = map go
   where
-    go (name,Pointer t) = [cparam| global  $ty:(compileType t) $id:name |]
+    go (name,Pointer t) = [cparam| global  $ty:(compileType (Pointer t)) $id:name |]
     go (name, t)        = [cparam| $ty:(compileType t) $id:name |]
     
 
