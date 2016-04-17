@@ -1,10 +1,17 @@
-{- Joel Svensson 2012..2015
+{- Joel Svensson 2012..2016
 
    Notes:
    2014      : starting a big overhauling
    2013-04-02: Added a Break statement to the language.
                Use it to break out of sequential loops.
    2013-01-08: removed number-of-blocks field from ForAllBlocks
+
+
+
+   TODO For version 0.5.0.0
+    + Make Memeory management explicit as in the raw feldspar
+    + Clean up and Simplify. 
+
 
 -}
 

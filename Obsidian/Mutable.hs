@@ -50,8 +50,9 @@ import Data.Word
 -- Shared mutable arrays may be created using newS 
 --
 
-data Shared
+data Shared 
 data Global
+data Private 
   
 -- A mutable array has an attached location.
 -- Either it recides in Global or in Shared memory. 

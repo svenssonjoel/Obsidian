@@ -29,11 +29,7 @@
    2012-12-10: Edited 
 
 -}
-
-{-
- Warning: This module is full of magic! 
--} 
-
+ 
 
 
 module Obsidian.Force ( unsafeWritePush
