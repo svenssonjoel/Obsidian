@@ -10,7 +10,11 @@
 
    TODO For version 0.5.0.0
     + Make Memeory management explicit as in the raw feldspar
-    + Clean up and Simplify. 
+      - replace the "compute" functions with store
+        functions that take a memory as argument
+
+    + 
+    + Clean up. Operations should be simpler. 
 
 
 -}
