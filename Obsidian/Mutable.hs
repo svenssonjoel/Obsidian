@@ -31,6 +31,10 @@ import Obsidian.Atomic
 import Data.Word
 
 {-
+  notes: 2016       : The mutable arrays will have a bigger role 
+                      in version 0.5.0.0 
+ 
+ 
   Todo: Think about Global vs Shared.
   Todo: Add creation of mutable global arrays. 
 
@@ -55,7 +59,7 @@ data Global
 data Private 
   
 -- A mutable array has an attached location.
--- Either it recides in Global or in Shared memory. 
+-- Either it recides in Global, Shared or private memory. 
 data Mutable mloc s a = Mutable s (Names a)
 
 type MShared a = Mutable Shared Word32 a
