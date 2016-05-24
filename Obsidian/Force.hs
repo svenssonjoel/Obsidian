@@ -31,8 +31,6 @@
 
 -}
  
-
-
 module Obsidian.Force ( unsafeWritePush
                       , unsafeWritePull
                       , compute_
