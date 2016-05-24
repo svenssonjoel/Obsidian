@@ -17,6 +17,7 @@
 {- Joel Svensson 2012..2015
 
    Notes:
+   2016      : This module will change a lot for version 0.5.0.0
    2014-03-28: Changed API.
                Not using Obsidian.Mutable currently, it needs more work. 
    2013-06-24: Changed code. uses Obsidian.Mutable now
@@ -113,28 +114,28 @@ class Write t where
 -- Thought: Is this function correct at all?
 --   What happens if a thread program allocates memory
 -- DONE: The above problem has been fixed! 
-instance  Write Thread where
-  unsafeWritePush _ p =
-    do
-      (snames :: Names a)  <- names "arr" 
+-- instance  Write Thread where
+--   unsafeWritePush _ p =
+--     do
+--       (snames :: Names a)  <- names "arr" 
 
-      -- Here I know that this pattern match will succeed
-      let n = len p
+--       -- Here I know that this pattern match will succeed
+--       let n = len p
     
-      allocateArray snames  n
-      p <: threadAssignArray snames (variable "tid") n  
+--       allocateArray snames  n
+--       p <: threadAssignArray snames (variable "tid") n  
       
-      return $ threadPullFrom snames (variable "tid") n
+--       return $ threadPullFrom snames (variable "tid") n
 
-instance  Write Warp where
-  unsafeWritePush _ p  =
-    do
-      let n = len p
-      noms <- names "arr"
-      allocateVolatileArray noms n
+-- instance  Write Warp where
+--   unsafeWritePush _ p  =
+--     do
+--       let n = len p
+--       noms <- names "arr"
+--       allocateVolatileArray noms n
      
-      p <: warpAssignArray noms (variable "warpID") n 
-      return $ warpPullFrom noms (variable "warpID") n
+--       p <: warpAssignArray noms (variable "warpID") n 
+--       return $ warpPullFrom noms (variable "warpID") n
 
 instance Write Block where
   unsafeWritePush volatile p =

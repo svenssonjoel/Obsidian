@@ -1,6 +1,7 @@
 {- Joel Svensson 2012..2016
 
    Notes:
+   2016      : starting work towards 0.5.0.0 
    2014      : starting a big overhauling
    2013-04-02: Added a Break statement to the language.
                Use it to break out of sequential loops.
@@ -157,14 +158,16 @@ data Program t a where
   -- Can be done from any program level.
   -- Since the allocation happens block-wise though
   -- it is important to figure out how many instances of
-  -- that t level program that needs memory! (messy) 
-  Allocate :: Name -> Word32 -> Type -> Program t () 
+  -- that t level program that needs memory! (messy)
 
+  -- For Version 0.5.0.0 this allocation of shared memory is only allowed
+  -- at Block level 
+  AllocateSM :: Name -> Word32 -> Type -> Program Block () 
+  
   -- Automatic Variables
   Declare :: Name -> Type -> Program t () 
                 
   Sync     :: (t *<=* Block) => Program t ()
-
 
   -- WarpShuffle ::  ... -> Program Warp () 
   -- Think about how to to allow multikernel programs.
@@ -203,8 +206,8 @@ uniqueNamed_ pre = do id <- Identifier
 assign :: Scalar a => Name -> [Exp Word32] -> Exp a -> Program Thread ()
 assign nom ix e = Assign nom ix e 
 
-allocate :: Name -> Word32 -> Type -> Program t () 
-allocate nom l t = Allocate nom l t 
+allocate :: Name -> Word32 -> Type -> Program Block () 
+allocate nom l t = AllocateSM nom l t 
 
 declare :: Name -> Type -> Program t ()
 declare nom t = Declare nom t 
@@ -315,7 +318,7 @@ runPrg i (DistrPar n f) =
 -- p here is a Program Thread () 
 runPrg i (Cond b p) = ((),i) 
 runPrg i (Declare _ _) = ((),i)
-runPrg i (Allocate _ _ _ ) = ((),i)
+runPrg i (AllocateSM _ _ _ ) = ((),i)
 runPrg i (Assign _ _ a) = ((),i) 
 runPrg i (AtomicOp _ _ _) = ((),i) -- variable ("new"++show i),i+1)
 
@@ -343,7 +346,7 @@ printPrg' i (AtomicOp n ix e) =
   --    "( " ++ n ++ "[" ++ show ix ++ "])\n",i+1)
   in ((), printAtomic e ++
           "( " ++ n ++ "[" ++ show ix ++ "])\n",i+1)
-printPrg' i (Allocate id n t) =
+printPrg' i (AllocateSM id n t) =
   let newname = id -- "arr" ++ show id
   in ((),newname ++ " = malloc(" ++ show n ++ ");\n",i+1)
 printPrg' i (Declare id t) =

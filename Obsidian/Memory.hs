@@ -6,7 +6,10 @@
    This Module became quite messy.
    TODO: CLEAN IT UP! 
 
-   notes: 2013-05-02: Cleaned out inspect. 
+
+   notes: 2016      : This module will be entirely rewritten for 0.5.0.0 
+
+          2013-05-02: Cleaned out inspect. 
 
 -} 
 
@@ -32,7 +35,7 @@ class Storable a where
 
   -- Array operations 
   assignArray    :: Names a -> a -> Exp Word32 -> Program Thread ()
-  allocateArray  :: Names a -> Word32 -> Program t ()
+  allocateArray  :: Names a -> Word32 -> Program Block ()
   pullFrom       :: ASize s => Names a -> s -> Pull s a
 
   
@@ -60,7 +63,7 @@ class Storable a where
   threadPullFrom :: Names a -> EWord32 -> Word32 -> Pull Word32 a 
   
   -- Extra
-  allocateVolatileArray :: Names a -> Word32 -> Program t ()
+  allocateVolatileArray :: Names a -> Word32 -> Program Block ()
 
 
 
@@ -75,7 +78,7 @@ instance Scalar a => Storable (Exp a) where
 
   --Array ops 
   allocateArray (Single name) n = 
-    Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+    AllocateSM name (n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Pointer (typeOf (undefined :: Exp a)))
   assignArray  (Single name) a ix = Assign name [ix] a
   pullFrom (Single name) n = mkPull n (\i -> index name i)
@@ -105,7 +108,7 @@ instance Scalar a => Storable (Exp a) where
 
   -- Extra 
   allocateVolatileArray (Single name) n = 
-    Allocate name (n * fromIntegral (sizeOf (undefined :: Exp a)))
+    AllocateSM name (n * fromIntegral (sizeOf (undefined :: Exp a)))
                   (Volatile (Pointer (typeOf (undefined :: Exp a))))
   
 

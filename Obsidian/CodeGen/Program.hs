@@ -181,15 +181,16 @@ instance Compile P.Thread  where
       (a,im) <-  compile i2 p
 
       return ((),out $ SSeqFor nom (expToIExp n) im)
-  compile s (P.Allocate nom n t) = do
-    (Just nt) <- getNThreads -- must be a Just at this point
-    nw' <- getNWarps
+  -- AllocateSM can nolonger occur on this level 
+  -- compile s (P.AllocateSM nom n t) = do
+  --   (Just nt) <- getNThreads -- must be a Just at this point
+  --   nw' <- getNWarps
 
-    let nw = case nw' of
-          Nothing -> 1
-          Just i  -> i
+  --   let nw = case nw' of
+  --         Nothing -> 1
+  --         Just i  -> i
     
-    return ((),out $ SAllocate nom (nt*nw*n) t)
+  --   return ((),out $ SAllocate nom (nt*nw*n) t)
   compile _ (P.Sync) =
     return ((),[])
 
@@ -209,14 +210,16 @@ instance Compile P.Warp where
     (a,im) <- compile s p 
     return (a, out $ SForAll Warp (expToIExp n) im)
     --undefined -- compile a warp program that iterates over a space n large
-  compile s (P.Allocate nom n t) = do
-    (Just nw) <- getNWarps -- Must be a Just here, or something is wrong!
-    return ((),out $ SAllocate nom (nw*n) t)
-  compile s (P.Bind p f) = do
-    let (s1,s2) = split2 s
-    (a,im1) <- compile s1 p
-    (b,im2) <- compile s2 (f a)
-    return (b,(im1 ++ im2))
+
+  -- AllocateSM can nolonger occur on this level 
+  -- compile s (P.AllocateSM nom n t) = do
+  --   (Just nw) <- getNWarps -- Must be a Just here, or something is wrong!
+  --   return ((),out $ SAllocate nom (nw*n) t)
+  -- compile s (P.Bind p f) = do
+  --   let (s1,s2) = split2 s
+  --   (a,im1) <- compile s1 p
+  --   (b,im2) <- compile s2 (f a)
+  --   return (b,(im1 ++ im2))
   compile s (P.Return a) = return (a,[])
   compile s (P.Identifier) = return (supplyValue s, [])
   compile s (P.Sync) = return ((),[])
@@ -253,7 +256,7 @@ instance Compile P.Block where
     -- Number of active warps are stored in the context. 
     (a,im) <- compile s (f (variable "warpID"))
     return (a, out (SDistrPar Warp (expToIExp n') im))
-  compile s (P.Allocate id n t) = return ((),out (SAllocate id n t))
+  compile s (P.AllocateSM id n t) = return ((),out (SAllocate id n t))
   compile s (P.Sync) = return ((),out (SSynchronize))
   compile s p = cs s p
 
@@ -266,7 +269,7 @@ instance Compile P.Grid where
     
     (a, im) <- compile s p -- (f (BlockIdx X)) 
     return (a, out (SDistrPar Block (expToIExp n) im))
-  compile s (P.Allocate _ _ _) = error "Allocate at level Grid" 
+  -- compile s (P.AllocateSM _ _ _) = error "Allocate at level Grid" 
   compile s p = cs s p
 
   {- ForAll cannot happen here! -}
@@ -310,7 +313,7 @@ cs i (P.SeqWhile b p) = do
 
 cs i (P.Break) = return ((), out SBreak)
 
-cs i (P.Allocate id n t) = error $ "CodeGen.Program: Allocate without a hierarchy designation" 
+cs i (P.AllocateSM id n t) = error $ "CodeGen.Program: Allocate without a hierarchy designation" 
 
 cs i (P.Declare  id t)   = return ((),out (SDeclare id t))
 

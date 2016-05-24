@@ -1,5 +1,5 @@
 Name:           Obsidian
-Version:        0.4.2.0
+Version:        0.4.3.0
 
 
 License:                BSD3
@@ -26,54 +26,108 @@ source-repository head
   type:     git
   location: git://github.com/svenssonjoel/Obsidian.git
 
+
+Flag cuda
+    Description: Enable cuda run support
+    Manual: True
+    Default: False
+  
 ----------------------------------------------------------------------------------------------------
+
+
+         
 Library
-  -- Stable packages, no upper bounds
-  build-depends: base >= 4 && < 5
-               , vector           >= 0.10.9.1 
-               , mtl              >= 2.0 
-               , containers       >= 0.4.2.1
-               , text             >= 0.11.3.1
-               , process          >= 1.1.0.2
-               , rdtsc            == 1.3.0.0  
-  -- Less-stable packages, upper bounds on next major version:
-  build-depends: value-supply     >= 0.6      && < 0.7
-               , language-c-quote >= 0.10.1.3 && < 0.11
--- >= 0.7.2    && < 0.9
-               , mainland-pretty  >= 0.2.6    && < 0.3
-               , mwc-random       >= 0.13.1.1 && < 0.14
-               , cuda             >= 0.5.1.1  && < 0.7
+    -- Stable packages, no upper bounds
+  if flag(cuda)
+    build-depends: base >= 4 && < 5
+                 , vector           >= 0.10.9.1 
+                 , mtl              >= 2.0 
+                 , containers       >= 0.4.2.1
+                 , text             >= 0.11.3.1
+                 , process          >= 1.1.0.2
+                 , rdtsc            == 1.3.0.0  
+    -- Less-stable packages, upper bounds on next major version:
+    build-depends: value-supply     >= 0.6      && < 0.7
+                 , language-c-quote >= 0.10.1.3 && < 0.11
+    -- >= 0.7.2    && < 0.9
+                 , mainland-pretty  >= 0.2.6    && < 0.3
+                 , mwc-random       >= 0.13.1.1 && < 0.14
+                 , cuda             >= 0.5.1.1  && < 0.7
              
-  exposed-modules: Obsidian
-                 , Obsidian.CodeGen.CUDA
-                 , Obsidian.CodeGen.OpenCLEmbedded 
-                 , Obsidian.Run.CUDA.Exec
+    exposed-modules: Obsidian
+                   , Obsidian.CodeGen.CUDA
+                   , Obsidian.CodeGen.OpenCLEmbedded 
+                   , Obsidian.Run.CUDA.Exec
            
             
-  other-modules:  Obsidian.Array
-               ,  Obsidian.Atomic
-               ,  Obsidian.DimSpec
-               ,  Obsidian.Exp
-               ,  Obsidian.Force
-               ,  Obsidian.Globs
-               ,  Obsidian.Library
-               ,  Obsidian.Memory
-               ,  Obsidian.Mutable
-               ,  Obsidian.Names
-               ,  Obsidian.Program 
-               ,  Obsidian.SeqLoop 
-               ,  Obsidian.Types 
-               ,  Obsidian.Data
-               ,  Obsidian.CodeGen.CompileIM
-               ,  Obsidian.CodeGen.CompileIMOpenCLEmbedded
-               ,  Obsidian.CodeGen.Liveness
-               ,  Obsidian.CodeGen.Memory2
-               ,  Obsidian.CodeGen.Program
-               ,  Obsidian.CodeGen.Reify 
-              
+    other-modules:  Obsidian.Array
+                 ,  Obsidian.Atomic
+                 ,  Obsidian.DimSpec
+                 ,  Obsidian.Exp
+                 ,  Obsidian.Force
+                 ,  Obsidian.Globs
+                 ,  Obsidian.Library
+                 ,  Obsidian.Memory
+                 ,  Obsidian.Mutable
+                 ,  Obsidian.Names
+                 ,  Obsidian.Program 
+                 ,  Obsidian.SeqLoop 
+                 ,  Obsidian.Types 
+                 ,  Obsidian.Data
+                 ,  Obsidian.CodeGen.CompileIM
+                 ,  Obsidian.CodeGen.CompileIMOpenCLEmbedded
+                 ,  Obsidian.CodeGen.Liveness
+                 ,  Obsidian.CodeGen.Memory2
+                 ,  Obsidian.CodeGen.Program
+                 , Obsidian.CodeGen.Reify
+    GHC-Options: 
+                  
+
+  else
+    -- Stable packages, no upper bounds
+    build-depends: base >= 4 && < 5
+                 , vector           >= 0.10.9.1 
+                 , mtl              >= 2.0 
+                 , containers       >= 0.4.2.1
+                 , text             >= 0.11.3.1
+                 , process          >= 1.1.0.2
+                 , rdtsc            == 1.3.0.0  
+    -- Less-stable packages, upper bounds on next major version:
+    build-depends: value-supply     >= 0.6      && < 0.7
+                 , language-c-quote >= 0.10.1.3 && < 0.11
+     -- >= 0.7.2    && < 0.9
+                 , mainland-pretty  >= 0.2.6    && < 0.3
+                 , mwc-random       >= 0.13.1.1 && < 0.14
+               
+             
+    exposed-modules: Obsidian
+                   , Obsidian.CodeGen.CUDA
+                   , Obsidian.CodeGen.OpenCLEmbedded 
+               
+    other-modules:  Obsidian.Array
+                 ,  Obsidian.Atomic
+                 ,  Obsidian.DimSpec
+                 ,  Obsidian.Exp
+                 ,  Obsidian.Force
+                 ,  Obsidian.Globs
+                 ,  Obsidian.Library
+                 ,  Obsidian.Memory
+                 ,  Obsidian.Mutable
+                 ,  Obsidian.Names
+                 ,  Obsidian.Program 
+                 ,  Obsidian.SeqLoop 
+                 ,  Obsidian.Types 
+                 ,  Obsidian.Data
+                 ,  Obsidian.CodeGen.CompileIM
+                 ,  Obsidian.CodeGen.CompileIMOpenCLEmbedded
+                 ,  Obsidian.CodeGen.Liveness
+                 ,  Obsidian.CodeGen.Memory2
+                 ,  Obsidian.CodeGen.Program
+                 ,  Obsidian.CodeGen.Reify 
+                             
 
         
-  GHC-Options: 
+    GHC-Options: 
 -- -O2 
 
 --  include-dirs:
