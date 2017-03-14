@@ -18,7 +18,7 @@ import System.Exit
 
 import Data.Time.Clock
 
-import Prelude hiding (reverse) 
+import Prelude hiding (reverse,(<*)) 
 import qualified Prelude as P 
 
 perform :: IO ()

@@ -1,6 +1,6 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE GADTs #-}
 
 module Main where
 

@@ -347,9 +347,11 @@ compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR
 
     nWarps   = fromIntegral $ configThreadsPerBlock c `div` 32
     numWarps = [cexp| $int:nWarps|] 
-
-    warpsQ   = [cexp| $int:(n `div` nWarps)|]
-    warpsR   = [cexp| $int:(n `mod` nWarps)|]
+ 
+    (wq, wr) = (n `div` nWarps, n `mod` nWarps)
+     
+    warpsQ   = [cexp| $int:wq|]
+    warpsR   = [cexp| $int:wr|]
     
     codeQ = [[cstm| for (int w = 0; w < $exp:warpsQ; ++w) { $stms:bodyQ } |]]
     
@@ -388,11 +390,12 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
                body = [cstm|$id:("warpIx") = vw*$int:nt + (threadIdx.x % 32); |] : cim
                --body = [cstm|$id:("warpIx") = (threadIdx.x % 32) * q + vw; |] : cim
 
+    q32 = q * 32 -- break out because: parseExp: cannot parse 'q*32' 
     codeR = 
       case r of 
         0 -> [] 
         n -> [[cstm| if ((threadIdx.x % 32) < $int:r) { 
-                            $id:("warpIx") = $int:(q*32) + (threadIdx.x % 32);  
+                            $id:("warpIx") = $int:(q32) + (threadIdx.x % 32);  
                             $stms:cim } |],
                   -- [cstm| __syncthreads();|],
                   [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
@@ -425,13 +428,15 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
     -- r is the number of elements left. 
     -- This generates code for when fewer threads are 
     -- needed than available. (some threads shut down due to the conditional). 
+
+    qnt = q * nt -- break out because: parseExp: cannot parse 'q*nt'
     goR = 
       case (r,q) of 
         (0,_) -> [] 
         --(n,0) -> [[cstm| if (threadIdx.x < $int:n) { 
         --                    $stms:cim } |]] 
         (n,m) -> [[cstm| if (threadIdx.x < $int:n) { 
-                            $id:("tid") = $int:(q*nt) + threadIdx.x;  
+                            $id:("tid") = $int:(qnt) + threadIdx.x;  
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
 

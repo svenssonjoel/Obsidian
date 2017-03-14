@@ -44,7 +44,7 @@ import Obsidian.Exp
 import Obsidian.Program
 import Obsidian.Globs
 
-import Prelude hiding (replicate) 
+import Prelude hiding (replicate, (<*)) 
 import Data.Word
 
 ---------------------------------------------------------------------------

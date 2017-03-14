@@ -11,7 +11,7 @@ module SortNet where
 
 import Obsidian
 
-import Prelude hiding (zip, reverse )
+import Prelude hiding (zip, reverse, (<*))
 import qualified Prelude as P 
 
 import Data.Word
