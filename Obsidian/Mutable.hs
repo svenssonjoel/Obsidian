@@ -5,7 +5,7 @@
 
 {- Joel Svensson 2013, 2014 -}
 
-module Obsidian.Mutable ( Mutable(Mutable) 
+module Obsidian.Mutable ( Mutable(Mutable)
                         , Shared
                         , Global
                         , MShared
@@ -14,10 +14,10 @@ module Obsidian.Mutable ( Mutable(Mutable)
                         , writeToSync
                         , writeTo
                         , assignMutable
-                        , indexMutable 
+                        , indexMutable
                         , mutableToPull
                         , atomicInc
-                        )  where 
+                        )  where
 
 
 
@@ -32,29 +32,29 @@ import Data.Word
 
 {-
   Todo: Think about Global vs Shared.
-  Todo: Add creation of mutable global arrays. 
+  Todo: Add creation of mutable global arrays.
 
   Todo: Make mutable interface (atomic ops) very low-level
 
 
   TODO: Rethink. Have two sepparate types of mutable arrays.
         Also Skip the Type family magic if possible.
-        Make both kinds of Mutable arrays an instance of Array 
--} 
+        Make both kinds of Mutable arrays an instance of Array
+-}
 
 ---------------------------------------------------------------------------
--- Mutable arrays 
+-- Mutable arrays
 ---------------------------------------------------------------------------
 --
--- Global mutable arrays can only be passed as inputs to a function. 
--- Shared mutable arrays may be created using newS 
+-- Global mutable arrays can only be passed as inputs to a function.
+-- Shared mutable arrays may be created using newS
 --
 
 data Shared
 data Global
-  
+
 -- A mutable array has an attached location.
--- Either it recides in Global or in Shared memory. 
+-- Either it recides in Global or in Shared memory.
 data Mutable mloc s a = Mutable s (Names a)
 
 type MShared a = Mutable Shared Word32 a
@@ -63,20 +63,20 @@ type MGlobal a = Mutable Global EWord32 a
 instance ArrayLength (Mutable Shared) where
   len (Mutable n _) = n
 
-  
+
 ---------------------------------------------------------------------------
 -- Create Mutable Shared memory arrays
 --   # allocates shared memory
 ---------------------------------------------------------------------------
 
--- | Create a new Mutable array in shared memory 
+-- | Create a new Mutable array in shared memory
 newSharedMutable :: Storable a => SPush Block a -> Program Block (Mutable Shared Word32 a)
 newSharedMutable arr = do
   (snames :: Names a) <- names "arr"
   allocateArray snames n
   let mut = Mutable n snames
   writeTo mut arr
-  return $ mut -- Mutable n snames 
+  return $ mut -- Mutable n snames
   where
     n = len arr
 
@@ -91,13 +91,13 @@ writeTo :: Storable a
            => Mutable Shared Word32 a
            -> Push Block Word32 a
            -> Program Block ()
-writeTo (Mutable n snames) p 
+writeTo (Mutable n snames) p
   | n <= m =  p <: assignArray snames
-  | otherwise = error "WriteTo: Incompatible sizes" 
+  | otherwise = error "WriteTo: Incompatible sizes"
   where
     m = len p
-   
-    
+
+
 -- Add forceTo with offsets (why? just thought it might be useful)
 -- | Write  a Push array into a mutable array and sync
 writeToSync :: Storable a
@@ -113,60 +113,60 @@ writeToSync m arr =
 -- Low level operations
 ---------------------------------------------------------------------------
 
--- | Write a value into a storable array. 
+-- | Write a value into a storable array.
 assignMutable :: Storable a => Mutable loc l a -> EWord32 ->  a -> Program Thread ()
-assignMutable  (Mutable _ snames) ix a = assignArray snames a ix 
- 
-indexMutable :: (ASize s, Storable a) => Mutable loc s a -> EWord32 -> a 
-indexMutable mut ix = mutableToPull mut ! ix 
-    
+assignMutable  (Mutable _ snames) ix a = assignArray snames a ix
+
+indexMutable :: (ASize s, Storable a) => Mutable loc s a -> EWord32 -> a
+indexMutable mut ix = mutableToPull mut ! ix
+
 ---------------------------------------------------------------------------
 -- mutable to pull conversion
 ---------------------------------------------------------------------------
 
--- | Convert a Mutable array to a Pull array 
+-- | Convert a Mutable array to a Pull array
 mutableToPull :: (ASize s, Storable a) => Mutable l s a -> Pull s a
-mutableToPull (Mutable n snames) = pullFrom snames n  
+mutableToPull (Mutable n snames) = pullFrom snames n
 
 
 
 ---------------------------------------------------------------------------
 -- Atomics
 ---------------------------------------------------------------------------
--- | Increment atomically 
+-- | Increment atomically
 atomicInc :: forall mloc a s t . AtomicInc a
-             => EWord32  
+             => EWord32
              -> Mutable mloc s (Exp a)
              -> TProgram ()
 atomicInc ix (Mutable n noms) = mapNamesM_ f noms
   where
     f nom = atomicOp nom ix (AtomicInc  :: Atomic a) >> return ()
-  
 
--- | Add atomically 
+
+-- | Add atomically
 atomicAdd :: forall mloc a s. AtomicAdd a
              => EWord32
-             -> Exp a 
+             -> Exp a
              -> Mutable mloc s  (Exp a)
              -> TProgram ()
 atomicAdd ix v (Mutable n noms) = mapNamesM_ f noms
   where
     f nom = atomicOp nom ix (AtomicAdd v) >> return ()
-  
 
--- | Subtract atomically     
+
+-- | Subtract atomically
 atomicSub :: forall mloc a s. AtomicSub a
              => EWord32
              -> Exp a
              -> Mutable mloc s (Exp a)
              -> TProgram ()
 atomicSub ix v (Mutable n noms) = mapNamesM_ f noms
-                               
+
   where
     f nom = atomicOp nom ix (AtomicSub v) >> return ()
 
 
--- Special case ? No. 
+-- Special case ? No.
 atomicExch :: forall mloc a s. AtomicExch a
               => EWord32
               -> Exp a
@@ -174,9 +174,9 @@ atomicExch :: forall mloc a s. AtomicExch a
               -> TProgram ()
 atomicExch ix v  (Mutable n (Single nom)) = f nom
   where
-    f nom = atomicOp nom ix (AtomicExch v) 
-                         
-  
+    f nom = atomicOp nom ix (AtomicExch v)
+
+
 {-
 
 ---------------------------------------------------------------------------
@@ -257,4 +257,4 @@ unsigned int atomicXor(unsigned int* address,
 unsigned long long int atomicXor(unsigned long long int* address,
                                  unsigned long long int val);
 
--} 
+-}
