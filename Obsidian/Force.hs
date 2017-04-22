@@ -1,5 +1,5 @@
 
-{-# LANGUAGE ScopedTypeVariables #-} 
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -11,30 +11,24 @@
 {-# LANGUAGE TypeFamilies #-}
 
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ConstraintKinds #-} 
+{-# LANGUAGE ConstraintKinds #-}
 
 
-{- Joel Svensson 2012, 2013, 2014 
+{- Joel Svensson 2012..2017
 
    Notes:
    2014-03-28: Changed API.
-               Not using Obsidian.Mutable currently, it needs more work. 
+               Not using Obsidian.Mutable currently, it needs more work.
    2013-06-24: Changed code. uses Obsidian.Mutable now
    2013-05-02: Removing things to do with forceG
-               Removed the extensions (no longer needed) 
-   2013-04-27: Something is broken. 
+               Removed the extensions (no longer needed)
+   2013-04-27: Something is broken.
    2013-04-10: Looking at force and threads
    2013-01-27: globArrays nolonger exist
    2013-01-02: Added simple forceG for globArrays
-   2012-12-10: Edited 
+   2012-12-10: Edited
 
 -}
-
-{-
- Warning: This module is full of magic! 
--} 
-
-
 
 module Obsidian.Force ( unsafeWritePush
                       , unsafeWritePull
@@ -47,7 +41,7 @@ module Obsidian.Force ( unsafeWritePush
 import Obsidian.Program
 import Obsidian.Exp
 import Obsidian.Array
-import Obsidian.Memory 
+import Obsidian.Memory
 
 import Obsidian.Names
 import Obsidian.Data
@@ -59,30 +53,17 @@ import Data.Word
 --
 -------------------------------------------------------------------------
 
--- class (t *<=* Block,Write t) => Compute t
--- instance Compute Block
--- instance Compute Block => Compute Warp
--- instance Compute Warp  => Compute Thread
-
+-- | Compute constraint.
 type Compute t = (Write t, t *<=* Block)
 
---instance Compute Thread
---instance Compute Warp
---instance Compute Thread 
---instance (Compute t,Write (Step t), Step t *<=* Block)
---         => Compute (Step t) 
---instance Compute Block => Compute Warp
---instance Compute Warp => Compute Thread 
---instance (t *<=* Block,Write t) => Compute t 
-
-
+-- | Arrays can be computed at level t if level t allows compute.
 class Compute t => ComputeAs t a where
   compute :: Data e => a Word32 e -> Program t (Pull Word32 e)
-  
-instance Compute t => ComputeAs t Pull where
-  compute = computePull_ 
 
-{- 
+instance Compute t => ComputeAs t Pull where
+  compute = computePull_
+
+{-
    The key to this instance is that the typechecker
    matches only against the head, ignoring the constraint.
    meaning that all variations of t, t1 is caught by this
@@ -91,31 +72,31 @@ instance Compute t => ComputeAs t Pull where
 
    This means that the constraint "Compute Block (Push Thread)"
    matches this instance, but is a type error.
--} 
+-}
 instance (t ~ t1, Compute t) => ComputeAs t (Push t1) where
   compute =  compute_
 
 compute_ :: (Data a, Compute t)
-          => Push t Word32 a -> Program t (Pull Word32 a)      
+          => Push t Word32 a -> Program t (Pull Word32 a)
 compute_ arr = do
   rval <- unsafeWritePush False arr
   sync
   return rval
 
 computePull_ :: (t *<=* Block, Data a, Compute t)
-             => Pull Word32 a -> Program t (Pull Word32 a)  
-computePull_ arr = 
+             => Pull Word32 a -> Program t (Pull Word32 a)
+computePull_ arr =
   if (len arr <= 32)
   then do
     rval <- unsafeWritePush True parr
     return rval
   else do
-    rval <- unsafeWritePush False parr 
+    rval <- unsafeWritePush False parr
     sync
     return rval
   where parr = push arr
 
-               
+
 ---------------------------------------------------------------------------
 -- Force local (requires static lengths!)
 ---------------------------------------------------------------------------
@@ -128,18 +109,18 @@ class Write t where
 -- Thought: It does not matter.
 -- Thought: Is this function correct at all?
 --   What happens if a thread program allocates memory
--- DONE: The above problem has been fixed! 
+-- DONE: The above problem has been fixed!
 instance  Write Thread where
   unsafeWritePush _ p =
     do
-      (snames :: Names a)  <- names "arr" 
+      (snames :: Names a)  <- names "arr"
 
       -- Here I know that this pattern match will succeed
       let n = len p
-    
+
       allocateArray snames  n
-      p <: threadAssignArray snames (variable "tid") n  
-      
+      p <: threadAssignArray snames (variable "tid") n
+
       return $ threadPullFrom snames (variable "tid") n
 
 instance  Write Warp where
@@ -148,8 +129,8 @@ instance  Write Warp where
       let n = len p
       noms <- names "arr"
       allocateVolatileArray noms n
-     
-      p <: warpAssignArray noms (variable "warpID") n 
+
+      p <: warpAssignArray noms (variable "warpID") n
       return $ warpPullFrom noms (variable "warpID") n
 
 instance Write Block where
@@ -160,8 +141,8 @@ instance Write Block where
       if (volatile)
         then allocateVolatileArray noms n
         else allocateArray noms n
-             
-      p <: assignArray noms 
+
+      p <: assignArray noms
       return $ pullFrom noms n
 
 
@@ -171,7 +152,4 @@ instance Write Block where
 ---------------------------------------------------------------------------
 unsafeWritePull :: (t *<=* Block, Write t, Storable a) => Bool -> Pull Word32 a -> Program t (Pull Word32 a)
 unsafeWritePull t = unsafeWritePush t . push
-
-
-
 

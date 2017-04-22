@@ -1,15 +1,16 @@
-{- Joel Svensson 2012, 2013, 2014 
+{- Joel Svensson 2012..2017
    Mary Sheeran  2012
 
    Notes:
-   2014-03-31: Merged Library and LibraryG 
+   2017-04-22: Cleanup
+   2014-03-31: Merged Library and LibraryG
    2013-01-24: GlobPull nolonger exists
                GlobPush is Push Grid
-              
-   2013-01-08: Renamed GlobArray to GlobPush 
+
+   2013-01-08: Renamed GlobArray to GlobPush
    2013-01-02: Added toGlobArray and toGlobArrayN
    2012-12-10: Refactoring
-               (adherence to new Array types and program types)  
+               (adherence to new Array types and program types)
 -}
 
 {-# LANGUAGE FlexibleInstances,
@@ -40,7 +41,7 @@ module Obsidian.Library
        , take
        , drop
        , head
-       , tail 
+       , tail
        , fold1
        , shiftLeft
        , unzip
@@ -52,12 +53,12 @@ module Obsidian.Library
        , pair
        , unpair
        , unsafeBinSplit
-       , binSplit 
+       , binSplit
        , concP
-       , unpairP 
-       , load   -- RENAME THIS 
+       , unpairP
+       , load   -- RENAME THIS
        , store  -- RENAME THIS
-       -- Hierarchy programming 
+       -- Hierarchy programming
        , asThread
        , asThreadMap
        , asGrid
@@ -66,47 +67,40 @@ module Obsidian.Library
        , AsBlock(..)
        , liftPar -- generic hierarchy programming
        , liftSeq -- generic hierarchy programming
-       , liftIn  -- generic hierarchy programming 
+       , liftIn  -- generic hierarchy programming
        -- Repeat a program
-       , rep 
-        
+       , rep
+
        -- Executing programs
-       , ExecProgram(..) 
-       , ExecBlock(..)
-       , ExecWarp(..)
-       , ExecThread(..)
+       , ExecProgram(..)
+       , execThread
        , execThread'
+       , execWarp
        , execWarp'
+       , execBlock
        , execBlock'
---       , execBlock
---       , execThread
---       , execWarp
 
-
-       -- Leftovers from past days 
+       -- Leftovers from past days
        , singletonPush
-       , runPush 
-       )where 
+       , runPush
+       )where
 
-import Obsidian.Array 
-import Obsidian.Exp 
+import Obsidian.Array
+import Obsidian.Exp
 import Obsidian.Program
 import Obsidian.Data
-import Obsidian.Mutable 
-
--- needed for threadsPerBlock analysis 
--- import qualified Obsidian.CodeGen.Program as P 
+import Obsidian.Mutable
 
 import Control.Monad
 
-import Data.Bits 
+import Data.Bits
 import Data.Word
 
 import Prelude hiding (splitAt,zipWith,replicate,reverse,unzip,zip,zip3,unzip3,zipWith3, last, take, drop, head, tail)
 
 
 ---------------------------------------------------------------------------
--- Helper 
+-- Helper
 ---------------------------------------------------------------------------
 logBaseI :: Integral a => a -> a -> a
 logBaseI b x
@@ -128,22 +122,22 @@ logBaseI b x
 reverse :: (Array array, ArrayLength array, ASize l) => array l a -> array l a
 reverse arr = ixMap (\ix -> (sizeConv m) - ix) arr
     where m = n-1
-          n = len arr        
+          n = len arr
 ---------------------------------------------------------------------------
 -- splitAt (name clashes with Prelude.splitAt)
 ---------------------------------------------------------------------------
 
--- | Splits a Pull array at a given point. Performs no bounds checks. 
-splitAt :: (Integral i, ASize l) => i -> Pull l a -> (Pull l a, Pull l a) 
-splitAt n arr = (mkPull m (\ix -> arr ! ix), 
+-- | Splits a Pull array at a given point. Performs no bounds checks.
+splitAt :: (Integral i, ASize l) => i -> Pull l a -> (Pull l a, Pull l a)
+splitAt n arr = (mkPull m (\ix -> arr ! ix),
                  mkPull  (len arr - m) (\ix -> arr ! (ix + pos)))
   where pos = fromIntegral n
         m   = fromIntegral n
 
--- | Splits a Pull array in the middle. 
-halve :: ASize l => Pull l a -> (Pull l a, Pull l a) 
+-- | Splits a Pull array in the middle.
+halve :: ASize l => Pull l a -> (Pull l a, Pull l a)
 halve arr = splitAt n2 arr
-  where 
+  where
     n = len arr
     n2 = n `div` 2
 
@@ -153,7 +147,7 @@ splitUp n arr {-(Pull m ixf)-} =
   mkPull (len arr `div` fromIntegral n) $ \i ->
     mkPull n $ \j -> arr ! (i * (sizeConv n) + j)                                               
 
--- | Same as @splitUp@ but also performs a permutation of the elements. 
+-- | Same as @splitUp@ but also performs a permutation of the elements.
 coalesce :: ASize l
          => Word32 -> Pull l a -> Pull l (Pull Word32 a)
 coalesce n arr =
@@ -176,44 +170,44 @@ evenOdds arr = (mkPull (n-n2) (\ix -> arr ! (2*ix)) ,
 evens :: ASize l => Pull l a -> Pull l a
 evens = fst . evenOdds
 
--- | Extract the elements at odd indices from a Pull array 
+-- | Extract the elements at odd indices from a Pull array
 odds :: ASize l => Pull l a -> Pull l a
 odds  = snd . evenOdds
 
 ---------------------------------------------------------------------------
--- everyNth 
+-- everyNth
 ---------------------------------------------------------------------------
 -- | Extract every nth element from a Pull array.
 everyNth :: ASize l => Word32 -> Word32 -> Pull l a -> Pull l a
 everyNth n m arr = mkPull n' $ \ix -> arr ! (ix * (fromIntegral n) + fromIntegral m)
   where
-    n' = len arr `div` (fromIntegral n) 
-  
+    n' = len arr `div` (fromIntegral n)
+
 
 ---------------------------------------------------------------------------
--- replicate 
+-- replicate
 ---------------------------------------------------------------------------
--- | Generates a Pull array of length one, containing @a@. 
+-- | Generates a Pull array of length one, containing @a@.
 singleton :: (Array a, ASize l) => e -> a l e
 singleton a = replicate 1 a
 
 -- | Generate a pull or push array using a function from Index to element.
 generate :: (Functor (a s), Array a, ASize s)
          => s -> (EWord32 -> b) -> a s b
-generate n f = fmap f (iota n) 
+generate n f = fmap f (iota n)
 ---------------------------------------------------------------------------
--- last and first 
+-- last and first
 ---------------------------------------------------------------------------
 -- | Extract last element from a Pull array.
-last :: ASize l => Pull l a -> a 
+last :: ASize l => Pull l a -> a
 last arr = arr ! fromIntegral ( len arr - 1)
 
 -- | Extract the first element from a Pull array.
 first :: ASize l => Pull l a -> a
-first arr = arr ! 0 
+first arr = arr ! 0
 
 ---------------------------------------------------------------------------
--- Take and Drop (what about strange sizes ? fix) 
+-- Take and Drop (what about strange sizes ? fix)
 ---------------------------------------------------------------------------
 -- | Take the first @n@ elements from a Pull array
 take :: ASize l => l -> Pull l a -> Pull l a
@@ -231,16 +225,16 @@ head :: ASize l =>  Pull l a -> a
 head arr = arr ! 0
 
 tail :: ASize l => Pull l a -> Pull l a
-tail = drop 1 
+tail = drop 1
 
 
 ---------------------------------------------------------------------------
--- fold (sequential , unrolled)  
+-- fold (sequential , unrolled)
 ---------------------------------------------------------------------------
 -- | Fold a nonempty pull array using a given operator. The result a singleton array (push or pull). 
 fold1 :: Array a => (e -> e -> e) -> Pull Word32 e -> a Word32 e
 fold1  f arr = replicate 1
-               $ foldl1 f [arr ! (fromIntegral i) | i <- [0..(n-1)]]   
+               $ foldl1 f [arr ! (fromIntegral i) | i <- [0..(n-1)]]
   where n = len arr
 
 
@@ -250,69 +244,69 @@ fold1  f arr = replicate 1
 shiftLeft :: ASize l =>  Word32 -> Pull l a -> Pull l a
 shiftLeft dist arr = setSize (len arr - (fromIntegral dist))
                       $ ixMap (\ix -> ix + (fromIntegral dist)) arr
-    
+
 ---------------------------------------------------------------------------
 -- zipp unzipp
 ---------------------------------------------------------------------------
--- | Unzip implemented on Pull arrays    
-unzip :: ASize l =>  Pull l (a,b) -> (Pull l a, Pull l b)       
+-- | Unzip implemented on Pull arrays
+unzip :: ASize l =>  Pull l (a,b) -> (Pull l a, Pull l b)
 unzip arr = (mkPull (len arr) (\ix -> fst (arr ! ix)) ,
              mkPull (len arr) (\ix -> snd (arr ! ix)) )
 
 -- | Zip implemented on Pull arrays
-zip :: ASize l => Pull l a -> Pull l b -> Pull l (a, b)             
+zip :: ASize l => Pull l a -> Pull l b -> Pull l (a, b)
 zip arr1 arr2 = mkPull (min (len arr1) (len arr2))
-                     $ \ix -> (arr1 ! ix, arr2 ! ix) 
+                     $ \ix -> (arr1 ! ix, arr2 ! ix)
 
--- | Unzip tripples. 
-unzip3 :: ASize l => Pull l (a,b,c) 
-           -> (Pull l a, Pull l b, Pull l c)       
+-- | Unzip tripples.
+unzip3 :: ASize l => Pull l (a,b,c)
+           -> (Pull l a, Pull l b, Pull l c)
 unzip3 arr = (fmap (\(x,_,_) -> x) arr,
                fmap (\(_,y,_) -> y) arr,
                fmap (\(_,_,z) -> z)  arr)
-             
+
 -- | Zip three arrays
 zip3 :: ASize l
         => Pull l a
         -> Pull l b
-        -> Pull l c 
-        -> Pull l (a,b,c)             
-zip3 arr1 arr2 arr3 = 
+        -> Pull l c
+        -> Pull l (a,b,c)
+zip3 arr1 arr2 arr3 =
   mkPull (minimum [len arr1, len arr2, len arr3])
   (\ix -> (arr1 ! ix, arr2 ! ix, arr3 ! ix))
-    
+
 
 -- | Perform elementwise operation.
 zipWith :: ASize l => (a -> b -> c) -> Pull l a -> Pull l b -> Pull l c
-zipWith op a1 a2 =  
+zipWith op a1 a2 =
   mkPull (min (len a1) (len a2))
   (\ix -> (a1 ! ix) `op` (a2 ! ix))
 
--- | Perform elementwise operation. 
+-- | Perform elementwise operation.
 zipWith3 :: ASize l => (a -> b -> c-> d) -> Pull l a -> Pull l b -> Pull l c -> Pull l d
-zipWith3 f a1 a2 a3 =  
-  mkPull (minimum [len a1,len a2,len a3]) $ 
+zipWith3 f a1 a2 a3 =
+  mkPull (minimum [len a1,len a2,len a3]) $
     \ix -> f (a1 ! ix)  (a2 ! ix) (a3 ! ix)
 
-  
+
 ---------------------------------------------------------------------------
--- pair 
+-- pair
 ---------------------------------------------------------------------------
 -- | Pair up consecutive elements in a Pull array.
 pair :: ASize l => Pull l a -> Pull l (a,a)
-pair arr = 
-  mkPull n' (\ix -> (arr ! (ix*2),arr ! (ix*2+1))) 
-  where 
-    n' = len arr `div` 2 
+pair arr =
+  mkPull n' (\ix -> (arr ! (ix*2),arr ! (ix*2+1)))
+  where
+    n' = len arr `div` 2
 
 
--- | Flatten a Pull array of pairs. 
+-- | Flatten a Pull array of pairs.
 unpair :: ASize l => Choice a => Pull l (a,a) -> Pull l a
 unpair arr = 
     let n = len arr
-    in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
+    in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0)
                                   (fst (arr ! (ix `shiftR` 1)))
-                                  (snd (arr ! (ix `shiftR` 1)))) 
+                                  (snd (arr ! (ix `shiftR` 1))))
 
 -- | Triple up consecutive elements in a Pull array.
 triple :: ASize l => Pull l a -> Pull l (a,a,a)
@@ -320,7 +314,7 @@ triple arr =
   mkPull (len arr `div` 3) $ \ix ->
     (arr ! (ix*3), arr ! (ix*3+1), arr ! (ix*3+2))
 
--- | Flatten a Pull array of triples. 
+-- | Flatten a Pull array of triples.
 untriple :: ASize l => Choice a => Pull l (a,a,a) -> Pull l a
 untriple arr =
   mkPull (3*len arr) $ \ix ->
@@ -336,14 +330,14 @@ quadruple arr =
   mkPull (len arr `div` 4) $ \ix ->
     (arr ! (ix*4), arr ! (ix*4+1), arr ! (ix*4+2), arr ! (ix*4+3))
 
--- | Flatten a Pull array of triples. 
+-- | Flatten a Pull array of triples.
 unquadruple :: ASize l => Choice a => Pull l (a,a,a,a) -> Pull l a
 unquadruple = unpair . unpair . fmap (\(a0,a1,a2,a3) -> ((a0,a1), (a2,a3)))
 
 
 
 ---------------------------------------------------------------------------
--- twoK (untested for proper functionality) 
+-- twoK (untested for proper functionality)
 ---------------------------------------------------------------------------
 
 -- | Recursively split an array in the middle. Apply an array to array computation
@@ -352,7 +346,7 @@ unquadruple = unpair . unpair . fmap (\(a0,a1,a2,a3) -> ((a0,a1), (a2,a3)))
 unsafeBinSplit :: Int
            -> (Pull Word32 a -> Pull Word32 b)
            -> Pull Word32 a
-           -> Pull Word32 b 
+           -> Pull Word32 b
 unsafeBinSplit = twoK
 
 binSplit :: Data a
@@ -360,21 +354,21 @@ binSplit :: Data a
             -> (Pull Word32 a -> Pull Word32 b)
             -> Mutable Shared Word32 a
             -> Pull Word32 b
-binSplit n f = unsafeBinSplit n f . mutableToPull 
+binSplit n f = unsafeBinSplit n f . mutableToPull
 
 -- See if this should be specifically for Static size pull arrays
 twoK :: Int -> (Pull Word32 a -> Pull Word32 b) -> Pull Word32 a -> Pull Word32 b 
 twoK 0 f = f  -- divide 0 times and apply f
-twoK n f = \arr -> 
+twoK n f = \arr ->
               let arr' = mkPull lt (\i -> (f (mkPull  m (\j -> (arr ! (g i j)))) ! (h i))) 
-                  m    = (len arr `shiftR` n)   --pow of two           
-                  g i j = i .&. (fromIntegral (complement (m-1))) .|. j  
-                  h i   = i .&. (fromIntegral (nl2-1))   -- optimize 
+                  m    = (len arr `shiftR` n)   --pow of two
+                  g i j = i .&. (fromIntegral (complement (m-1))) .|. j
+                  h i   = i .&. (fromIntegral (nl2-1))   -- optimize
 
                   nl2   = len (f (mkPull  m (\j -> arr ! variable "X")))
-                  lt    = nl2 `shiftL` n 
+                  lt    = nl2 `shiftL` n
               in arr'
-                                          
+
 
 
 ---------------------------------------------------------------------------
@@ -382,18 +376,18 @@ twoK n f = \arr ->
 ---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
--- Concatenate on Push arrays 
+-- Concatenate on Push arrays
 ---------------------------------------------------------------------------
 
 -- | Concatenate two push arrays.
 concP :: ASize l
-      => Push t l a -> Push t l a -> Push t l a 
+      => Push t l a -> Push t l a -> Push t l a
 concP p1 p2  =
   mkPush (n1 + n2) $ \wf ->
   do
     p1 <: wf
-    p2 <: \a i -> wf a (sizeConv n1 + i) 
- where 
+    p2 <: \a i -> wf a (sizeConv n1 + i)
+ where
    n1 = len p1
    n2 = len p2
 
@@ -401,43 +395,30 @@ concP p1 p2  =
 unpairP :: ASize l => Choice a => Push t l (a,a) -> Push t l a
 unpairP arr =
   mkPush (2 * len arr) $ \ wf ->
-  do 
+  do
     -- even iterations
     arr <: \ (a,_) i -> wf a ((sizeConv i) `shiftL` 1)
-    -- Odd iterations 
-    arr <: \ (_,b) i -> wf b ((sizeConv i) `shiftL` 1 + 1) 
-
-
-
--- Implement unpair on pusharrays,
--- Impement for more tuples than pairs. 
---unpair :: ASize l => Choice a => Pull l (a,a) -> Pull l a
---unpair arr = 
---    let n = len arr
---    in  mkPull (2*n) (\ix -> ifThenElse ((mod ix 2) ==* 0) 
---                                  (fst (arr ! (ix `shiftR` 1)))
---                                  (snd (arr ! (ix `shiftR` 1)))) 
-
-
+    -- Odd iterations
+    arr <: \ (_,b) i -> wf b ((sizeConv i) `shiftL` 1 + 1)
 
 
 ---------------------------------------------------------------------------
--- load / Store 
+-- load / Store
 ---------------------------------------------------------------------------
-load :: Word32 -> Pull Word32 a -> Push Block Word32 a 
+load :: Word32 -> Pull Word32 a -> Push Block Word32 a
 load n arr =
   mkPush m (\wf ->
   forAll (fromIntegral n') (\tid ->
   do
-    seqFor (fromIntegral n) (\ix -> 
+    seqFor (fromIntegral n) (\ix ->
       wf (arr ! (tid + (ix*fromIntegral n'))) (tid + (ix*fromIntegral n')))))
 
   where
     m = len arr
     n' = m `div` n
 
-store :: Word32 -> SPull a -> SPush Block a 
-store = load 
+store :: Word32 -> SPull a -> SPush Block a
+store = load
 
 
 -- ########################################################################
@@ -446,39 +427,17 @@ store = load
 --
 -- ########################################################################
 
-
-
----------------------------------------------------------------------------
--- Parallel concatMap  
----------------------------------------------------------------------------
--- pConcatMap :: ASize s
---               => (a -> SPush (Below t) b)
---               -> Pull s a
---               -> Push t s b 
--- pConcatMap f = pConcat . fmap f
--- pUnCoalesceMap f = pUnCoalesce . fmap f
--- pConcatMapJoin f = pConcat . fmap (runPush.f)
--- pUnCoalesceMapJoin f = pUnCoalesce . fmap (runPush.f)
--- pCoalesceMap n f = pUnCoalesce . fmap f . coalesce n
--- pSplitMap n f = pConcat . fmap f . splitUp n
-
----------------------------------------------------------------------------
--- Step into the Hierarchy by distributing a
--- Thread program parameterized on a threadId over the threads
--- at a specific level in the Hierarchy. 
----------------------------------------------------------------------------
-
--- "Compute as" family of functions 
+-- "Compute as" family of functions
 
 liftPar :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 liftPar = pConcat
 
 liftSeq :: ASize l => Pull l (SPush t a) -> Push t l a
-liftSeq = sConcat 
+liftSeq = sConcat
 
 liftIn :: (t *<=* Block, ASize l)
       => Pull l (SPush Thread b)
-      -> Push t l b  
+      -> Push t l b
 liftIn = tConcat
 
 ---------------------------------------------------------------------------
@@ -488,37 +447,37 @@ liftIn = tConcat
 class (t *<=* Block) => AsBlock t where
   asBlock :: SPull (SPush t a) ->
              SPush Block a
-  asBlockMap :: (a -> SPush t b) 
+  asBlockMap :: (a -> SPush t b)
               -> SPull a
-              -> SPush Block b 
+              -> SPush Block b
 
-instance AsBlock Thread where 
+instance AsBlock Thread where
   asBlock = tConcat
   asBlockMap f = tConcat . fmap f
-  
+
 instance AsBlock Warp where
   asBlock = pConcat
   asBlockMap f = pConcat . fmap f
-  
+
 instance AsBlock Block where
   asBlock = sConcat
-  asBlockMap f = sConcat . fmap f 
+  asBlockMap f = sConcat . fmap f
 
 ---------------------------------------------------------------------------
 -- AsWarp
---------------------------------------------------------------------------- 
+---------------------------------------------------------------------------
 class (t *<=* Warp) => AsWarp t where
   asWarp :: SPull (SPush t a) ->
-            SPush Warp a 
-  asWarpMap :: (a -> SPush t b) 
+            SPush Warp a
+  asWarpMap :: (a -> SPush t b)
                -> SPull a
-               -> SPush Warp b 
+               -> SPush Warp b
 
-            
+
 instance AsWarp Thread where
   asWarp = tConcat
   asWarpMap f = tConcat . fmap f
-  
+
 instance AsWarp Warp where
   asWarp = sConcat
   asWarpMap f = sConcat . fmap f
@@ -526,13 +485,13 @@ instance AsWarp Warp where
 ---------------------------------------------------------------------------
 -- LiftThread
 ---------------------------------------------------------------------------
-  
+
 asThread :: ASize l
            => Pull l (SPush Thread b)
            -> Push Thread l b
 asThread = tConcat
 
-asThreadMap :: (a -> SPush Thread b) 
+asThreadMap :: (a -> SPush Thread b)
                -> SPull a
                -> SPush Thread b
 asThreadMap f = tConcat . fmap f
@@ -546,9 +505,9 @@ asGrid :: ASize l => Pull l (SPush Block a)
          -> Push Grid l a
 asGrid = pConcat
 
-asGridMap :: ASize l => (a -> SPush Block b) 
+asGridMap :: ASize l => (a -> SPush Block b)
             -> Pull l a
-            -> Push Grid l b 
+            -> Push Grid l b
 asGridMap f = pConcat . fmap f
 
 
@@ -556,84 +515,145 @@ asGridMap f = pConcat . fmap f
 -- Repeat a program
 ---------------------------------------------------------------------------
 
--- | Repeat a program (iterate it) 
+-- | Repeat a program (iterate it)
 rep :: Word32 -> (a -> Program t a) -> a -> Program t a
-rep 0 _ a = return a 
+rep 0 _ a = return a
 rep n prg a = do
   b <- rep (n-1) prg a
-  prg b 
-    
+  prg b
 
-{-
-  mkPush (n * fromIntegral rn) $ \wf ->
-  do
-    seqFor (sizeConv n) $ \bix ->
-      let p = arr ! bix -- (Push _ p) = arr ! bix
-          wf' a ix = wf a (bix * sizeConv rn + ix)              
-      in p <: wf'
-  where 
-    n  = len arr
-    rn = len $ arr ! 0
--} 
+---------------------------------------------------------------------------
+-- RunPush
+---------------------------------------------------------------------------
 
--- class LiftGrid t where
---   -- The "a" cannot be an array.
---   -- This needs to be made clear.. but dont know where. 
---   liftGrid :: ASize l => Pull l (SPush t a) ->
---             Push Grid l a
---   liftGridMap :: ASize l => (a -> SPush t b) 
---               -> Pull l a
---               -> Push Grid l b 
+class ExecProgram t a  where
+  exec :: Data e
+        => Program t (a Word32 e)
+        -> Push t Word32 e
+
+instance (t *<=* Block) => ExecProgram t Pull where
+  exec = runPush . liftM push
+
+-- Here we also want the type error behaviour.
+-- It is a type error to try to "execute" a push t at any level different from t
+instance (t ~ t1) => ExecProgram t (Push t1) where
+  exec = runPush
+
+execThread :: (ExecProgram Thread a, Data e)
+        => Program Thread (a Word32 e)
+        -> Push Thread Word32 e
+execThread = exec
+
+execThread' :: Data a => Program Thread a -> SPush Thread a
+execThread' = singletonPush
+
+execBlock :: (ExecProgram Block a, Data e)
+          => Program Block (a Word32 e)
+          -> Push Block Word32 e
+execBlock = exec
+
+execBlock' :: Data a => Program Block a -> SPush Block a
+execBlock' = singletonPush
+
+execWarp :: (ExecProgram Warp a, Data e)
+         => Program Warp (a Word32 e)
+         -> Push Warp Word32 e
+execWarp = exec
+
+execWarp' :: Data a => Program Warp a -> SPush Warp a
+execWarp' = singletonPush
 
 
--- instance LiftGrid Thread where
---   liftGrid = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
---   liftGridMap = error "asGrid of Thread: Currently breaks in codegen" -- tConcat
-  
--- instance LiftGrid Block where
---   liftGrid = pConcat
---   liftGridMap f = pConcat . fmap f
+-- | Fuses the program that computes a Push array into the Push array.
+runPush :: Program t (Push t s a) -> Push t s a
+runPush prg =
+  mkPush n $ \wf -> do
+    parr <- prg
+    parr <: wf
+    -- It is a bit scary that I need to "evaluate" programs here.
+  where n = len $ fst $ runPrg 0 prg
 
--- instance LiftGrid Warp where
---   liftGrid = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
---   liftGridMap = error "asGrid of Warp: Currently breaks in codegen" -- tConcat 
+-- | Lifts @runPush@ to one input functions.
+runPush1 :: (a -> Program t (Push t s b)) -> a -> Push t s b
+runPush1 f a = runPush (f a)
+
+-- | Lifts @runPush@ to two input functions.
+runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
+runPush2 f a b = runPush (f a b)
+
+-- | Converts a program computing a pull Array to a Push array
+runPull :: (t *<=* Block, ASize s) => Program t (Pull s a) -> Push t s a
+runPull = runPush . liftM push
+
+-- | Lifts @runPull@ to one input functions.
+runPull1 :: (t *<=* Block, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
+runPull1 f a = runPull (f a)
+
+-- | Lifts @runPull@ to two input functions.
+runPull2 :: (t *<=* Block, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
+runPull2 f a b = runPull (f a b)
+
+---------------------------------------------------------------------------
+--
+---------------------------------------------------------------------------
+pushPrg :: (t *<=* Block) => Program t a -> SPush t a
+pushPrg = singletonPush
+
+
+---------------------------------------------------------------------------
+-- Singleton push arrays
+---------------------------------------------------------------------------
+
+-- Danger! use only with Scalar a's
+-- -- | Create a singleton Push array.
+--singletonPush :: a -> SPush t a
+--singletonPush = singletonPushP . return
+
+-- | Monadic version of @singleton@.
+singletonPush :: (t *<=* Block) => Program t a -> SPush t a
+singletonPush prg =
+  mkPush 1 $ \wf -> do
+    a <- prg
+    forAll 1 $ \_ ->
+      wf a 0
 
 ---------------------------------------------------------------------------
 -- Old stuff that should nolonger be exported!
+--  * It is still used internally
 ---------------------------------------------------------------------------
 
 -- | A way to enter into the hierarchy
 -- A bunch of Thread computations, spread across the threads of either
--- a Warp, block or grid. (or performed sequentially in a single thread) 
+-- a Warp, block or grid. (or performed sequentially in a single thread)
 tConcat :: (t *<=* Block, ASize l)
            => Pull l (SPush Thread b)
-           -> Push t l b  
+           -> Push t l b
 tConcat arr =
   mkPush (n * fromIntegral s) $ \wf -> do
-    forAll (sizeConv n) $ \tid -> 
+    forAll (sizeConv n) $ \tid ->
        let wf' a ix = wf a (tid * sizeConv s + ix)
-           p = arr ! tid -- f tid 
+           p = arr ! tid -- f tid
        in p <: wf'
   where
     n = len arr
     s  = len (arr ! 0) --(f (variable "tid")) -- arr
 
--- | Variant of @tConcat@. 
+-- | Variant of @tConcat@.
 tDistribute :: (t *<=* Block, ASize l)
                => l
                -> (EWord32 -> SPush Thread b)
                -> Push t l b
-tDistribute n f = tConcat (mkPull n f) 
+tDistribute n f = tConcat (mkPull n f)
 
-      
+
 -- | Distribute work across the parallel resources at a given level of the GPU hiearchy
 pConcat :: ASize l => Pull l (SPush t a) -> Push (Step t) l a
 pConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
     distrPar (sizeConv n) $ \bix ->
-      let p = arr ! bix 
-          wf' a ix = wf a (bix * sizeConv rn + ix) 
-          
+      let p = arr ! bix
+          wf' a ix = wf a (bix * sizeConv rn + ix)
+
       in p <: wf'
   where
     n  = len arr
@@ -644,7 +664,7 @@ pDistribute :: ASize l
                => l
                -> (EWord32 -> SPush t a)
                -> Push (Step t) l a
-pDistribute n f = pConcat (mkPull n f) 
+pDistribute n f = pConcat (mkPull n f)
 
 -- | Sequential concatenation of a Pull of Push.
 sConcat :: ASize l => Pull l (SPush t a) -> Push t l a
@@ -652,17 +672,17 @@ sConcat arr =
   mkPush (n * fromIntegral rn) $ \wf ->
   do
     seqFor (sizeConv n) $ \bix ->
-      let p = arr ! bix 
-          wf' a ix = wf a (bix * sizeConv rn + ix)              
+      let p = arr ! bix
+          wf' a ix = wf a (bix * sizeConv rn + ix)
       in p <: wf'
-  where 
+  where
     n  = len arr
     rn = len $ arr ! 0
 
 
 -- | Variant of sConcat.
 sDistribute :: ASize l => l -> (EWord32 -> SPush t a) -> Push t l a
-sDistribute n f = sConcat (mkPull n f) 
+sDistribute n f = sConcat (mkPull n f)
 
 -- pUnCoalesce adapted from Niklas branch.
 -- | Combines work that was distributed in a Coalesced way.
@@ -679,134 +699,5 @@ pUnCoalesce arr =
   where
     n  = len arr
     rn = len $ arr ! 0
-    s  = sizeConv rn 
+    s  = sizeConv rn
     g wf a i = wf a (i `div` s + (i`mod`s)*(sizeConv n))
-
----------------------------------------------------------------------------
--- RunPush 
----------------------------------------------------------------------------
-
-class ExecProgram t a  where
-  exec :: Data e
-        => Program t (a Word32 e)
-        -> Push t Word32 e 
-
-instance (t *<=* Block) => ExecProgram t Pull where
-  exec = runPush . liftM push 
-
-instance ExecProgram t (Push t) where
-  exec = runPush 
-
-        
-class ExecThread a where
-  execThread  :: Data e
-                 => Program Thread (a Word32 e)
-                 -> Push Thread Word32 e
-  
--- execThread' :: (t *<=* Block, Data a) => Program t a -> SPush t a
-execThread' :: Data a => Program Thread a -> SPush Thread a 
-execThread' = singletonPush
-
-instance ExecThread (Push Thread) where
-  execThread = runPush
-
-instance ExecThread Pull where
-  execThread = execThread . liftM pushThread
-
-class ExecBlock a where
-  execBlock :: Data e
-               => Program Block (a Word32 e)
-               -> Push Block Word32 e
-
-execBlock' :: Data a => Program Block a -> SPush Block a
-execBlock' = singletonPush 
-
-instance ExecBlock (Push Block) where
-  execBlock = runPush
-
-instance ExecBlock Pull where
-  execBlock = execBlock . liftM pushBlock
-
-class ExecWarp a where
-  execWarp :: Data e
-               => Program Warp (a Word32 e)
-               -> Push Warp Word32 e
-
-execWarp' :: Data a => Program Warp a -> SPush Warp a
-execWarp' = singletonPush 
-
-instance ExecWarp (Push Warp) where
-  execWarp = runPush
-
-instance ExecWarp Pull where
-  execWarp = execWarp . liftM pushWarp
-
--- execThread :: Program Thread (Push Thread s a) -> Push Thread s a
--- execThread = runPush
-
--- execThread' :: Data a => Program Thread a -> SPush Thread a
--- execThread' = singletonPush 
-
--- execWarp :: Program Warp (Push Warp s a) -> Push Warp s a
--- execWarp = runPush
-
--- execWarp' :: Data a => Program Warp a -> SPush Warp a
--- execWarp' = singletonPush
-
--- execBlock :: Program Block (Push Block s a) -> Push Block s a
--- execBlock = runPush
-
-
--- | Fuses the program that computes a Push array into the Push array. 
-runPush :: Program t (Push t s a) -> Push t s a
-runPush prg =
-  mkPush n $ \wf -> do
-    parr <- prg
-    parr <: wf
-    -- It is a bit scary that I need to "evaluate" programs here. 
-  where n = len $ fst $ runPrg 0 prg
-
--- | Lifts @runPush@ to one input functions.
-runPush1 :: (a -> Program t (Push t s b)) -> a -> Push t s b
-runPush1 f a = runPush (f a)
-
--- | Lifts @runPush@ to two input functions.
-runPush2 :: (a -> b -> Program t (Push t s c)) -> a -> b -> Push t s c
-runPush2 f a b = runPush (f a b)  
-
--- | Converts a program computing a pull Array to a Push array
-runPull :: (t *<=* Block, ASize s) => Program t (Pull s a) -> Push t s a
-runPull = runPush . liftM push 
-
--- | Lifts @runPull@ to one input functions.
-runPull1 :: (t *<=* Block, ASize s) => (a -> Program t (Pull s b)) -> a -> Push t s b
-runPull1 f a = runPull (f a)
-
--- | Lifts @runPull@ to two input functions.
-runPull2 :: (t *<=* Block, ASize s) => (a -> b -> Program t (Pull s c)) -> a -> b -> Push t s c
-runPull2 f a b = runPull (f a b)
-
----------------------------------------------------------------------------
--- 
----------------------------------------------------------------------------
-pushPrg :: (t *<=* Block) => Program t a -> SPush t a
-pushPrg = singletonPush
-
-
----------------------------------------------------------------------------
--- Singleton push arrays 
----------------------------------------------------------------------------
-
--- Danger! use only with Scalar a's 
--- -- | Create a singleton Push array.
---singletonPush :: a -> SPush t a
---singletonPush = singletonPushP . return 
-
--- | Monadic version of @singleton@.
-singletonPush :: (t *<=* Block) => Program t a -> SPush t a
-singletonPush prg =
-  mkPush 1 $ \wf -> do
-    a <- prg
-    forAll 1 $ \_ -> 
-      wf a 0
-
