@@ -272,7 +272,7 @@ mmIM conf im memory memmap = r im (memory,memmap)
     --   This one used mmIM' which was identical to mmIM.
     --   This must have been a leftover from when I thought
     --   warp memory needed some special attention here. 
-    process conf (SDistrPar Warp n im,_) m mm = mmIM conf im m mm 
+    process conf (SDistrPar Warp n im,_) m mm =  mmIMDistrWarp conf im m mm
     process conf (SDistrPar Block n im,_) m mm = mmIM conf im m mm 
     process conf (_,_) m mm = (m,mm) 
 
@@ -329,6 +329,52 @@ mmIMLoop conf nonfreeable im memory memmap = r im (memory,memmap)
 
 
 
+-- NOTE: This is a hack to make programs distributed
+--       over warps not "free" its arrays.
+--       Distributing over warps introduces entirely new
+--       shared memory behaviour..
+--       This needs a review and some real thought!
+
+mmIMDistrWarp conf im memory memmap = r im (memory,memmap)
+  where 
+    r [] m = m
+    r (x:xs) (m,mm) =
+      let
+          (m',mm') = process conf x m mm
+           
+          freeable = getFreeableSet x xs
+          --freeable  = freeable' Set.\\ nonfreeable
+          freeableAddrs = mapM (flip Map.lookup mm') (filter dontMap (Set.toList freeable))
+          dontMap name = not ((List.isPrefixOf "input" name) || 
+                              (List.isPrefixOf "output" name))
+          mNew =
+            case freeableAddrs of
+              (Just as) -> m' -- freeAll m' (map fst as)
+              Nothing   -> m'
+      in --trace ("freeable': " ++ show freeable' ++ "\n" ++
+         --       "freeable: " ++ show freeable   ++ "\n" ++ 
+         --       "nonfreeable: " ++ show nonfreeable) $
+         r xs (mNew,mm')
+    
+    process :: SharedMemConfig -> (Statement Liveness,Liveness) -> Memory -> MemMap -> (Memory,MemMap)
+    process conf (SAllocate name size t,_) m mm = (m',mm') 
+      where (m',addr) = allocate conf m size
+            mm' =
+              case Map.lookup name mm of
+                Nothing -> Map.insert name (addr,t) mm
+                (Just (a, t)) -> error $ "mmIm: " ++ name ++ " is already mapped to " ++ show a
+
+    -- Boilerplate
+    process conf (SSeqFor _ n im,alive) m mm = mmIMDistrWarp conf  im m mm
+    process conf (SSeqWhile b im,_) m mm = mmIMDistrWarp conf  im m mm 
+    process conf (SForAll _ n im,_) m mm = mmIMDistrWarp conf  im m mm
+    -- 2014-Nov-25:
+    --   This one used mmIM' which was identical to mmIM.
+    --   This must have been a leftover from when I thought
+    --   warp memory needed some special attention here. 
+    process conf (SDistrPar Warp n im,_) m mm = mmIMDistrWarp conf  im m mm 
+    process conf (SDistrPar Block n im,_) m mm = mmIMDistrWarp conf im m mm 
+    process conf (_,_) m mm = (m,mm) 
 
 
 ---------------------------------------------------------------------------
