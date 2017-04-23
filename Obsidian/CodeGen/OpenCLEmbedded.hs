@@ -1,17 +1,16 @@
 
-{- Joel Svensson 2013..2017
+{- Joel Svensson 2017
 
    Notes:
-    2017-04-23: compileDeclsTop nolonger takes "platform" arg.
-    2014-11-25: Making changes regarding memory allocation.
+     2017-04-23: Adding OpenCL module 
+                
+-} 
 
--}
-
-module Obsidian.CodeGen.CUDA (genKernel, genKernelParams, SharedMemConfig(..)) where 
+module Obsidian.CodeGen.OpenCLEmbedded (genKernel, genKernelParams, SharedMemConfig(..),ToProgram(..)) where 
 
 
 import Obsidian.CodeGen.Reify
-import Obsidian.CodeGen.CompileIM
+import Obsidian.CodeGen.CompileIMOpenCLEmbedded
 import Obsidian.CodeGen.Liveness
 import Obsidian.CodeGen.Memory2
 import Text.PrettyPrint.Mainland
@@ -19,10 +18,10 @@ import Text.PrettyPrint.Mainland
 import qualified Data.Map as M
 import Data.Word
 ---------------------------------------------------------------------------
--- Generate CUDA kernels
+-- Generate OpenCL kernels
 ---------------------------------------------------------------------------
 
--- | Generates kernel C code as a String
+-- | Generates kernel code as a String
 --   while assuming there is 48KB of shared mem in 32 banks
 genKernel :: ToProgram prg
              => Word32
@@ -30,9 +29,9 @@ genKernel :: ToProgram prg
              -> prg
              -> String
 genKernel = genKernelParams sm_conf
-  where
+  where 
     -- pretend we have 32 banks and 48kb shared mem
-    sm_conf :: SharedMemConfig
+    sm_conf :: SharedMemConfig 
     sm_conf = SharedMemConfig 49152 32 True
 
 
@@ -52,7 +51,7 @@ genKernelParams  sm_conf nt kn prg = prgStr
              $ compileDeclsTop
                 (Config nt bytesShared)
                 name_loc
-                kn (a,im)
+                kn (a,im) 
     (a,im) = toProgram_ 0 prg
     iml = computeLiveness im
     (m,mm) = memMapIM sm_conf iml (M.empty)

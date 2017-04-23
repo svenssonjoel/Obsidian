@@ -44,8 +44,9 @@ Library
                , cuda             >= 0.5.1.1  && < 0.8
              
   exposed-modules: Obsidian
-                 ,  Obsidian.CodeGen.CUDA
-                 ,  Obsidian.Run.CUDA.Exec                    
+                 , Obsidian.CodeGen.CUDA
+                 , Obsidian.CodeGen.OpenCLEmbedded
+                 , Obsidian.Run.CUDA.Exec                    
             
   other-modules:  Obsidian.Array
                ,  Obsidian.Atomic
@@ -62,6 +63,7 @@ Library
                ,  Obsidian.Types 
                ,  Obsidian.Data
                ,  Obsidian.CodeGen.CompileIM
+               ,  Obsidian.CodeGen.CompileIMOpenCLEmbedded              
                ,  Obsidian.CodeGen.Liveness
                ,  Obsidian.CodeGen.Memory2
                ,  Obsidian.CodeGen.Program
