@@ -700,7 +700,7 @@ data IExp = IVar Name Type
           deriving (Eq, Ord, Show)
 
 
-data IBinOp = IAdd | ISub | IMul | IDiv | IMod
+data IBinOp = IAdd | ISub | IMul | IDiv | IFDiv | IMod
             | IEq | INotEq | ILt | IGt | IGEq | ILEq
             | IAnd | IOr | IPow
             | IBitwiseAnd | IBitwiseOr | IBitwiseXor
@@ -722,7 +722,7 @@ binOpToIBinOp Add = IAdd
 binOpToIBinOp Sub = ISub
 binOpToIBinOp Mul = IMul
 binOpToIBinOp Div = IDiv
-binOpToIBinOp FDiv = IDiv -- (???)
+binOpToIBinOp FDiv = IFDiv 
 binOpToIBinOp Mod = IMod
 
 binOpToIBinOp Eq  = IEq

@@ -125,6 +125,7 @@ compileExp (IBinOp op e1 e2 t) = go op
     go ISub = [cexp| $x - $y |]
     go IMul = [cexp| $x * $y |]
     go IDiv = [cexp| $x / $y |]
+    go IFDiv = [cexp| $x / $y |]
     go IMod = [cexp| $x % $y |]
     go IEq = [cexp| $x == $y |]
     go INotEq = [cexp| $x !=  $y |]
