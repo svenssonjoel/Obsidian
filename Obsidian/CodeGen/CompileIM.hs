@@ -5,7 +5,7 @@
 
 {-
 
-   Joel Svensson 2013..2015
+   Joel Svensson 2013..2017
 
 -} 
 
@@ -22,14 +22,9 @@ import Obsidian.CodeGen.Program
 
 import Data.Word
 
-{- TODOs:
+{- Notes:
 
-   * Pass a target "platform" to code generator.
-      - CUDA
-      - OpenCL
-      - Sequential C
-      - C with OpenMP ? 
-   * rewrite some functions here to use  a reader monad. 
+   2017-04-22: Generate only CUDA 
 
 
 
@@ -37,11 +32,8 @@ import Data.Word
 -} 
 
 ---------------------------------------------------------------------------
--- Platform
+-- Config
 ---------------------------------------------------------------------------
-data Platform = PlatformCUDA
-              | PlatformOpenCL
-              | PlatformC
 
 data Config = Config { configThreadsPerBlock :: Word32,
                        configSharedMem :: Word32}
@@ -57,21 +49,21 @@ compileExp (IVar name t) = [cexp| $id:name |]
 
 
 -- TODO: Fix all this! 
-compileExp (IBlockIdx X) = [cexp| $id:("bid")|] -- [cexp| $id:("blockIdx.x") |]
-compileExp (IBlockIdx Y) = [cexp| $id:("blockIdx.y") |]
-compileExp (IBlockIdx Z) = [cexp| $id:("blockIdx.z") |]
+-- compileExp (IBlockIdx X) = [cexp| $id:("bid")|] -- [cexp| $id:("blockIdx.x") |]
+-- compileExp (IBlockIdx Y) = [cexp| $id:("blockIdx.y") |]
+-- compileExp (IBlockIdx Z) = [cexp| $id:("blockIdx.z") |]
 
-compileExp (IThreadIdx X) = [cexp| $id:("threadIdx.x") |]
-compileExp (IThreadIdx Y) = [cexp| $id:("threadIdx.y") |]
-compileExp (IThreadIdx Z) = [cexp| $id:("threadIdx.z") |]
+-- compileExp (IThreadIdx X) = [cexp| $id:("threadIdx.x") |]
+-- compileExp (IThreadIdx Y) = [cexp| $id:("threadIdx.y") |]
+-- compileExp (IThreadIdx Z) = [cexp| $id:("threadIdx.z") |]
 
-compileExp (IBlockDim X) = [cexp| $id:("blockDim.x") |]
-compileExp (IBlockDim Y) = [cexp| $id:("blockDim.y") |]
-compileExp (IBlockDim Z) = [cexp| $id:("blockDim.z") |]
+-- compileExp (IBlockDim X) = [cexp| $id:("blockDim.x") |]
+-- compileExp (IBlockDim Y) = [cexp| $id:("blockDim.y") |]
+-- compileExp (IBlockDim Z) = [cexp| $id:("blockDim.z") |]
 
-compileExp (IGridDim X) = [cexp| $id:("GridDim.x") |]
-compileExp (IGridDim Y) = [cexp| $id:("GridDim.y") |]
-compileExp (IGridDim Z) = [cexp| $id:("GridDim.z") |]
+-- compileExp (IGridDim X) = [cexp| $id:("GridDim.x") |]
+-- compileExp (IGridDim Y) = [cexp| $id:("GridDim.y") |]
+-- compileExp (IGridDim Z) = [cexp| $id:("GridDim.z") |]
 
 compileExp (IBool True) = [cexp|1|]
 compileExp (IBool False) = [cexp|0|]
@@ -220,102 +212,61 @@ compileType (Volatile t) =  [cty| volatile $ty:(compileType t)|]
 compileType t = error $ "compileType: Not implemented " ++ show t
 
 
-{-
-
-  Solve the volatile issue.
-  When operating in a warp without syncs Add Volatile to pointers
-  and only there!
-  Need a way to convey this information all the way from the force functions
-  down to the code generator.
-  
-  Also, Change code generation to declare names of pointers into
-  shared memory at different types (that are used in the program)
-    __shared__ uint8_t sbase[X]
-    uint32_t *sbaseU32 = sbase;
-    float *sbaseF = sbase;
-  This changes how offsets are computed within code. May need names for each
-  intermediate array used in the program
-    __shared__ uint8_t sbase[X]
-    uint32_t *arr1 = sbase;
-    uint32_t *arr2 = (sbase + 16U); 
-    float *arr3 = sbase;
-    float *arr4 = (sbase + 4U); 
-   
-
--} 
-
----------------------------------------------------------------------------
--- **     
--- Compile IM
--- ** 
---------------------------------------------------------------------------- 
-
--- newtype CInfo a = CInfo (State CInfoState a)
---                 deriving (Monad, MonadState CInfoState) 
-
--- data CInfoState = CInfoState { cInfoTid  :: (Bool,Exp),
---                                cInfoWarpID     :: (Bool,Exp),
---                                cInfoWarpIx     :: (Bool,Exp) } 
--- evalCInfo (CInfo s) = evalState s                     
-
 ---------------------------------------------------------------------------
 -- Statement t to Stm
 ---------------------------------------------------------------------------
 
 
-compileStm :: Platform -> Config -> Statement t -> [C.Stm]
-compileStm p c (SAssign name [] e) =
+compileStm :: Config -> Statement t -> [C.Stm]
+compileStm c (SAssign name [] e) =
    [[cstm| $(compileExp name) = $(compileExp e);|]]
-compileStm p c (SAssign name [ix] e) = 
+compileStm c (SAssign name [ix] e) = 
    [[cstm| $(compileExp name)[$(compileExp ix)] = $(compileExp e); |]]
-compileStm p c (SAtomicOp name ix atop) = 
+compileStm c (SAtomicOp name ix atop) = 
   case atop of
     AtInc -> [[cstm| atomicInc(&$(compileExp name)[$(compileExp ix)],0xFFFFFFFF); |]]
     AtAdd e -> [[cstm| atomicAdd(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
     AtSub e -> [[cstm| atomicSub(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
     AtExch e -> [[cstm| atomicExch(&$(compileExp name)[$(compileExp ix)],$(compileExp e));|]]
 
-compileStm p c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
+compileStm c (SCond be im) = [[cstm| if ($(compileExp be)) { $stms:body } |]]
   where 
-    body = compileIM p c im  -- (compileIM p c im)
-compileStm p c (SSeqFor loopVar n im) = 
+    body = compileIM c im  -- (compileIM p c im)
+compileStm c (SSeqFor loopVar n im) = 
     [[cstm| for (int $id:loopVar = 0; $id:loopVar < $(compileExp n); ++$id:loopVar) 
               { $stms:body } |]]
 -- end a sequential for loop with a sync (or begin).
 -- Maybe only if the loop is on block level (that is across all threads)
 --  __syncthreads();} |]]
   where
-    body = compileIM p c im -- (compileIM p c im)
+    body = compileIM c im 
 
 
 -- Just relay to specific compileFunction
-compileStm p c a@(SForAll lvl n im) = compileForAll p c a
+compileStm c a@(SForAll lvl n im) = compileForAll c a
 
-compileStm p c a@(SDistrPar lvl n im) = compileDistr p c a 
+compileStm c a@(SDistrPar lvl n im) = compileDistr c a 
 
-compileStm p c (SSeqWhile b im) =
+compileStm c (SSeqWhile b im) =
   [[cstm| while ($(compileExp b)) { $stms:body}|]]
   where
-    body = compileIM p c im 
+    body = compileIM c im 
 
-compileStm p c SSynchronize 
-  = case p of
-      PlatformCUDA -> [[cstm| __syncthreads(); |]]
-      PlatformOpenCL -> [[cstm| barrier(CLK_LOCAL_MEM_FENCE); |]]
+compileStm c SSynchronize = [[cstm| __syncthreads(); |]]
 
-compileStm _ _ (SAllocate _ _ _) = []
-compileStm _ _ (SDeclare name t) = []
+compileStm _ (SAllocate _ _ _) = []
+compileStm _ (SDeclare name t) = []
 
-compileStm _ _ a = error  $ "compileStm: missing case "
+compileStm _ a = error  $ "compileStm: missing case "
 
 ---------------------------------------------------------------------------
 -- DistrPar 
 ---------------------------------------------------------------------------
-compileDistr :: Platform -> Config -> Statement t -> [C.Stm] 
-compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
+compileDistr :: Config -> Statement t -> [C.Stm] 
+compileDistr c (SDistrPar Block n im) =  codeQ ++ codeR
   -- New here is BLOCK virtualisation
   where
-    cim = compileIM PlatformCUDA c im  -- ++ [[cstm| __syncthreads();|]]
+    cim = compileIM c im  -- ++ [[cstm| __syncthreads();|]]
     
     numBlocks = [cexp| $id:("gridDim.x") |]
     
@@ -337,13 +288,13 @@ compileDistr PlatformCUDA c (SDistrPar Block n im) =  codeQ ++ codeR
 -- I must look over the functions that can potentially create this IM. 
 -- Can make a separate case for unknown 'n' but generate worse code.
 -- (That is true for all levels)  
-compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR 
+compileDistr c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR 
   -- Here the 'im' should be distributed over 'n'warps.
   -- 'im' uses a warpID variable to identify what warp it is.
   -- 'n' may be higher than the actual number of warps we have!
   -- So GPU warp virtualisation is needed. 
   where
-    cim = compileIM PlatformCUDA c im
+    cim = compileIM c im
 
     nWarps   = fromIntegral $ configThreadsPerBlock c `div` 32
     numWarps = [cexp| $int:nWarps|] 
@@ -369,15 +320,15 @@ compileDistr PlatformCUDA c (SDistrPar Warp (IWord32 n) im) = codeQ  ++ codeR
 ---------------------------------------------------------------------------
 -- ForAll is compiled differently for different platforms
 ---------------------------------------------------------------------------
-compileForAll :: Platform -> Config -> Statement t -> [C.Stm]
-compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
+compileForAll :: Config -> Statement t -> [C.Stm]
+compileForAll c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
   where
     nt = 32
 
     q = n `div` nt
     r = n `mod` nt
 
-    cim = compileIM PlatformCUDA c im 
+    cim = compileIM c im 
     
     codeQ =
       case q of
@@ -400,9 +351,9 @@ compileForAll PlatformCUDA c (SForAll Warp  (IWord32 n) im) = codeQ ++ codeR
                   -- [cstm| __syncthreads();|],
                   [cstm| $id:("warpIx") = threadIdx.x % 32; |]]
 
-compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR 
+compileForAll c (SForAll Block (IWord32 n) im) = goQ ++ goR 
   where
-    cim = compileIM PlatformCUDA c im -- ++ [[cstm| __syncthreads();|]]
+    cim = compileIM c im -- ++ [[cstm| __syncthreads();|]]
    
     nt = configThreadsPerBlock c 
 
@@ -440,7 +391,7 @@ compileForAll PlatformCUDA c (SForAll Block (IWord32 n) im) = goQ ++ goR
                             $stms:cim } |], 
                   [cstm| $id:("tid") = threadIdx.x; |]]
 
-compileForAll PlatformCUDA c (SForAll Grid n im) = error "compileForAll: Grid" -- cim
+compileForAll c (SForAll Grid n im) = error "compileForAll: Grid" -- cim
   -- The grid case is special. May need more thought
   -- 
   -- The problem with this case is that
@@ -448,39 +399,34 @@ compileForAll PlatformCUDA c (SForAll Grid n im) = error "compileForAll: Grid" -
   -- from the programmer.
   -- Though! There is no way the programmer could provide any
   -- such info ... 
-  where
-    cim = compileIM PlatformCUDA c im
+  -- where
+  --   cim = compileIM c im
 
-compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
-  where
-    body = compileIM PlatformC c im 
-    go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
+--compileForAll PlatformC c (SForAll lvl (IWord32 n) im) = go
+--  where
+--    body = compileIM PlatformC c im 
+--    go  = [ [cstm| for (int i = 0; i <$int:n; ++i) { $stms:body } |] ] 
       
 
 --------------------------------------------------------------------------- 
 -- CompileIM to list of Stm 
 --------------------------------------------------------------------------- 
-compileIM :: Platform -> Config -> IMList a -> [C.Stm]
-compileIM pform conf im = concatMap ((compileStm pform conf) . fst) im
+compileIM :: Config -> IMList a -> [C.Stm]
+compileIM conf im = concatMap ((compileStm conf) . fst) im
 
 ---------------------------------------------------------------------------
 -- Generate entire Kernel 
 ---------------------------------------------------------------------------
 type Parameters = [(String,T.Type)]
 
-compile :: Platform -> Config -> String -> (Parameters,IMList a) -> C.Definition
-compile pform config kname (params,im)
-  = go pform 
+compile :: Config -> String -> (Parameters,IMList a) -> C.Definition
+compile config kname (params,im)
+  = go 
   where
-    stms = compileIM pform config im
+    stms = compileIM config im
     
-    ps = compileParams pform params
-    go PlatformCUDA
-      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
-    go PlatformOpenCL
-      = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
-    go PlatformC
-      = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
+    ps = compileParams params
+    go = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
 
     cudabody = (if (configSharedMem config > 0)
                 -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 
@@ -528,14 +474,8 @@ declares _ = []
 --------------------------------------------------------------------------- 
 -- Parameter lists for functions  (kernel head) 
 ---------------------------------------------------------------------------
-compileParams :: Platform -> Parameters -> [C.Param]
-compileParams PlatformOpenCL = map go
-  where
-    go (name,Pointer t) = [CL.cparam| global  $ty:(compileType t) $id:name |]
-    go (name, t)        = [CL.cparam| $ty:(compileType t) $id:name |]
-
--- C or CUDA 
-compileParams _ = map go
+compileParams :: Parameters -> [C.Param]
+compileParams = map go
   where
     go (name,t) = [cparam| $ty:(compileType t) $id:name |]
  
@@ -545,19 +485,14 @@ compileParams _ = map go
 ---------------------------------------------------------------------------
 -- CODE DUPLICATION FOR NOW
 
-compileDeclsTop :: Platform -> Config -> [(String,((Word32,Word32),T.Type))] -> String -> (Parameters,IMList a) -> C.Definition
-compileDeclsTop pform config toplevelarrs kname (params,im)
-  = go pform 
+compileDeclsTop :: Config -> [(String,((Word32,Word32),T.Type))] -> String -> (Parameters,IMList a) -> C.Definition
+compileDeclsTop config toplevelarrs kname (params,im)
+  = go
   where
-    stms = compileIM pform config im
+    stms = compileIM config im
     
-    ps = compileParams pform params
-    go PlatformCUDA
-      = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
-    go PlatformOpenCL
-      = [CL.cedecl| __kernel void $id:kname($params:ps) {$stms:stms} |]
-    go PlatformC
-      = [cedecl| extern "C" void $id:kname($params:ps) {$items:cbody} |] 
+    ps = compileParams params
+    go = [cedecl| extern "C" __global__ void $id:kname($params:ps) {$items:cudabody} |]
 
     cudabody = (if (configSharedMem config > 0)
                 -- then [BlockDecl [cdecl| extern volatile __shared__  typename uint8_t sbase[]; |]] 

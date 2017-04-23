@@ -1,5 +1,5 @@
 
-{- Joel Svensson 2013, 2014
+{- Joel Svensson 2013..2017
 
    Notes:
     25-Nov-2014: Making changes regarding memory allocation
@@ -49,7 +49,6 @@ genKernelParams  sm_conf nt kn prg = prgStr
     prgStr = pretty 75
              $ ppr
              $ compileDeclsTop
-                PlatformCUDA
                 (Config nt bytesShared)
                 name_loc
                 kn (a,im) 
