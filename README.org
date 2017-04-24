@@ -1,50 +1,16 @@
 * Obsidian
   
   An embedded language for GPU kernel programming. 
+
+* News:  
+  + Obsidian does not depend on the "CUDA" package anymore. 
+    If running on a GPU from haskell (by using the CUDA package) 
+    is desired, the Obsidian-Run-CUDA package should be installed as well
+
+* TODO: 
+  + "Up" the versions 
+  + Remove all example code that relies on CUDA (Move to another repo)  
   
-* Current features 
-    + Pull arrays: traditional "arrays as function from index to value" 
-    + Push arrays: a computation that is parameterised on a "write
-      function". 
-    + Executing kernels from within Haskell is possible on platforms 
-      supported by the CUDA bindings (Linux, Mac). 
-      Obsidian.Run.CUDA.Exec provides a very low level interface to
-      running kernels. 
-    + Memory manager alignes arrays in shared memory with respect to 
-      memory banks. 
-
-* News 
-  + New functions for "programming the hierarchy:
-    - asThread, asWarp, asBlock, asGrid replaces tConcat,pConcat,sConcat functionality
-    - execThread  Program Thread (SPush Thread a) -> SPush Thread a 
-    - execWarp 
-    - execBlock 
-    - force is now called compute
-    
-  + Memory manager had a big revamping.  
-
-  + Code generation revamping: All intermediate shared arrays are declared at 
-    toplevel of kernel (as pointers into a chunk of shared mem). 
-    This makes the body of a kernel much more readable.
-
-* In Progress
-    + Mutable arrays:
-      Mutable arrays in shared memory can be created.
-      Global mutable arrays can be passed into a kernel as an argument. 
-    + Atomic operations on mutable arrays.
-
-* TODOs
-  + Automatic lookup table generation. Use constant memory 
-    for lookup tables. 
-  + Implement a memory manager that uses the optimal memory layout. 
-    This is possible, all information is there. 
-  
-  + Enhance and improve the library for programming with mutable arrays. 
-    Make mutable arrays more accessible to the programmer and make them a 
-    more integrated part of the programming style. 
-  + Testing: Many changes lately, a test-suite is needed. 
-    Example programs and benchmarks seem to work, but more is needed. 
-  + Multikernel programs expressed within Obsidian. 
 
 * Versioning Policy (from Apr 14 2014 with the release of version 0.1.0.0) 
   + A.B.C.D  
