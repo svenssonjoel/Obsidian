@@ -646,10 +646,10 @@ printOp GetW = "getW"
 ---------------------------------------------------------------------------
 
 data IExp = IVar Name Type
-          | IBlockIdx  DimSpec
-          | IThreadIdx DimSpec
-          | IBlockDim  DimSpec
-          | IGridDim   DimSpec
+       --   | IBlockIdx  DimSpec
+       --   | IThreadIdx DimSpec
+       --   | IBlockDim  DimSpec
+       --   | IGridDim   DimSpec
 
 -- Break out: Values and Vectors this is too messy.
           | IBool Bool
@@ -859,9 +859,9 @@ instance ExpToIExp (Vector2 Double) where
 -- translation from Exp to IExp in the general case.
 expToIExpGeneral :: ExpToIExp a  => Exp a -> IExp
 expToIExpGeneral WarpSize      = IVar "warpsize" Word32
-expToIExpGeneral (BlockIdx d)  = IBlockIdx d
-expToIExpGeneral (BlockDim d)  = IBlockDim d
-expToIExpGeneral (ThreadIdx d) = IThreadIdx d
+--expToIExpGeneral (BlockIdx d)  = IBlockIdx d
+--expToIExpGeneral (BlockDim d)  = IBlockDim d
+--expToIExpGeneral (ThreadIdx d) = IThreadIdx d
 
 expToIExpGeneral e@(Index (name,[])) = IVar name  (typeOf e)
 expToIExpGeneral e@(Index (name,xs))

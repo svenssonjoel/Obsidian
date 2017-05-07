@@ -163,6 +163,8 @@ compileExp (ICast e t) = [cexp| ($ty:(compileType t)) $e' |]
   where
     e' = compileExp e
 
+compileExp any = error $ show any
+
 compileType :: T.Type -> C.Type
 compileType (Int8) = [cty| typename int8_t |]
 compileType (Int16) = [cty| typename int16_t |]

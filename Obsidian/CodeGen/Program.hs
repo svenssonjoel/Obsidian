@@ -275,7 +275,7 @@ instance Compile P.Grid where
   {- Distribute over blocks -}
   compile s (P.DistrPar n f) = do
     -- Need to generate IM here that the backend can read desired number of blocks from
-    let p = f (BlockIdx X) 
+    let p = f (variable "bid") -- (BlockIdx X) 
     
     (a, im) <- compile s p -- (f (BlockIdx X)) 
     return (a, out (SDistrPar Block (expToIExp n) im))
