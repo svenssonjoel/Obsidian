@@ -77,8 +77,8 @@ compileExp (IWord16 n) = [cexp| $uint:(toInteger n) |]
 compileExp (IWord32 n) = [cexp| $uint:(toInteger n) |]
 compileExp (IWord64 n) = [cexp| $ulint:(toInteger n) |]
 
-compileExp (IFloat n) = [cexp| $float:(toRational n) |]
-compileExp (IDouble n) = [cexp| $double:(toRational n) |]
+compileExp (IFloat n) = [cexp| $float:(n) |]
+compileExp (IDouble n) = [cexp| $double:(n) |]
 
 -- Implementing these may be a bit awkward
 -- given there are no vector literals in cuda. 

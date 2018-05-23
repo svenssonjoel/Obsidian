@@ -15,6 +15,7 @@ import Obsidian.CodeGen.CompileIM
 import Obsidian.CodeGen.Liveness
 import Obsidian.CodeGen.Memory2
 import Text.PrettyPrint.Mainland
+import Text.PrettyPrint.Mainland.Class
 
 import qualified Data.Map as M
 import Data.Word
